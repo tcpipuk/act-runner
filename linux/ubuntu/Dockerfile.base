@@ -1,0 +1,153 @@
+# Base ACT runner image with essential tools
+ARG UBUNTU_VERSION=24.04
+FROM ubuntu:${UBUNTU_VERSION} AS base
+
+# Re-declare ARG after FROM
+ARG UBUNTU_VERSION
+ARG TARGETARCH
+ARG RUNNER_UID=1001
+ARG RUNNER_GID=1001
+ARG RUNNER_USER=runner
+
+# Force non-interactive apt
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Build metadata args
+ARG BUILD_DATE
+ARG BUILD_VERSION
+ARG BUILD_REVISION
+ARG BUILD_REPO=tom/act-runner
+ARG BUILD_URL=https://git.tomfos.tr/tom/act-runner
+
+# Metadata
+LABEL org.opencontainers.image.created="${BUILD_DATE}" \
+    org.opencontainers.image.title="act-runner-ubuntu${UBUNTU_VERSION}-base" \
+    org.opencontainers.image.description="Optimized ACT/Forgejo runner base image with essential CI tools for Ubuntu ${UBUNTU_VERSION}" \
+    org.opencontainers.image.url="${BUILD_URL}" \
+    org.opencontainers.image.source="${BUILD_URL}" \
+    org.opencontainers.image.documentation="${BUILD_URL}/src/branch/main/README.md" \
+    org.opencontainers.image.version="${BUILD_VERSION}" \
+    org.opencontainers.image.revision="${BUILD_REVISION}" \
+    org.opencontainers.image.vendor="git.tomfos.tr" \
+    org.opencontainers.image.licenses="MIT" \
+    org.opencontainers.image.authors="Tom Foster"
+
+# Base system packages - one layer for essentials
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && apt-get install -y --no-install-recommends \
+    apt-utils \
+    build-essential \
+    bzip2 \
+    ca-certificates \
+    cmake \
+    curl \
+    file \
+    g++ \
+    gcc \
+    git \
+    git-lfs \
+    gnupg \
+    gzip \
+    jq \
+    libffi-dev \
+    libssl-dev \
+    lsb-release \
+    make \
+    openssh-client \
+    patch \
+    pkg-config \
+    rsync \
+    $(if [ "${UBUNTU_VERSION}" != "22.04" ]; then echo "rustup"; fi) \
+    software-properties-common \
+    sudo \
+    tar \
+    unzip \
+    wget \
+    xz-utils \
+    zip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Add all useful repositories (tiny text files, no real cost)
+# This enables users to easily install: clang, docker-ce, gh, dotnet, kubectl, psql, terraform, etc.
+RUN mkdir -p -m 755 /etc/apt/keyrings /etc/apt/sources.list.d
+
+# Development tools repositories
+RUN \
+    # LLVM/Clang - for C/C++ development
+    wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | \
+    tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc && \
+    echo "deb http://apt.llvm.org/$(lsb_release -cs)/ llvm-toolchain-$(lsb_release -cs) main" \
+    > /etc/apt/sources.list.d/llvm.list
+
+# Container and cloud tools
+RUN \
+    # Docker - for container operations
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | \
+    gpg --dearmor -o /etc/apt/keyrings/docker-archive-keyring.gpg && \
+    chmod go+r /etc/apt/keyrings/docker-archive-keyring.gpg && \
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker-archive-keyring.gpg] \
+    https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" \
+    > /etc/apt/sources.list.d/docker.list && \
+    \
+    # Kubernetes - for k8s operations
+    curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.31/deb/Release.key | \
+    gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg && \
+    chmod go+r /etc/apt/keyrings/kubernetes-apt-keyring.gpg && \
+    echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] \
+    https://pkgs.k8s.io/core:/stable:/v1.31/deb/ /" \
+    > /etc/apt/sources.list.d/kubernetes.list && \
+    \
+    # HashCorp - for Terraform, Vault, Consul, etc.
+    wget -O- https://apt.releases.hashicorp.com/gpg | \
+    gpg --dearmor -o /etc/apt/keyrings/hashicorp-archive-keyring.gpg && \
+    chmod go+r /etc/apt/keyrings/hashicorp-archive-keyring.gpg && \
+    echo "deb [signed-by=/etc/apt/keyrings/hashicorp-archive-keyring.gpg] \
+    https://apt.releases.hashicorp.com $(lsb_release -cs) main" \
+    > /etc/apt/sources.list.d/hashicorp.list
+
+# VCS and database tools
+RUN \
+    # GitHub CLI - for GitHub/Forgejo operations
+    wget -q -O- https://cli.github.com/packages/githubcli-archive-keyring.gpg | \
+    tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null && \
+    chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg && \
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] \
+    https://cli.github.com/packages stable main" \
+    > /etc/apt/sources.list.d/github-cli.list && \
+    \
+    # PostgreSQL - for database tools
+    curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | \
+    gpg --dearmor -o /etc/apt/keyrings/postgresql-keyring.gpg && \
+    chmod go+r /etc/apt/keyrings/postgresql-keyring.gpg && \
+    echo "deb [signed-by=/etc/apt/keyrings/postgresql-keyring.gpg] \
+    http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+    > /etc/apt/sources.list.d/postgresql.list
+
+# Microsoft ecosystem (PowerShell, .NET, Azure CLI)
+RUN --mount=type=cache,target=/tmp/downloads,sharing=locked \
+    PACKAGE_PATH="/tmp/downloads/packages-microsoft-prod-$(lsb_release -rs).deb" && \
+    if [ ! -f "${PACKAGE_PATH}" ]; then \
+    wget -q https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/packages-microsoft-prod.deb \
+    -O "${PACKAGE_PATH}"; \
+    fi && \
+    dpkg -i "${PACKAGE_PATH}"
+
+# Install GitHub CLI and Docker tools now that we have repos configured
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && apt-get install -y --no-install-recommends \
+    gh \
+    docker-ce-cli \
+    docker-compose-plugin \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create tool directories
+RUN mkdir -p /opt/hostedtoolcache /opt/acttoolcache
+
+# Set up environment
+ENV AGENT_TOOLSDIRECTORY=/opt/hostedtoolcache \
+    ACT_TOOLSDIRECTORY=/opt/acttoolcache \
+    UBUNTU_VERSION=${UBUNTU_VERSION}
+
+WORKDIR /tmp
