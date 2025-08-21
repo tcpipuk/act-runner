@@ -26,12 +26,12 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     NODE_VERSION=$(curl -sL ${NODE_URL} | grep -oP 'node-v\K[0-9]+\.[0-9]+\.[0-9]+' | head -1); \
     FULL_VERSION="v${NODE_VERSION}"; \
     ARCH=$(dpkg --print-architecture | sed 's/amd64/x64/;s/arm64/arm64/'); \
-    NODE_PATH="/opt/hostedtoolcache/node/${NODE_VERSION}/${ARCH}"; \
     TARBALL="/tmp/downloads/node-${FULL_VERSION}-linux-${ARCH}.tar.xz"; \
-    mkdir -p "${NODE_PATH}"; \
     if [ ! -f "${TARBALL}" ]; then \
     curl -sL "${NODE_URL}/node-${FULL_VERSION}-linux-${ARCH}.tar.xz" -o "${TARBALL}"; \
     fi; \
+    NODE_PATH="/opt/hostedtoolcache/node/${NODE_VERSION}/${ARCH}"; \
+    mkdir -p "${NODE_PATH}"; \
     tar -xJf "${TARBALL}" --strip-components=1 -C "${NODE_PATH}"; \
     done
 
@@ -43,19 +43,12 @@ RUN NODE_VERSION=$(ls /opt/hostedtoolcache/node | head -1) && \
     ln -sf /opt/hostedtoolcache/node/${NODE_VERSION}/${ARCH}/bin/npm /usr/local/bin/npm && \
     ln -sf /opt/hostedtoolcache/node/${NODE_VERSION}/${ARCH}/bin/npx /usr/local/bin/npx
 
-# Metadata labels
-ARG BUILD_DATE
-ARG BUILD_VERSION
-ARG BUILD_REVISION
-ARG NODE_VERSIONS
-LABEL org.opencontainers.image.created="${BUILD_DATE}" \
-    org.opencontainers.image.title="act-runner-ubuntu${UBUNTU_VERSION}-node${NODE_VERSIONS// /-}" \
+# Metadata labels (static values only for better caching)
+LABEL org.opencontainers.image.title="act-runner-ubuntu${UBUNTU_VERSION}-node${NODE_VERSIONS// /-}" \
     org.opencontainers.image.description="ACT/Forgejo runner with Node.js ${NODE_VERSIONS} for Ubuntu ${UBUNTU_VERSION}" \
     org.opencontainers.image.url="https://git.tomfos.tr/tom/act-runner" \
     org.opencontainers.image.source="https://git.tomfos.tr/tom/act-runner" \
     org.opencontainers.image.documentation="https://git.tomfos.tr/tom/act-runner#readme" \
-    org.opencontainers.image.version="${BUILD_VERSION}" \
-    org.opencontainers.image.revision="${BUILD_REVISION}" \
     org.opencontainers.image.vendor="git.tomfos.tr" \
     org.opencontainers.image.licenses="MIT" \
     org.opencontainers.image.authors="Tom Foster"
