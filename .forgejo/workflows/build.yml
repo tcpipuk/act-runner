@@ -1,0 +1,231 @@
+name: Build Runner Images
+
+on:
+  push:
+    branches: [main, dev, update-runner-deps]
+    paths:
+      - "linux/**"
+      - ".forgejo/workflows/build.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "linux/**"
+      - ".forgejo/workflows/build.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: git.tomfos.tr
+  IMAGE_NAME: tom/act-runner
+
+jobs:
+  build-base:
+    name: Build Ubuntu ${{ matrix.ubuntu }} Base
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 1 # Limit concurrent builds - heavy when uncached
+      matrix:
+        ubuntu: ["22.04", "24.04", "25.04"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver: remote
+          endpoint: tcp://buildkit:8125
+
+      - name: Log in to Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.FORGEJO_TOKEN }}
+
+      - name: Generate base tags
+        id: base-tags
+        run: |
+          BASE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:ubuntu${{ matrix.ubuntu }}-base"
+          if [ "${{ github.ref_name }}" != "main" ]; then
+            BASE_TAG="${BASE_TAG}-${{ github.ref_name }}"
+          fi
+          echo "tags=${BASE_TAG}" >> $GITHUB_OUTPUT
+
+      - name: Build and push base image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./linux/ubuntu
+          file: ./linux/ubuntu/Dockerfile.base
+          push: true
+          tags: ${{ steps.base-tags.outputs.tags }}
+          build-args: |
+            UBUNTU_VERSION=${{ matrix.ubuntu }}
+            BUILD_DATE=${{ github.event.repository.updated_at }}
+            BUILD_VERSION=${{ github.ref_name }}
+            BUILD_REVISION=${{ github.sha }}
+          platforms: linux/amd64
+
+  build-node:
+    name: Build Ubuntu ${{ matrix.ubuntu }} Node ${{ matrix.node_versions }}
+    runs-on: ubuntu-latest
+    needs: build-base
+    strategy:
+      fail-fast: false
+      max-parallel: 3 # Limit concurrent builds
+      matrix:
+        ubuntu: ["22.04", "24.04", "25.04"]
+        node_versions: ["18+20", "20+22", "22+24"]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver: remote
+          endpoint: tcp://buildkit:8125
+
+      - name: Log in to Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.FORGEJO_TOKEN }}
+
+      - name: Generate node tags
+        id: node-tags
+        run: |
+          NODE_TAG=$(echo "${{ matrix.node_versions }}" | tr '+' '-')
+          NODE_VERSIONS_SPACED=$(echo "${{ matrix.node_versions }}" | tr '+' ' ')
+          BASE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:ubuntu${{ matrix.ubuntu }}-node${NODE_TAG}"
+
+          # Add branch suffix if not on main
+          if [ "${{ github.ref_name }}" != "main" ]; then
+            BASE_TAG="${BASE_TAG}-${{ github.ref_name }}"
+          fi
+
+          echo "tags=${BASE_TAG}" >> $GITHUB_OUTPUT
+          echo "node_versions_spaced=${NODE_VERSIONS_SPACED}" >> $GITHUB_OUTPUT
+
+          # Generate base image reference with branch suffix
+          BASE_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:ubuntu${{ matrix.ubuntu }}-base"
+          if [ "${{ github.ref_name }}" != "main" ]; then
+            BASE_IMAGE="${BASE_IMAGE}-${{ github.ref_name }}"
+          fi
+          echo "base_image=${BASE_IMAGE}" >> $GITHUB_OUTPUT
+
+      - name: Build and push node image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./linux/ubuntu
+          file: ./linux/ubuntu/Dockerfile.node
+          push: true
+          tags: ${{ steps.node-tags.outputs.tags }}
+          build-args: |
+            UBUNTU_VERSION=${{ matrix.ubuntu }}
+            BASE_IMAGE=${{ steps.node-tags.outputs.base_image }}
+            NODE_VERSIONS=${{ steps.node-tags.outputs.node_versions_spaced }}
+            BUILD_DATE=${{ github.event.repository.updated_at }}
+            BUILD_VERSION=${{ github.ref_name }}
+            BUILD_REVISION=${{ github.sha }}
+          platforms: linux/amd64
+
+  build-python:
+    name: Build Ubuntu ${{ matrix.ubuntu }} Node ${{ matrix.node_versions }} Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    needs: build-node
+    strategy:
+      fail-fast: false
+      max-parallel: 3 # Limit concurrent builds
+      matrix:
+        # Full matrix - generates all combinations
+        ubuntu: ["22.04", "24.04", "25.04"]
+        node_versions: ["18+20", "20+22", "22+24"]
+        python: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        include:
+          # Add tag aliases for specific versions
+          - ubuntu: "25.04"
+            node_versions: "22+24"
+            python: "3.14"
+            tag_alias: "edge"
+          - ubuntu: "24.04"
+            node_versions: "20+22"
+            python: "3.13"
+            tag_alias: "latest"
+          - ubuntu: "22.04"
+            node_versions: "20+22"
+            python: "3.13"
+            tag_alias: "lts"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver: remote
+          endpoint: tcp://buildkit:8125
+
+      - name: Log in to Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.FORGEJO_TOKEN }}
+
+      - name: Generate python tags
+        id: python-tags
+        run: |
+          NODE_TAG=$(echo "${{ matrix.node_versions }}" | tr '+' '-')
+          NODE_VERSIONS_SPACED=$(echo "${{ matrix.node_versions }}" | tr '+' ' ')
+          BASE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:ubuntu${{ matrix.ubuntu }}-node${NODE_TAG}-py${{ matrix.python }}"
+
+          # Add branch suffix if not on main
+          if [ "${{ github.ref_name }}" != "main" ]; then
+            BASE_TAG="${BASE_TAG}-${{ github.ref_name }}"
+          fi
+
+          TAGS="${BASE_TAG}"
+
+          # Add alias tag if defined (also with branch suffix if needed)
+          if [ -n "${{ matrix.tag_alias }}" ]; then
+            ALIAS_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ matrix.tag_alias }}"
+            if [ "${{ github.ref_name }}" != "main" ]; then
+              ALIAS_TAG="${ALIAS_TAG}-${{ github.ref_name }}"
+            fi
+            TAGS="${TAGS},${ALIAS_TAG}"
+          fi
+
+          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
+          echo "node_versions_spaced=${NODE_VERSIONS_SPACED}" >> $GITHUB_OUTPUT
+
+          # Generate node image reference with branch suffix
+          NODE_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:ubuntu${{ matrix.ubuntu }}-node${NODE_TAG}"
+          if [ "${{ github.ref_name }}" != "main" ]; then
+            NODE_IMAGE="${NODE_IMAGE}-${{ github.ref_name }}"
+          fi
+          echo "node_image=${NODE_IMAGE}" >> $GITHUB_OUTPUT
+
+      - name: Build and push python image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./linux/ubuntu
+          file: ./linux/ubuntu/Dockerfile.python
+          push: true
+          tags: ${{ steps.python-tags.outputs.tags }}
+          build-args: |
+            UBUNTU_VERSION=${{ matrix.ubuntu }}
+            NODE_IMAGE=${{ steps.python-tags.outputs.node_image }}
+            NODE_VERSIONS=${{ steps.python-tags.outputs.node_versions_spaced }}
+            PYTHON_VERSION=${{ matrix.python }}
+            BUILD_DATE=${{ github.event.repository.updated_at }}
+            BUILD_VERSION=${{ github.ref_name }}
+            BUILD_REVISION=${{ github.sha }}
+          platforms: linux/amd64
