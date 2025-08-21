@@ -147,12 +147,12 @@ jobs:
         # Full matrix - generates all combinations
         ubuntu: ["22.04", "24.04", "25.04"]
         node_versions: ["18+20", "20+22", "22+24"]
-        python: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        python: ["3.11", "3.13"]
         include:
           # Add tag aliases for specific versions
           - ubuntu: "25.04"
             node_versions: "22+24"
-            python: "3.14"
+            python: "3.13"
             tag_alias: "edge"
           - ubuntu: "24.04"
             node_versions: "20+22"
