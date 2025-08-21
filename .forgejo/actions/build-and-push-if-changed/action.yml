@@ -1,0 +1,79 @@
+name: 'Build and Push If Changed'
+description: 'Build a Docker image and only push if content has changed'
+inputs:
+  context:
+    description: 'Build context path'
+    required: false
+    default: '.'
+  file:
+    description: 'Path to Dockerfile'
+    required: true
+  tags:
+    description: 'Image tags (space or newline separated)'
+    required: true
+  build-args:
+    description: 'Build arguments (multiline string)'
+    required: false
+  platforms:
+    description: 'Target platforms'
+    required: false
+    default: 'linux/amd64'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Build image locally
+      uses: docker/build-push-action@v6
+      with:
+        context: ${{ inputs.context }}
+        file: ${{ inputs.file }}
+        push: false
+        load: true
+        tags: ${{ inputs.tags }}
+        build-args: ${{ inputs.build-args }}
+        platforms: ${{ inputs.platforms }}
+        cache-from: type=registry,ref=${{ inputs.tags }}
+
+    - name: Compare and push if changed
+      shell: bash
+      run: |
+        # Process tags (handle both space and newline separated)
+        TAGS="${{ inputs.tags }}"
+        TAGS=$(echo "$TAGS" | tr '\n' ' ')
+
+        PUSHED=false
+        for TAG in $TAGS; do
+          echo "Checking tag: ${TAG}"
+
+          # Get digest of newly built image
+          NEW_DIGEST=$(docker inspect ${TAG} --format='{{.Id}}' 2>/dev/null)
+          if [ -z "${NEW_DIGEST}" ]; then
+            echo "Error: Could not inspect local image ${TAG}"
+            exit 1
+          fi
+          echo "  Local digest: ${NEW_DIGEST:0:12}..."
+
+          # Try to get digest of existing image in registry
+          OLD_DIGEST=$(docker manifest inspect ${TAG} 2>/dev/null | jq -r '.config.digest' || echo "none")
+
+          if [ "${OLD_DIGEST}" = "none" ]; then
+            echo "  Registry: Image doesn't exist yet"
+            echo "  Action: Pushing new image..."
+            docker push ${TAG}
+            PUSHED=true
+          elif [ "sha256:${NEW_DIGEST#sha256:}" != "${OLD_DIGEST}" ]; then
+            echo "  Registry digest: ${OLD_DIGEST:0:19}..."
+            echo "  Action: Image changed, pushing..."
+            docker push ${TAG}
+            PUSHED=true
+          else
+            echo "  Registry digest: ${OLD_DIGEST:0:19}..."
+            echo "  Action: Image unchanged, skipping push"
+          fi
+        done
+
+        if [ "$PUSHED" = true ]; then
+          echo "pushed=true" >> $GITHUB_ENV
+        else
+          echo "pushed=false" >> $GITHUB_ENV
+        fi
