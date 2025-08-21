@@ -66,8 +66,6 @@ jobs:
           build-args: |
             UBUNTU_VERSION=${{ matrix.ubuntu }}
           platforms: linux/amd64
-          cache-from: type=registry,ref=${{ steps.base-tags.outputs.tags }}
-          cache-to: type=registry,ref=${{ steps.base-tags.outputs.tags }},mode=max
 
   build-node:
     name: Build Ubuntu ${{ matrix.ubuntu }} Node ${{ matrix.node_versions }}
@@ -131,8 +129,6 @@ jobs:
             BASE_IMAGE=${{ steps.node-tags.outputs.base_image }}
             NODE_VERSIONS=${{ steps.node-tags.outputs.node_versions_spaced }}
           platforms: linux/amd64
-          cache-from: type=registry,ref=${{ steps.node-tags.outputs.tags }}
-          cache-to: type=registry,ref=${{ steps.node-tags.outputs.tags }},mode=max
 
   build-python:
     name: Build Ubuntu ${{ matrix.ubuntu }} Node ${{ matrix.node_versions }} Python ${{ matrix.python }}
@@ -224,5 +220,3 @@ jobs:
             NODE_VERSIONS=${{ steps.python-tags.outputs.node_versions_spaced }}
             PYTHON_VERSION=${{ matrix.python }}
           platforms: linux/amd64
-          cache-from: type=registry,ref=${{ steps.python-tags.outputs.tags }}
-          cache-to: type=registry,ref=${{ steps.python-tags.outputs.tags }},mode=max
