@@ -56,15 +56,18 @@ jobs:
           fi
           echo "tags=${BASE_TAG}" >> $GITHUB_OUTPUT
 
-      - name: Build and push base image if changed
-        uses: ./.forgejo/actions/build-and-push-if-changed
+      - name: Build and push base image
+        uses: docker/build-push-action@v6
         with:
           context: ./linux/ubuntu
           file: ./linux/ubuntu/Dockerfile.base
+          push: true
           tags: ${{ steps.base-tags.outputs.tags }}
           build-args: |
             UBUNTU_VERSION=${{ matrix.ubuntu }}
           platforms: linux/amd64
+          cache-from: type=registry,ref=${{ steps.base-tags.outputs.tags }}
+          cache-to: type=registry,ref=${{ steps.base-tags.outputs.tags }},mode=max
 
   build-node:
     name: Build Ubuntu ${{ matrix.ubuntu }} Node ${{ matrix.node_versions }}
@@ -116,17 +119,20 @@ jobs:
           fi
           echo "base_image=${BASE_IMAGE}" >> $GITHUB_OUTPUT
 
-      - name: Build and push node image if changed
-        uses: ./.forgejo/actions/build-and-push-if-changed
+      - name: Build and push node image
+        uses: docker/build-push-action@v6
         with:
           context: ./linux/ubuntu
           file: ./linux/ubuntu/Dockerfile.node
+          push: true
           tags: ${{ steps.node-tags.outputs.tags }}
           build-args: |
             UBUNTU_VERSION=${{ matrix.ubuntu }}
             BASE_IMAGE=${{ steps.node-tags.outputs.base_image }}
             NODE_VERSIONS=${{ steps.node-tags.outputs.node_versions_spaced }}
           platforms: linux/amd64
+          cache-from: type=registry,ref=${{ steps.node-tags.outputs.tags }}
+          cache-to: type=registry,ref=${{ steps.node-tags.outputs.tags }},mode=max
 
   build-python:
     name: Build Ubuntu ${{ matrix.ubuntu }} Node ${{ matrix.node_versions }} Python ${{ matrix.python }}
@@ -205,11 +211,12 @@ jobs:
           fi
           echo "node_image=${NODE_IMAGE}" >> $GITHUB_OUTPUT
 
-      - name: Build and push python image if changed
-        uses: ./.forgejo/actions/build-and-push-if-changed
+      - name: Build and push python image
+        uses: docker/build-push-action@v6
         with:
           context: ./linux/ubuntu
           file: ./linux/ubuntu/Dockerfile.python
+          push: true
           tags: ${{ steps.python-tags.outputs.tags }}
           build-args: |
             UBUNTU_VERSION=${{ matrix.ubuntu }}
@@ -217,3 +224,5 @@ jobs:
             NODE_VERSIONS=${{ steps.python-tags.outputs.node_versions_spaced }}
             PYTHON_VERSION=${{ matrix.python }}
           platforms: linux/amd64
+          cache-from: type=registry,ref=${{ steps.python-tags.outputs.tags }}
+          cache-to: type=registry,ref=${{ steps.python-tags.outputs.tags }},mode=max
