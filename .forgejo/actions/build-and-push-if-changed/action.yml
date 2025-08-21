@@ -47,28 +47,34 @@ runs:
         for TAG in $TAGS; do
           echo "Checking tag: ${TAG}"
 
-          # Get digest of newly built image
+          # Get config digest of newly built image
           NEW_DIGEST=$(docker inspect ${TAG} --format='{{.Id}}' 2>/dev/null)
           if [ -z "${NEW_DIGEST}" ]; then
             echo "Error: Could not inspect local image ${TAG}"
             exit 1
           fi
-          echo "  Local digest: ${NEW_DIGEST:0:12}..."
+          # Normalize the digest format (remove sha256: prefix if present)
+          NEW_DIGEST="${NEW_DIGEST#sha256:}"
+          echo "  Local config digest: sha256:${NEW_DIGEST:0:12}..."
 
-          # Try to get digest of existing image in registry
+          # Try to get config digest of existing image in registry
           OLD_DIGEST=$(docker manifest inspect ${TAG} 2>/dev/null | jq -r '.config.digest' || echo "none")
 
           if [ "${OLD_DIGEST}" = "none" ]; then
             echo "  Registry: Image doesn't exist yet"
             echo "  Action: Pushing new image..."
             PUSHED=true
-          elif [ "sha256:${NEW_DIGEST#sha256:}" != "${OLD_DIGEST}" ]; then
-            echo "  Registry digest: ${OLD_DIGEST:0:19}..."
-            echo "  Action: Image changed, pushing..."
-            PUSHED=true
           else
-            echo "  Registry digest: ${OLD_DIGEST:0:19}..."
-            echo "  Action: Image unchanged, skipping push"
+            # Normalize the digest format
+            OLD_DIGEST="${OLD_DIGEST#sha256:}"
+            echo "  Registry config digest: sha256:${OLD_DIGEST:0:12}..."
+
+            if [ "${NEW_DIGEST}" != "${OLD_DIGEST}" ]; then
+              echo "  Action: Image changed, pushing..."
+              PUSHED=true
+            else
+              echo "  Action: Image unchanged, skipping push"
+            fi
           fi
         done
 
