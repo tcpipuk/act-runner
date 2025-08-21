@@ -3,11 +3,6 @@ ARG UBUNTU_VERSION=24.04
 ARG NODE_VERSIONS="20 22"
 ARG BASE_IMAGE=git.tomfos.tr/tom/act-runner:ubuntu${UBUNTU_VERSION}-base
 
-# Build metadata args
-ARG BUILD_DATE
-ARG BUILD_VERSION
-ARG BUILD_REVISION
-
 # Use our base image
 FROM ${BASE_IMAGE} AS base
 

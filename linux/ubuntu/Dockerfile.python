@@ -4,11 +4,6 @@ ARG NODE_VERSIONS="20 22"
 ARG PYTHON_VERSION=3.13
 ARG NODE_IMAGE=git.tomfos.tr/tom/act-runner:ubuntu${UBUNTU_VERSION}-node20-22
 
-# Build metadata args
-ARG BUILD_DATE
-ARG BUILD_VERSION
-ARG BUILD_REVISION
-
 # Use our node image as base
 FROM ${NODE_IMAGE} AS base
 
