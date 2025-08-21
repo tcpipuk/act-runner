@@ -33,6 +33,7 @@ runs:
         build-args: ${{ inputs.build-args }}
         platforms: ${{ inputs.platforms }}
         cache-from: type=registry,ref=${{ inputs.tags }}
+        cache-to: type=inline
 
     - name: Compare and push if changed
       shell: bash
@@ -40,6 +41,7 @@ runs:
         # Process tags (handle both space and newline separated)
         TAGS="${{ inputs.tags }}"
         TAGS=$(echo "$TAGS" | tr '\n' ' ')
+        FIRST_TAG=$(echo "$TAGS" | awk '{print $1}')
 
         PUSHED=false
         for TAG in $TAGS; do
@@ -59,12 +61,10 @@ runs:
           if [ "${OLD_DIGEST}" = "none" ]; then
             echo "  Registry: Image doesn't exist yet"
             echo "  Action: Pushing new image..."
-            docker push ${TAG}
             PUSHED=true
           elif [ "sha256:${NEW_DIGEST#sha256:}" != "${OLD_DIGEST}" ]; then
             echo "  Registry digest: ${OLD_DIGEST:0:19}..."
             echo "  Action: Image changed, pushing..."
-            docker push ${TAG}
             PUSHED=true
           else
             echo "  Registry digest: ${OLD_DIGEST:0:19}..."
@@ -74,6 +74,23 @@ runs:
 
         if [ "$PUSHED" = true ]; then
           echo "pushed=true" >> $GITHUB_ENV
+          echo "Pushing all tags with registry cache export..."
+          for TAG in $TAGS; do
+            docker push ${TAG}
+          done
         else
           echo "pushed=false" >> $GITHUB_ENV
         fi
+
+    - name: Export cache to registry if pushed
+      if: env.pushed == 'true'
+      uses: docker/build-push-action@v6
+      with:
+        context: ${{ inputs.context }}
+        file: ${{ inputs.file }}
+        push: false
+        tags: ${{ inputs.tags }}
+        build-args: ${{ inputs.build-args }}
+        platforms: ${{ inputs.platforms }}
+        cache-from: type=registry,ref=${{ inputs.tags }}
+        cache-to: type=registry,ref=${{ inputs.tags }},mode=max
