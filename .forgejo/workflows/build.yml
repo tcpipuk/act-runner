@@ -56,16 +56,39 @@ jobs:
           fi
           echo "tags=${BASE_TAG}" >> $GITHUB_OUTPUT
 
-      - name: Build and push base image
+      - name: Build base image
         uses: docker/build-push-action@v6
         with:
           context: ./linux/ubuntu
           file: ./linux/ubuntu/Dockerfile.base
-          push: true
+          push: false
+          load: true
           tags: ${{ steps.base-tags.outputs.tags }}
           build-args: |
             UBUNTU_VERSION=${{ matrix.ubuntu }}
           platforms: linux/amd64
+          cache-from: type=registry,ref=${{ steps.base-tags.outputs.tags }}
+
+      - name: Check if image changed and push
+        run: |
+          TAG="${{ steps.base-tags.outputs.tags }}"
+
+          # Get digest of newly built image
+          NEW_DIGEST=$(docker inspect ${TAG} --format='{{index .RepoDigests 0}}' 2>/dev/null || docker inspect ${TAG} --format='{{.Id}}')
+          echo "New image digest: ${NEW_DIGEST}"
+
+          # Try to get digest of existing image in registry
+          OLD_DIGEST=$(docker manifest inspect ${TAG} 2>/dev/null | jq -r '.config.digest' || echo "none")
+          echo "Registry image digest: ${OLD_DIGEST}"
+
+          if [ "${OLD_DIGEST}" = "none" ] || [ "${NEW_DIGEST}" != "${OLD_DIGEST}" ]; then
+            echo "Image changed or doesn't exist, pushing..."
+            docker push ${TAG}
+            echo "pushed=true" >> $GITHUB_ENV
+          else
+            echo "Image unchanged, skipping push"
+            echo "pushed=false" >> $GITHUB_ENV
+          fi
 
   build-node:
     name: Build Ubuntu ${{ matrix.ubuntu }} Node ${{ matrix.node_versions }}
@@ -117,18 +140,41 @@ jobs:
           fi
           echo "base_image=${BASE_IMAGE}" >> $GITHUB_OUTPUT
 
-      - name: Build and push node image
+      - name: Build node image
         uses: docker/build-push-action@v6
         with:
           context: ./linux/ubuntu
           file: ./linux/ubuntu/Dockerfile.node
-          push: true
+          push: false
+          load: true
           tags: ${{ steps.node-tags.outputs.tags }}
           build-args: |
             UBUNTU_VERSION=${{ matrix.ubuntu }}
             BASE_IMAGE=${{ steps.node-tags.outputs.base_image }}
             NODE_VERSIONS=${{ steps.node-tags.outputs.node_versions_spaced }}
           platforms: linux/amd64
+          cache-from: type=registry,ref=${{ steps.node-tags.outputs.tags }}
+
+      - name: Check if image changed and push
+        run: |
+          TAG="${{ steps.node-tags.outputs.tags }}"
+
+          # Get digest of newly built image
+          NEW_DIGEST=$(docker inspect ${TAG} --format='{{index .RepoDigests 0}}' 2>/dev/null || docker inspect ${TAG} --format='{{.Id}}')
+          echo "New image digest: ${NEW_DIGEST}"
+
+          # Try to get digest of existing image in registry
+          OLD_DIGEST=$(docker manifest inspect ${TAG} 2>/dev/null | jq -r '.config.digest' || echo "none")
+          echo "Registry image digest: ${OLD_DIGEST}"
+
+          if [ "${OLD_DIGEST}" = "none" ] || [ "${NEW_DIGEST}" != "${OLD_DIGEST}" ]; then
+            echo "Image changed or doesn't exist, pushing..."
+            docker push ${TAG}
+            echo "pushed=true" >> $GITHUB_ENV
+          else
+            echo "Image unchanged, skipping push"
+            echo "pushed=false" >> $GITHUB_ENV
+          fi
 
   build-python:
     name: Build Ubuntu ${{ matrix.ubuntu }} Node ${{ matrix.node_versions }} Python ${{ matrix.python }}
@@ -207,12 +253,13 @@ jobs:
           fi
           echo "node_image=${NODE_IMAGE}" >> $GITHUB_OUTPUT
 
-      - name: Build and push python image
+      - name: Build python image
         uses: docker/build-push-action@v6
         with:
           context: ./linux/ubuntu
           file: ./linux/ubuntu/Dockerfile.python
-          push: true
+          push: false
+          load: true
           tags: ${{ steps.python-tags.outputs.tags }}
           build-args: |
             UBUNTU_VERSION=${{ matrix.ubuntu }}
@@ -220,3 +267,23 @@ jobs:
             NODE_VERSIONS=${{ steps.python-tags.outputs.node_versions_spaced }}
             PYTHON_VERSION=${{ matrix.python }}
           platforms: linux/amd64
+          cache-from: type=registry,ref=${{ steps.python-tags.outputs.tags }}
+
+      - name: Check if image changed and push
+        run: |
+          for TAG in ${{ steps.python-tags.outputs.tags }}; do
+            # Get digest of newly built image
+            NEW_DIGEST=$(docker inspect ${TAG} --format='{{index .RepoDigests 0}}' 2>/dev/null || docker inspect ${TAG} --format='{{.Id}}')
+            echo "New image digest for ${TAG}: ${NEW_DIGEST}"
+
+            # Try to get digest of existing image in registry
+            OLD_DIGEST=$(docker manifest inspect ${TAG} 2>/dev/null | jq -r '.config.digest' || echo "none")
+            echo "Registry image digest for ${TAG}: ${OLD_DIGEST}"
+
+            if [ "${OLD_DIGEST}" = "none" ] || [ "${NEW_DIGEST}" != "${OLD_DIGEST}" ]; then
+              echo "Image ${TAG} changed or doesn't exist, pushing..."
+              docker push ${TAG}
+            else
+              echo "Image ${TAG} unchanged, skipping push"
+            fi
+          done
