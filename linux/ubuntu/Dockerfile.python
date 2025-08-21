@@ -39,7 +39,7 @@ RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python${PYTH
 
 # Install uv
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh \
-    && mv /root/.cargo/bin/uv /usr/local/bin/uv \
+    && mv /root/.local/bin/uv /usr/local/bin/uv \
     && chmod +x /usr/local/bin/uv
 
 # Install Python tools via uv
