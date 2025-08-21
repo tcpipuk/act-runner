@@ -65,9 +65,6 @@ jobs:
           tags: ${{ steps.base-tags.outputs.tags }}
           build-args: |
             UBUNTU_VERSION=${{ matrix.ubuntu }}
-            BUILD_DATE=${{ github.event.repository.updated_at }}
-            BUILD_VERSION=${{ github.ref_name }}
-            BUILD_REVISION=${{ github.sha }}
           platforms: linux/amd64
 
   build-node:
@@ -131,9 +128,6 @@ jobs:
             UBUNTU_VERSION=${{ matrix.ubuntu }}
             BASE_IMAGE=${{ steps.node-tags.outputs.base_image }}
             NODE_VERSIONS=${{ steps.node-tags.outputs.node_versions_spaced }}
-            BUILD_DATE=${{ github.event.repository.updated_at }}
-            BUILD_VERSION=${{ github.ref_name }}
-            BUILD_REVISION=${{ github.sha }}
           platforms: linux/amd64
 
   build-python:
@@ -225,7 +219,4 @@ jobs:
             NODE_IMAGE=${{ steps.python-tags.outputs.node_image }}
             NODE_VERSIONS=${{ steps.python-tags.outputs.node_versions_spaced }}
             PYTHON_VERSION=${{ matrix.python }}
-            BUILD_DATE=${{ github.event.repository.updated_at }}
-            BUILD_VERSION=${{ github.ref_name }}
-            BUILD_REVISION=${{ github.sha }}
           platforms: linux/amd64

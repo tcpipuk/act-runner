@@ -12,22 +12,12 @@ ARG RUNNER_USER=runner
 # Force non-interactive apt
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Build metadata args
-ARG BUILD_DATE
-ARG BUILD_VERSION
-ARG BUILD_REVISION
-ARG BUILD_REPO=tom/act-runner
-ARG BUILD_URL=https://git.tomfos.tr/tom/act-runner
-
-# Metadata
-LABEL org.opencontainers.image.created="${BUILD_DATE}" \
-    org.opencontainers.image.title="act-runner-ubuntu${UBUNTU_VERSION}-base" \
+# Metadata (static values only for better caching)
+LABEL org.opencontainers.image.title="act-runner-ubuntu${UBUNTU_VERSION}-base" \
     org.opencontainers.image.description="Optimized ACT/Forgejo runner base image with essential CI tools for Ubuntu ${UBUNTU_VERSION}" \
-    org.opencontainers.image.url="${BUILD_URL}" \
-    org.opencontainers.image.source="${BUILD_URL}" \
-    org.opencontainers.image.documentation="${BUILD_URL}/src/branch/main/README.md" \
-    org.opencontainers.image.version="${BUILD_VERSION}" \
-    org.opencontainers.image.revision="${BUILD_REVISION}" \
+    org.opencontainers.image.url="https://git.tomfos.tr/tom/act-runner" \
+    org.opencontainers.image.source="https://git.tomfos.tr/tom/act-runner" \
+    org.opencontainers.image.documentation="https://git.tomfos.tr/tom/act-runner/src/branch/main/README.md" \
     org.opencontainers.image.vendor="git.tomfos.tr" \
     org.opencontainers.image.licenses="MIT" \
     org.opencontainers.image.authors="Tom Foster"
