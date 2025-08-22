@@ -26,25 +26,24 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python${PYTHON_VERSION} 100 \
     && update-alternatives --install /usr/bin/python python /usr/bin/python${PYTHON_VERSION} 100
 
-# Install uv
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh \
-    && mv /root/.local/bin/uv /usr/local/bin/uv \
-    && chmod +x /usr/local/bin/uv
+# Set up uv environment variables
+ENV UV_PYTHON=python${PYTHON_VERSION} \
+    UV_LINK_MODE=copy
+
+# Install uv (installs to /root/.local/bin by default)
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Add uv and its tools to PATH
+ENV PATH="/root/.local/bin:${PATH}"
 
 # Install Python tools via uv
-ENV UV_PYTHON=python${PYTHON_VERSION}
 RUN --mount=type=cache,target=/root/.cache/uv,sharing=locked \
     uv tool install prek \
     && uv tool install ruff \
     && uv tool install mypy \
     && uv tool install pytest \
     && uv tool install black \
-    && uv tool install isort \
-    && mv /root/.local /opt/python-tools \
-    && chmod -R 755 /opt/python-tools
-
-# Add Python tools to PATH for all users
-ENV PATH="/opt/python-tools/bin:${PATH}"
+    && uv tool install isort
 
 # Metadata labels (static values only for better caching)
 LABEL org.opencontainers.image.title="act-runner-ubuntu${UBUNTU_VERSION}-node${NODE_VERSIONS// /-}-py${PYTHON_VERSION}" \
