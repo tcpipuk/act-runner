@@ -19,7 +19,6 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     python${PYTHON_VERSION} \
     python${PYTHON_VERSION}-dev \
     python${PYTHON_VERSION}-venv \
-    $(if [ "${UBUNTU_VERSION}" != "25.04" ]; then echo "python${PYTHON_VERSION}-distutils"; fi) \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
