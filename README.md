@@ -79,11 +79,10 @@ act -P ubuntu-latest=git.tomfos.tr/tom/act-runner:latest
 
 **Python images add:**
 
-- Python via [deadsnakes PPA](https://launchpad.net/~deadsnakes/+archive/ubuntu/ppa)
+- Python 3.11 and/or 3.13 (see table above)
 - [uv](https://docs.astral.sh/uv/) package manager
-- Pre-installed: [prek](https://github.com/j178/prek), [ruff](https://docs.astral.sh/ruff/),
-  [mypy](https://mypy.readthedocs.io/), [pytest](https://docs.pytest.org/),
-  [black](https://black.readthedocs.io/), [isort](https://pycqa.github.io/isort/)
+- Pre-installed development tools (ruff, mypy, pytest, black, isort, prek)
+- See [docs/python.md](docs/python.md) for full details
 
 ## Building Your Own
 
