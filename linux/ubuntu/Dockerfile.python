@@ -12,19 +12,14 @@ FROM base AS final
 ARG PYTHON_VERSION
 ARG UBUNTU_VERSION
 
-# Install Python from deadsnakes PPA
+# Install Python packages (deadsnakes PPA already added in base if needed)
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
     apt-get update && apt-get install -y --no-install-recommends \
-    software-properties-common \
-    gpg-agent \
-    && add-apt-repository ppa:deadsnakes/ppa -y \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends \
     python${PYTHON_VERSION} \
     python${PYTHON_VERSION}-dev \
     python${PYTHON_VERSION}-venv \
-    python${PYTHON_VERSION}-distutils \
+    $(if [ "${UBUNTU_VERSION}" != "25.04" ]; then echo "python${PYTHON_VERSION}-distutils"; fi) \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 

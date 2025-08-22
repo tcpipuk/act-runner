@@ -65,6 +65,7 @@ jobs:
           tags: ${{ steps.base-tags.outputs.tags }}
           build-args: |
             UBUNTU_VERSION=${{ matrix.ubuntu }}
+            ENABLE_DEADSNAKES=${{ matrix.ubuntu != '25.04' && 'true' || 'false' }}
           platforms: linux/amd64
 
   build-node:
@@ -142,6 +143,10 @@ jobs:
         ubuntu: ["22.04", "24.04", "25.04"]
         node_versions: ["18+20", "20+22", "22+24"]
         python: ["3.11", "3.13"]
+        exclude:
+          # Ubuntu 25.04 doesn't have Python 3.11
+          - ubuntu: "25.04"
+            python: "3.11"
         include:
           # Add tag aliases for specific versions
           - ubuntu: "25.04"

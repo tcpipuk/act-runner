@@ -8,6 +8,7 @@ ARG TARGETARCH
 ARG RUNNER_UID=1001
 ARG RUNNER_GID=1001
 ARG RUNNER_USER=runner
+ARG ENABLE_DEADSNAKES=true
 
 # Force non-interactive apt
 ENV DEBIAN_FRONTEND=noninteractive
@@ -122,6 +123,16 @@ RUN --mount=type=cache,target=/tmp/downloads,sharing=locked \
     -O "${PACKAGE_PATH}"; \
     fi && \
     dpkg -i "${PACKAGE_PATH}"
+
+# Python deadsnakes PPA - controlled by build arg
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    if [ "${ENABLE_DEADSNAKES}" = "true" ]; then \
+        apt-get update && apt-get install -y --no-install-recommends \
+        software-properties-common \
+        && add-apt-repository ppa:deadsnakes/ppa -y \
+        && rm -rf /var/lib/apt/lists/*; \
+    fi
 
 # Install GitHub CLI and Docker tools now that we have repos configured
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
