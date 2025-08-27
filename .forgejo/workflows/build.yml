@@ -11,6 +11,8 @@ on:
     paths:
       - "linux/**"
       - ".forgejo/workflows/build.yml"
+  schedule:
+    - cron: '0 4 * * *'  # Run daily at 4am UTC
   workflow_dispatch:
 
 concurrency:
