@@ -1,0 +1,293 @@
+name: Update Node.js Versions
+
+# This workflow automatically maintains Node.js versions in our build matrix.
+#
+# Design constraints:
+# - Each build includes exactly 2 Node.js versions (overlapping pairs for smooth transitions)
+# - Only includes versions currently in Active or Maintenance support
+# - Updates tag aliases (edge/latest/lts) to match Node.js official designations
+# - Uses regex instead of YAML parsing to preserve comments and formatting
+# - Python code embedded in workflow (not separate script) for security
+
+on:
+  schedule:
+    # Run daily at 5am UTC (after the nightly build at 4am)
+    - cron: '0 5 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run - check for updates without creating PR'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  check-node-updates:
+    name: Check for Node.js Updates
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.FORGEJO_TOKEN }}
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Check Node.js versions and create update
+        id: check-versions
+        run: |
+          python3 <<'EOF'
+          import json
+          import urllib.request
+          import re
+          from datetime import datetime
+          import os
+          import sys
+
+          # Fetch Node.js release schedule
+          def get_node_releases():
+              url = "https://raw.githubusercontent.com/nodejs/Release/main/schedule.json"
+              with urllib.request.urlopen(url) as response:
+                  return json.loads(response.read())
+
+          # Check if a version is currently supported
+          def is_supported(version_info, today):
+              if 'end' in version_info:
+                  end_date = datetime.strptime(version_info['end'], '%Y-%m-%d')
+                  return end_date >= today
+              return False
+
+          # Get the major version number
+          def get_major_version(version_str):
+              # Handle both 'v18' and '18' formats
+              version = version_str.replace('v', '')
+              return int(version)
+
+          # Main logic
+          today = datetime.now()
+          releases = get_node_releases()
+
+          # Filter supported versions
+          supported_versions = []
+          lts_version = None
+          current_version = None
+
+          for version, info in releases.items():
+              major = get_major_version(version)
+              if is_supported(info, today):
+                  supported_versions.append(major)
+
+                  # Track LTS and Current
+                  if 'lts' in info and info['lts'] and info['lts'] != False:
+                      # Find the newest LTS that has already started
+                      lts_start = datetime.strptime(info['lts'], '%Y-%m-%d') if isinstance(info['lts'], str) else today
+                      if lts_start <= today:
+                          if not lts_version or major > lts_version:
+                              lts_version = major
+
+                  # Current is the highest supported version
+                  if not current_version or major > current_version:
+                      current_version = major
+
+          # Sort versions in ascending order
+          supported_versions.sort()
+
+          print(f"Supported Node.js versions: {supported_versions}")
+          print(f"Current LTS: v{lts_version}")
+          print(f"Current (latest): v{current_version}")
+
+          # Generate version pairs (each build includes 2 versions)
+          # We want overlapping pairs to ensure smooth transitions
+          version_pairs = []
+          for i in range(len(supported_versions) - 1):
+              pair = f"{supported_versions[i]}+{supported_versions[i+1]}"
+              version_pairs.append(pair)
+
+          print(f"Generated version pairs: {version_pairs}")
+
+          # Determine tag aliases
+          # edge = newest pair (highest versions)
+          # latest = pair containing current stable
+          # lts = pair containing LTS version
+
+          tag_aliases = {}
+
+          if version_pairs:
+              # Edge is always the newest pair
+              edge_pair = version_pairs[-1]
+              tag_aliases['edge'] = {
+                  'ubuntu': '25.04',
+                  'node_versions': edge_pair,
+                  'python': '3.13'
+              }
+
+              # Latest uses the pair containing the current stable version
+              for pair in reversed(version_pairs):
+                  if str(current_version) in pair.split('+'):
+                      # Prefer Ubuntu 24.04 for latest (stable release)
+                      tag_aliases['latest'] = {
+                          'ubuntu': '24.04',
+                          'node_versions': pair,
+                          'python': '3.13'
+                      }
+                      break
+
+              # LTS uses the pair containing the LTS version
+              if lts_version:
+                  for pair in version_pairs:
+                      if str(lts_version) in pair.split('+'):
+                          # Use Ubuntu 22.04 for LTS (older stable)
+                          tag_aliases['lts'] = {
+                              'ubuntu': '22.04',
+                              'node_versions': pair,
+                              'python': '3.13'
+                          }
+                          break
+
+          # Read current build.yml
+          with open('.forgejo/workflows/build.yml', 'r') as f:
+              content = f.read()
+
+          # Extract current version pairs from the matrix using regex
+          matrix_pattern = r'node_versions:\s*\[(.*?)\]'
+          match = re.search(matrix_pattern, content)
+          if match:
+              current_pairs_str = match.group(1)
+              # Parse the quoted strings
+              current_pairs = re.findall(r'"([^"]+)"', current_pairs_str)
+          else:
+              current_pairs = []
+
+          print(f"Current version pairs in build.yml: {current_pairs}")
+          print(f"New version pairs needed: {version_pairs}")
+
+          # Check if update is needed
+          pairs_changed = set(current_pairs) != set(version_pairs)
+
+          if pairs_changed:
+              print("Update required!")
+
+              # Generate the new matrix line
+              new_matrix_line = 'node_versions: [' + ', '.join(f'"{p}"' for p in version_pairs) + ']'
+
+              # Update the build.yml content
+              updated_content = re.sub(
+                  r'node_versions:\s*\[.*?\]',
+                  new_matrix_line,
+                  content
+              )
+
+              # Update tag aliases in the include section
+              # This is more complex as we need to update the specific entries
+
+              # Function to update a tag alias entry
+              def update_tag_alias(content, alias_name, config):
+                  # More flexible pattern that handles whitespace variations
+                  # Matches the include block with this specific tag_alias
+                  pattern = (
+                      r'- ubuntu:\s*"[^"]+"\s*\n'
+                      r'\s*node_versions:\s*"[^"]+"\s*\n'
+                      r'\s*python:\s*"[^"]+"\s*\n'
+                      r'\s*tag_alias:\s*"' + alias_name + r'"'
+                  )
+
+                  # Preserve indentation from original
+                  replacement = (
+                      f'- ubuntu: "{config["ubuntu"]}"\n'
+                      f'            node_versions: "{config["node_versions"]}"\n'
+                      f'            python: "{config["python"]}"\n'
+                      f'            tag_alias: "{alias_name}"'
+                  )
+
+                  # Check if this alias exists
+                  if re.search(pattern, content, re.MULTILINE):
+                      content = re.sub(pattern, replacement, content, flags=re.MULTILINE)
+                  else:
+                      print(f"Warning: Could not find {alias_name} alias in build.yml")
+                      print(f"Manual update may be required for {alias_name} tag alias")
+
+                  return content
+
+              # Update each tag alias
+              for alias_name, config in tag_aliases.items():
+                  updated_content = update_tag_alias(updated_content, alias_name, config)
+
+              # Write the updated file if not in dry run mode
+              dry_run = os.environ.get('DRY_RUN', 'false').lower() == 'true'
+
+              if not dry_run:
+                  with open('.forgejo/workflows/build.yml', 'w') as f:
+                      f.write(updated_content)
+                  print("Updated build.yml")
+              else:
+                  print("DRY RUN - Would update build.yml")
+
+              # Set outputs for the next steps
+              print(f"::set-output name=update_needed::true")
+              print(f"::set-output name=old_versions::{','.join(current_pairs)}")
+              print(f"::set-output name=new_versions::{','.join(version_pairs)}")
+              print(f"::set-output name=supported_versions::{','.join(str(v) for v in supported_versions)}")
+
+          else:
+              print("No update needed - versions are current")
+              print(f"::set-output name=update_needed::false")
+
+          EOF
+
+          # Set environment variable for dry run if specified
+          if [[ "${{ github.event.inputs.dry_run }}" == "true" ]]; then
+              export DRY_RUN=true
+          fi
+
+      - name: Create Pull Request
+        if: steps.check-versions.outputs.update_needed == 'true' && github.event.inputs.dry_run != 'true'
+        run: |
+          # Configure git
+          git config --local user.email "action@forgejo.org"
+          git config --local user.name "Forgejo Actions"
+
+          # Create a new branch
+          BRANCH_NAME="update-node-versions-$(date +%Y%m%d)"
+          git checkout -b "$BRANCH_NAME"
+
+          # Commit changes
+          git add .forgejo/workflows/build.yml
+          git commit -m "Update Node.js versions
+
+          - Previous: ${{ steps.check-versions.outputs.old_versions }}
+          - New: ${{ steps.check-versions.outputs.new_versions }}"
+
+          # Push the branch
+          git push origin "$BRANCH_NAME"
+
+          # Create PR using Forgejo API or gh CLI if available
+          # Note: This assumes you have gh CLI configured for Forgejo
+          gh pr create \
+            --title "Update Node.js versions" \
+            --body "### Changes:
+          - **Previous versions**: ${{ steps.check-versions.outputs.old_versions }}
+          - **New versions**: ${{ steps.check-versions.outputs.new_versions }}
+          - **Supported versions**: ${{ steps.check-versions.outputs.supported_versions }}" \
+            --base main \
+            --head "$BRANCH_NAME"
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Node.js Version Check Summary" >> $GITHUB_STEP_SUMMARY
+          if [[ "${{ steps.check-versions.outputs.update_needed }}" == "true" ]]; then
+            echo "✅ **Update Required**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "- Previous: ${{ steps.check-versions.outputs.old_versions }}" >> $GITHUB_STEP_SUMMARY
+            echo "- New: ${{ steps.check-versions.outputs.new_versions }}" >> $GITHUB_STEP_SUMMARY
+            if [[ "${{ github.event.inputs.dry_run }}" == "true" ]]; then
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "⚠️ **Dry run mode** - No PR was created" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "✅ **No update needed** - Node.js versions are current" >> $GITHUB_STEP_SUMMARY
+          fi
