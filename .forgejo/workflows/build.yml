@@ -57,6 +57,7 @@ jobs:
             BASE_TAG="${BASE_TAG}-${{ github.ref_name }}"
           fi
           echo "tags=${BASE_TAG}" >> $GITHUB_OUTPUT
+          echo "📦 Base image tag: ${BASE_TAG}"
 
       - name: Build and push base image
         uses: docker/build-push-action@v6
@@ -119,6 +120,10 @@ jobs:
             BASE_IMAGE="${BASE_IMAGE}-${{ github.ref_name }}"
           fi
           echo "base_image=${BASE_IMAGE}" >> $GITHUB_OUTPUT
+
+          echo "📦 Node image tag: ${BASE_TAG}"
+          echo "🔧 Node versions: ${NODE_VERSIONS_SPACED}"
+          echo "🏗️ Building from: ${BASE_IMAGE}"
 
       - name: Build and push node image
         uses: docker/build-push-action@v6
@@ -213,6 +218,14 @@ jobs:
             NODE_IMAGE="${NODE_IMAGE}-${{ github.ref_name }}"
           fi
           echo "node_image=${NODE_IMAGE}" >> $GITHUB_OUTPUT
+
+          echo "📦 Python image tags: ${TAGS}"
+          echo "🐍 Python version: ${{ matrix.python }}"
+          echo "🔧 Node versions: ${NODE_VERSIONS_SPACED}"
+          echo "🏗️ Building from: ${NODE_IMAGE}"
+          if [ -n "${{ matrix.tag_alias }}" ]; then
+            echo "🏷️ Tag alias: ${{ matrix.tag_alias }}"
+          fi
 
       - name: Build and push python image
         uses: docker/build-push-action@v6
