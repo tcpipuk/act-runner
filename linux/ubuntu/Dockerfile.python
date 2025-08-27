@@ -11,6 +11,7 @@ FROM ${NODE_IMAGE} AS base
 FROM base AS final
 ARG PYTHON_VERSION
 ARG UBUNTU_VERSION
+ARG NODE_VERSIONS
 
 # Install Python packages (deadsnakes PPA already added in base if needed)
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
