@@ -54,12 +54,17 @@ jobs:
               with urllib.request.urlopen(url) as response:
                   return json.loads(response.read())
 
-          # Check if a version is currently supported
+          # Check if a version is currently supported and released
           def is_supported(version_info, today):
-              if 'end' in version_info:
-                  end_date = datetime.strptime(version_info['end'], '%Y-%m-%d')
-                  return end_date >= today
-              return False
+              # Must have both start and end dates
+              if 'start' not in version_info or 'end' not in version_info:
+                  return False
+
+              start_date = datetime.strptime(version_info['start'], '%Y-%m-%d')
+              end_date = datetime.strptime(version_info['end'], '%Y-%m-%d')
+
+              # Version must be released (start date has passed) and still supported
+              return start_date <= today < end_date
 
           # Get the major version number
           def get_major_version(version_str):
@@ -76,21 +81,22 @@ jobs:
 
           # Filter supported versions
           supported_versions = []
-          lts_version = None
+          lts_versions = []  # Track ALL LTS versions
           current_version = None
 
           for version, info in releases.items():
               major = get_major_version(version)
-              if is_supported(info, today):
+              # Only include even-numbered versions (stable releases)
+              # Odd-numbered versions are development/unstable
+              if is_supported(info, today) and major % 2 == 0:
                   supported_versions.append(major)
 
-                  # Track LTS and Current
+                  # Track ALL LTS versions
                   if 'lts' in info and info['lts'] and info['lts'] != False:
-                      # Find the newest LTS that has already started
+                      # Check if LTS has already started
                       lts_start = datetime.strptime(info['lts'], '%Y-%m-%d') if isinstance(info['lts'], str) else today
                       if lts_start <= today:
-                          if not lts_version or major > lts_version:
-                              lts_version = major
+                          lts_versions.append(major)
 
                   # Current is the highest supported version
                   if not current_version or major > current_version:
@@ -98,9 +104,10 @@ jobs:
 
           # Sort versions in ascending order
           supported_versions.sort()
+          lts_versions.sort()
 
           print(f"Supported Node.js versions: {supported_versions}")
-          print(f"Current LTS: v{lts_version}")
+          print(f"LTS versions: {lts_versions}")
           print(f"Current (latest): v{current_version}")
 
           # Generate version pairs (each build includes 2 versions)
@@ -114,8 +121,8 @@ jobs:
 
           # Determine tag aliases
           # edge = newest pair (highest versions)
-          # latest = pair containing current stable
-          # lts = pair containing LTS version
+          # latest = pair of two newest LTS versions
+          # lts = pair of two oldest LTS versions
 
           tag_aliases = {}
 
@@ -128,24 +135,36 @@ jobs:
                   'python': '3.13'
               }
 
-              # Latest uses the pair containing the current stable version
-              for pair in reversed(version_pairs):
-                  if str(current_version) in pair.split('+'):
-                      # Prefer Ubuntu 24.04 for latest (stable release)
-                      tag_aliases['latest'] = {
-                          'ubuntu': '24.04',
-                          'node_versions': pair,
+              # Build LTS-only pairs if we have LTS versions
+              if len(lts_versions) >= 2:
+                  # LTS: pair of two oldest LTS versions
+                  lts_pair = f"{lts_versions[0]}+{lts_versions[1]}"
+                  if lts_pair in version_pairs:
+                      tag_aliases['lts'] = {
+                          'ubuntu': '22.04',
+                          'node_versions': lts_pair,
                           'python': '3.13'
                       }
-                      break
 
-              # LTS uses the pair containing the LTS version
-              if lts_version:
+                  # Latest: pair of two newest LTS versions
+                  latest_pair = f"{lts_versions[-2]}+{lts_versions[-1]}"
+                  if latest_pair in version_pairs:
+                      tag_aliases['latest'] = {
+                          'ubuntu': '24.04',
+                          'node_versions': latest_pair,
+                          'python': '3.13'
+                      }
+              elif len(lts_versions) == 1:
+                  # Only one LTS version, find the pair containing it
                   for pair in version_pairs:
-                      if str(lts_version) in pair.split('+'):
-                          # Use Ubuntu 22.04 for LTS (older stable)
+                      if str(lts_versions[0]) in pair.split('+'):
                           tag_aliases['lts'] = {
                               'ubuntu': '22.04',
+                              'node_versions': pair,
+                              'python': '3.13'
+                          }
+                          tag_aliases['latest'] = {
+                              'ubuntu': '24.04',
                               'node_versions': pair,
                               'python': '3.13'
                           }
