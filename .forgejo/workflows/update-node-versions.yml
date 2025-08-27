@@ -238,13 +238,56 @@ jobs:
               for alias_name, config in tag_aliases.items():
                   updated_content = update_tag_alias(updated_content, alias_name, config)
 
-              # Write the updated file if not in dry run mode
+              # Update README.md alias table
+              def update_readme_aliases(readme_content, tag_aliases):
+                  for alias_name, config in tag_aliases.items():
+                      # Build the full image tag
+                      ubuntu_short = config['ubuntu'].replace('.', '')
+                      node_tag = config['node_versions'].replace('+', '-')
+                      py_tag = config['python'].replace('.', '')
+                      full_tag = f"ubuntu{ubuntu_short}-node{node_tag}-py{py_tag}"
+
+                      # Determine description based on alias
+                      if alias_name == 'edge':
+                          desc = f"Bleeding edge - Ubuntu {config['ubuntu']}, Node.js {config['node_versions'].replace('+', '/')}, Python {config['python']}"
+                      elif alias_name == 'latest':
+                          desc = f"Current stable - Ubuntu {config['ubuntu']} LTS, Node.js {config['node_versions'].replace('+', '/')}, Python {config['python']}"
+                      elif alias_name == 'lts':
+                          desc = f"Previous LTS - Ubuntu {config['ubuntu']} LTS, Node.js {config['node_versions'].replace('+', '/')}, Python {config['python']}"
+
+                      # Pattern to match the table row for this alias
+                      pattern = rf'\| \*\*\[`{alias_name}`\][^\|]+\| [^\|]+ \| \[`[^`]+`\][^\|]+\|'
+
+                      replacement = (
+                          f'| **[`{alias_name}`](https://git.tomfos.tr/tom/-/packages/container/act-runner/{alias_name})**'
+                          f' | {desc}'
+                          f' | [`{full_tag}`](https://git.tomfos.tr/tom/-/packages/container/act-runner/{full_tag}) |'
+                      )
+
+                      if re.search(pattern, readme_content):
+                          readme_content = re.sub(pattern, replacement, readme_content)
+                      else:
+                          print(f"Warning: Could not find {alias_name} alias in README.md")
+
+                  return readme_content
+
+              # Write the updated files if not in dry run mode
               dry_run = os.environ.get('DRY_RUN', 'false').lower() == 'true'
 
               if not dry_run:
                   with open('.forgejo/workflows/build.yml', 'w') as f:
                       f.write(updated_content)
                   print("Updated build.yml")
+
+                  # Update README.md
+                  with open('README.md', 'r') as f:
+                      readme_content = f.read()
+
+                  updated_readme = update_readme_aliases(readme_content, tag_aliases)
+
+                  with open('README.md', 'w') as f:
+                      f.write(updated_readme)
+                  print("Updated README.md")
               else:
                   print("DRY RUN - Would update build.yml")
 
@@ -277,7 +320,7 @@ jobs:
           git checkout -b "$BRANCH_NAME"
 
           # Commit changes
-          git add .forgejo/workflows/build.yml
+          git add .forgejo/workflows/build.yml README.md
           git commit -m "Update Node.js versions
 
           - Previous: ${{ steps.check-versions.outputs.old_versions }}
