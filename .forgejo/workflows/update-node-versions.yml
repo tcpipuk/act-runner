@@ -65,6 +65,9 @@ jobs:
           def get_major_version(version_str):
               # Handle both 'v18' and '18' formats
               version = version_str.replace('v', '')
+              # Handle old versions like 0.8, 0.10, 0.12 - use second part as major
+              if version.startswith('0.'):
+                  return int(version.split('.')[1])
               return int(version)
 
           # Main logic
