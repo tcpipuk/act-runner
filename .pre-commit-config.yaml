@@ -30,7 +30,15 @@ repos:
         name: commit-msg-typos
         stages: [commit-msg]
 
-  - repo: https://github.com/crate-ci/committed
-    rev: v1.1.7
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v4.2.0
     hooks:
-      - id: committed
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+        args: ["--strict", "--force-scope", "--verbose"]
+
+  - repo: https://github.com/DavidAnson/markdownlint-cli2
+    rev: v0.18.1
+    hooks:
+      - id: markdownlint-cli2
+        args: ["--fix"]
