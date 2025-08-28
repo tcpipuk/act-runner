@@ -21,6 +21,10 @@ on:
         type: boolean
         default: false
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   check-node-updates:
     name: Check for Node.js Updates
@@ -315,9 +319,19 @@ jobs:
           git config --local user.email "action@forgejo.org"
           git config --local user.name "Forgejo Actions"
 
-          # Create a new branch
-          BRANCH_NAME="update-node-versions-$(date +%Y%m%d)"
-          git checkout -b "$BRANCH_NAME"
+          # Use a consistent branch name for all version updates
+          BRANCH_NAME="update-node-versions"
+
+          # Check if the branch exists on remote
+          if git ls-remote --heads origin "$BRANCH_NAME" | grep -q "$BRANCH_NAME"; then
+              echo "Branch exists, updating existing PR"
+              git fetch origin "$BRANCH_NAME"
+              git checkout "$BRANCH_NAME"
+              git reset --hard origin/main  # Start fresh from main
+          else
+              echo "Creating new branch for PR"
+              git checkout -b "$BRANCH_NAME"
+          fi
 
           # Commit changes
           git add .forgejo/workflows/build.yml README.md
@@ -326,19 +340,29 @@ jobs:
           - Previous: ${{ steps.check-versions.outputs.old_versions }}
           - New: ${{ steps.check-versions.outputs.new_versions }}"
 
-          # Push the branch
-          git push origin "$BRANCH_NAME"
+          # Push the branch (force-with-lease is safer - fails if branch was manually modified)
+          git push --force-with-lease origin "$BRANCH_NAME"
 
-          # Create PR using Forgejo API or gh CLI if available
-          # Note: This assumes you have gh CLI configured for Forgejo
-          gh pr create \
-            --title "Update Node.js versions" \
-            --body "### Changes:
+          # Create PR if it doesn't exist, otherwise it auto-updates
+          # Check if PR already exists
+          PR_EXISTS=$(gh pr list --head "$BRANCH_NAME" --state open --json number --jq '.[0].number' || echo "")
+
+          if [ -z "$PR_EXISTS" ]; then
+              echo "Creating new PR"
+              gh pr create \
+                --title "Update Node.js versions" \
+                --body "### Automated Node.js Version Update
+
           - **Previous versions**: ${{ steps.check-versions.outputs.old_versions }}
           - **New versions**: ${{ steps.check-versions.outputs.new_versions }}
-          - **Supported versions**: ${{ steps.check-versions.outputs.supported_versions }}" \
-            --base main \
-            --head "$BRANCH_NAME"
+          - **Supported versions**: ${{ steps.check-versions.outputs.supported_versions }}
+
+          This PR is automatically updated when Node.js versions change." \
+                --base main \
+                --head "$BRANCH_NAME"
+          else
+              echo "PR #$PR_EXISTS already exists and will be updated with new commit"
+          fi
 
       - name: Summary
         if: always()
