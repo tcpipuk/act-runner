@@ -10,6 +10,9 @@ ARG RUNNER_GID=1001
 ARG RUNNER_USER=runner
 ARG ENABLE_DEADSNAKES=true
 
+# Set shell options for better error detection
+SHELL ["/bin/bash", "-e", "-c"]
+
 # Force non-interactive apt
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -23,82 +26,81 @@ LABEL org.opencontainers.image.title="act-runner-ubuntu${UBUNTU_VERSION}-base" \
     org.opencontainers.image.licenses="MIT" \
     org.opencontainers.image.authors="Tom Foster"
 
-# Base system packages - one layer for essentials
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+# Layer 1: Core essentials and build tools (rarely change)
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache-${UBUNTU_VERSION}-${TARGETARCH} \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked,id=apt-lib-${UBUNTU_VERSION}-${TARGETARCH} \
     apt-get update && apt-get install -y --no-install-recommends \
+    # Essentials and build tools (alphabetically sorted)
     apt-utils \
     build-essential \
-    bzip2 \
     ca-certificates \
     cmake \
     curl \
-    file \
     g++ \
     gcc \
     git \
     git-lfs \
     gnupg \
-    gzip \
-    jq \
+    gpg \
     libffi-dev \
     libssl-dev \
     lsb-release \
     make \
+    pkg-config \
+    software-properties-common \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
+
+# Layer 2: Utilities (occasional changes, alphabetically sorted)
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache-${UBUNTU_VERSION}-${TARGETARCH} \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked,id=apt-lib-${UBUNTU_VERSION}-${TARGETARCH} \
+    apt-get update && apt-get install -y --no-install-recommends \
+    bzip2 \
+    file \
+    gzip \
+    jq \
     openssh-client \
     patch \
-    pkg-config \
     rsync \
-    $(if [ "${UBUNTU_VERSION}" != "22.04" ]; then echo "rustup"; fi) \
-    software-properties-common \
     sudo \
     tar \
     unzip \
-    wget \
     xz-utils \
     zip \
     && rm -rf /var/lib/apt/lists/*
 
-# Add all useful repositories (tiny text files, no real cost)
-# This enables users to easily install: clang, docker-ce, gh, dotnet, kubectl, psql, terraform, etc.
-RUN mkdir -p -m 755 /etc/apt/keyrings /etc/apt/sources.list.d
-
-# Development tools repositories
-RUN \
+# Configure all APT repositories in a single layer
+# This enables users to easily install: clang, docker-ce, gh, dotnet, kubectl, psql, terraform, python, etc.
+# Note: gpg is required here but was installed in the previous layer
+# K8S_VERSION can be provided as build arg, defaults to 1.31
+ARG K8S_VERSION=1.31
+RUN --mount=type=cache,target=/tmp/downloads,sharing=locked,id=downloads-${UBUNTU_VERSION}-${TARGETARCH} \
+    --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache-${UBUNTU_VERSION}-${TARGETARCH} \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked,id=apt-lib-${UBUNTU_VERSION}-${TARGETARCH} \
+    mkdir -p -m 755 /etc/apt/keyrings /etc/apt/sources.list.d && \
+    \
     # LLVM/Clang - for C/C++ development
     wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | \
     tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc && \
     echo "deb http://apt.llvm.org/$(lsb_release -cs)/ llvm-toolchain-$(lsb_release -cs) main" \
-    > /etc/apt/sources.list.d/llvm.list
-
-# Container and cloud tools
-RUN \
-    # Docker - for container operations
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | \
-    gpg --dearmor -o /etc/apt/keyrings/docker-archive-keyring.gpg && \
-    chmod go+r /etc/apt/keyrings/docker-archive-keyring.gpg && \
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker-archive-keyring.gpg] \
-    https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" \
-    > /etc/apt/sources.list.d/docker.list && \
+    > /etc/apt/sources.list.d/llvm.list && \
     \
     # Kubernetes - for k8s operations
-    curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.31/deb/Release.key | \
+    curl -fsSL https://pkgs.k8s.io/core:/stable:/v${K8S_VERSION}/deb/Release.key | \
     gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg && \
     chmod go+r /etc/apt/keyrings/kubernetes-apt-keyring.gpg && \
     echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] \
-    https://pkgs.k8s.io/core:/stable:/v1.31/deb/ /" \
+    https://pkgs.k8s.io/core:/stable:/v${K8S_VERSION}/deb/ /" \
     > /etc/apt/sources.list.d/kubernetes.list && \
     \
-    # HashCorp - for Terraform, Vault, Consul, etc.
+    # HashiCorp - for Terraform, Vault, Consul, etc.
     wget -O- https://apt.releases.hashicorp.com/gpg | \
     gpg --dearmor -o /etc/apt/keyrings/hashicorp-archive-keyring.gpg && \
     chmod go+r /etc/apt/keyrings/hashicorp-archive-keyring.gpg && \
     echo "deb [signed-by=/etc/apt/keyrings/hashicorp-archive-keyring.gpg] \
     https://apt.releases.hashicorp.com $(lsb_release -cs) main" \
-    > /etc/apt/sources.list.d/hashicorp.list
-
-# VCS and database tools
-RUN \
+    > /etc/apt/sources.list.d/hashicorp.list && \
+    \
     # GitHub CLI - for GitHub/Forgejo operations
     wget -q -O- https://cli.github.com/packages/githubcli-archive-keyring.gpg | \
     tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null && \
@@ -113,20 +115,17 @@ RUN \
     chmod go+r /etc/apt/keyrings/postgresql-keyring.gpg && \
     echo "deb [signed-by=/etc/apt/keyrings/postgresql-keyring.gpg] \
     http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
-    > /etc/apt/sources.list.d/postgresql.list
-
-# Microsoft ecosystem (PowerShell, .NET, Azure CLI)
-RUN --mount=type=cache,target=/tmp/downloads,sharing=locked \
+    > /etc/apt/sources.list.d/postgresql.list && \
+    \
+    # Microsoft ecosystem (PowerShell, .NET, Azure CLI)
     PACKAGE_PATH="/tmp/downloads/packages-microsoft-prod-$(lsb_release -rs).deb" && \
     if [ ! -f "${PACKAGE_PATH}" ]; then \
     wget -q https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/packages-microsoft-prod.deb \
     -O "${PACKAGE_PATH}"; \
     fi && \
-    dpkg -i "${PACKAGE_PATH}"
-
-# Python deadsnakes PPA - controlled by build arg
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    dpkg -i "${PACKAGE_PATH}" && \
+    \
+    # Python deadsnakes PPA - controlled by build arg
     if [ "${ENABLE_DEADSNAKES}" = "true" ]; then \
         apt-get update && apt-get install -y --no-install-recommends \
         software-properties-common \
@@ -134,21 +133,23 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         && rm -rf /var/lib/apt/lists/*; \
     fi
 
-# Install GitHub CLI and Docker tools now that we have repos configured
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+# Layer 3: Frequently updated tools - Docker, GitHub CLI, Rust
+# Using docker.io package for consistent multi-architecture support
+# Rust installed via official installer (rustup only, no default toolchain)
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache-${UBUNTU_VERSION}-${TARGETARCH} \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked,id=apt-lib-${UBUNTU_VERSION}-${TARGETARCH} \
     apt-get update && apt-get install -y --no-install-recommends \
+    docker-compose \
+    docker.io \
     gh \
-    docker-ce-cli \
-    docker-compose-plugin \
-    && rm -rf /var/lib/apt/lists/*
-
-# Create tool directories
-RUN mkdir -p /opt/hostedtoolcache /opt/acttoolcache
+    && rm -rf /var/lib/apt/lists/* \
+    && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
+        sh -s -- -y --no-modify-path --profile minimal --default-toolchain none && \
+    echo 'source $HOME/.cargo/env' >> /etc/bash.bashrc \
+    && mkdir -p -m 755 /opt/hostedtoolcache
 
 # Set up environment
 ENV AGENT_TOOLSDIRECTORY=/opt/hostedtoolcache \
-    ACT_TOOLSDIRECTORY=/opt/acttoolcache \
     UBUNTU_VERSION=${UBUNTU_VERSION}
 
 WORKDIR /tmp

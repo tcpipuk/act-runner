@@ -53,6 +53,7 @@ act -P ubuntu-latest=git.tomfos.tr/tom/act-runner:latest
 ## Why these images?
 
 - **Wide compatibility** - Works with Forgejo Actions, Gitea Actions, and ACT
+- **Multi-architecture support** - Built for amd64, arm64, ppc64le, and s390x
 - **Always current** - Automatically tracks all supported Node.js and Python versions
 - **Nightly updates** with intelligent layering - only download what's changed
 - **Pre-configured tools** - Docker, build-essential, gh CLI, and development libraries ready to go
@@ -63,11 +64,12 @@ act -P ubuntu-latest=git.tomfos.tr/tom/act-runner:latest
 **All images include:**
 
 - Build essentials (gcc, g++, make, cmake, pkg-config)
-- Docker CLI and Docker Compose plugin
+- Full Docker stack including daemon, CLI and Compose (via Ubuntu's `docker.io` package for
+  guaranteed multi-architecture support and Docker-in-Docker capabilities)
 - [GitHub CLI](https://cli.github.com/manual/) (`gh`)
 - Git and Git LFS
 - Common utilities (curl, wget, jq, tar, zip)
-- Pre-configured package repositories (Docker, Kubernetes, HashCorp, PostgreSQL, Microsoft)
+- Pre-configured package repositories (Kubernetes, HashiCorp, PostgreSQL, Microsoft)
 
 **Node.js images add:**
 

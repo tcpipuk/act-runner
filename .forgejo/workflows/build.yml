@@ -2,7 +2,6 @@ name: Build Runner Images
 
 on:
   push:
-    branches: [main, dev, update-runner-deps]
     paths:
       - "linux/**"
       - ".forgejo/workflows/build.yml"
@@ -19,12 +18,25 @@ env:
   IMAGE_NAME: tom/act-runner
 
 jobs:
+  prepare-build:
+    name: Prepare Build
+    runs-on: ubuntu-latest
+    outputs:
+      k8s-version: ${{ steps.k8s.outputs.version }}
+    steps:
+      - name: Get stable K8s version
+        id: k8s
+        run: |
+          K8S_VERSION=$(curl -L -s https://dl.k8s.io/release/stable.txt | cut -d. -f1-2 | sed 's/v//')
+          echo "version=${K8S_VERSION}" >> $GITHUB_OUTPUT
+          echo "🎯 Kubernetes stable version: ${K8S_VERSION}"
+
   build-base:
     name: Build Ubuntu ${{ matrix.ubuntu }} Base
     runs-on: ubuntu-latest
+    needs: prepare-build
     strategy:
       fail-fast: false
-      max-parallel: 1 # Limit concurrent builds - heavy when uncached
       matrix:
         ubuntu: ["22.04", "24.04", "25.04"]
     steps:
@@ -64,7 +76,8 @@ jobs:
           build-args: |
             UBUNTU_VERSION=${{ matrix.ubuntu }}
             ENABLE_DEADSNAKES=${{ matrix.ubuntu != '25.04' && 'true' || 'false' }}
-          platforms: linux/amd64
+            K8S_VERSION=${{ needs.prepare-build.outputs.k8s-version }}
+          platforms: linux/amd64,linux/arm64/v8,linux/ppc64le,linux/s390x
 
   build-node:
     name: Build Ubuntu ${{ matrix.ubuntu }} Node ${{ matrix.node_versions }}
@@ -72,7 +85,6 @@ jobs:
     needs: build-base
     strategy:
       fail-fast: false
-      max-parallel: 3 # Limit concurrent builds
       matrix:
         ubuntu: ["22.04", "24.04", "25.04"]
         node_versions: ["20+22", "22+24"]
@@ -131,7 +143,7 @@ jobs:
             UBUNTU_VERSION=${{ matrix.ubuntu }}
             BASE_IMAGE=${{ steps.node-tags.outputs.base_image }}
             NODE_VERSIONS=${{ steps.node-tags.outputs.node_versions_spaced }}
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64/v8,linux/ppc64le,linux/s390x
 
   build-python:
     name: Build Ubuntu ${{ matrix.ubuntu }} Node ${{ matrix.node_versions }} Python ${{ matrix.python }}
@@ -139,7 +151,6 @@ jobs:
     needs: build-node
     strategy:
       fail-fast: false
-      max-parallel: 3 # Limit concurrent builds
       matrix:
         ubuntu: ["22.04", "24.04"]
         node_versions: ["20+22", "22+24"]
@@ -233,4 +244,4 @@ jobs:
             NODE_IMAGE=${{ steps.python-tags.outputs.node_image }}
             NODE_VERSIONS=${{ steps.python-tags.outputs.node_versions_spaced }}
             PYTHON_VERSION=${{ matrix.python }}
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64/v8,linux/ppc64le,linux/s390x

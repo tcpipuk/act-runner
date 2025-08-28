@@ -13,24 +13,29 @@ ARG TARGETARCH
 ARG UBUNTU_VERSION
 
 # Install Node.js versions in hostedtoolcache structure
-RUN --mount=type=cache,target=/tmp/downloads,sharing=locked \
+RUN --mount=type=cache,target=/tmp/downloads,sharing=locked,id=downloads-${UBUNTU_VERSION}-${TARGETARCH} \
     for VERSION in ${NODE_VERSIONS}; do \
     NODE_URL="https://nodejs.org/dist/latest-v${VERSION}.x/"; \
     NODE_VERSION=$(curl -sL ${NODE_URL} | grep -oP 'node-v\K[0-9]+\.[0-9]+\.[0-9]+' | head -1); \
     FULL_VERSION="v${NODE_VERSION}"; \
-    ARCH=$(dpkg --print-architecture | sed 's/amd64/x64/;s/arm64/arm64/'); \
+    ARCH=$(dpkg --print-architecture | sed 's/amd64/x64/;s/ppc64el/ppc64le/'); \
     TARBALL="/tmp/downloads/node-${FULL_VERSION}-linux-${ARCH}.tar.xz"; \
-    if [ ! -f "${TARBALL}" ]; then \
-    curl -sL "${NODE_URL}/node-${FULL_VERSION}-linux-${ARCH}.tar.xz" -o "${TARBALL}"; \
+    if [ ! -f "${TARBALL}" ] || ! xz -t "${TARBALL}" 2>/dev/null; then \
+    echo "Downloading Node.js ${FULL_VERSION} for ${ARCH}..."; \
+    rm -f "${TARBALL}"; \
+    curl -fSL "${NODE_URL}/node-${FULL_VERSION}-linux-${ARCH}.tar.xz" -o "${TARBALL}" || \
+    (echo "Failed to download Node.js ${FULL_VERSION} for ${ARCH}" && exit 1); \
+    xz -t "${TARBALL}" || (echo "Downloaded file is corrupted" && rm -f "${TARBALL}" && exit 1); \
     fi; \
     NODE_PATH="/opt/hostedtoolcache/node/${NODE_VERSION}/${ARCH}"; \
     mkdir -p "${NODE_PATH}"; \
+    echo "Extracting Node.js ${FULL_VERSION} to ${NODE_PATH}..."; \
     tar -xJf "${TARBALL}" --strip-components=1 -C "${NODE_PATH}"; \
     done
 
 # Add first Node version to PATH
 RUN NODE_VERSION=$(ls /opt/hostedtoolcache/node | head -1) && \
-    ARCH=$(dpkg --print-architecture | sed 's/amd64/x64/;s/arm64/arm64/') && \
+    ARCH=$(dpkg --print-architecture | sed 's/amd64/x64/;s/armhf/armv7l/;s/ppc64el/ppc64le/') && \
     echo "export PATH=/opt/hostedtoolcache/node/${NODE_VERSION}/${ARCH}/bin:\$PATH" >> /etc/profile.d/node.sh && \
     ln -sf /opt/hostedtoolcache/node/${NODE_VERSION}/${ARCH}/bin/node /usr/local/bin/node && \
     ln -sf /opt/hostedtoolcache/node/${NODE_VERSION}/${ARCH}/bin/npm /usr/local/bin/npm && \
