@@ -1,0 +1,117 @@
+name: Update Runtime Versions
+
+# This workflow automatically maintains Node.js and Python versions in our build matrix.
+#
+# Design constraints:
+# - Each build includes exactly 2 Node.js versions (overlapping pairs for smooth transitions)
+# - Only includes Node.js versions currently in Active or Maintenance support
+# - Python versions limited to top 3 available in deadsnakes for Ubuntu 22.04/24.04
+# - Updates tag aliases (edge/latest/lts) to match Node.js official designations
+# - Uses regex instead of YAML parsing to preserve comments and formatting
+# - Python code embedded in workflow (not separate script) for security
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.forgejo/workflows/update-versions.yml'
+  schedule:
+    # Run daily at 5am UTC (after the nightly build at 4am)
+    - cron: '0 5 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run - check for updates without creating PR'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check-versions:
+    name: Check for Version Updates
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.FORGEJO_TOKEN }}
+          fetch-depth: 0
+
+      - name: Check Node.js versions
+        id: node-versions
+        uses: ./.forgejo/actions/check-nodejs-versions
+
+      - name: Check Python versions
+        id: python-versions
+        uses: ./.forgejo/actions/check-deadsnakes-python
+        with:
+          ubuntu-versions: "22.04 24.04"
+          limit: "3"
+
+      - name: Update build matrix and README
+        id: update-matrix
+        uses: ./.forgejo/actions/update-build-matrix
+        with:
+          node-versions: ${{ steps.node-versions.outputs.live-versions }}
+          lts-versions: ${{ steps.node-versions.outputs.lts-versions }}
+          python-versions: ${{ steps.python-versions.outputs.python-versions }}
+          dry-run: ${{ github.event.inputs.dry_run }}
+
+      - name: Create Pull Request
+        if: steps.update-matrix.outputs.update-needed == 'true' && github.event.inputs.dry_run != 'true'
+        uses: ./.forgejo/actions/create-pull-request
+        with:
+          token: ${{ secrets.FORGEJO_TOKEN }}
+          branch-name: update-runtime-versions
+          commit-message: |
+            Update runtime versions
+
+            Node.js:
+            - Previous: ${{ steps.update-matrix.outputs.old-node-versions }}
+            - New: ${{ steps.update-matrix.outputs.new-node-versions }}
+
+            Python:
+            - Previous: ${{ steps.update-matrix.outputs.old-python-versions }}
+            - New: ${{ steps.update-matrix.outputs.new-python-versions }}
+          pr-title: Update runtime versions
+          pr-body: |
+            ### Automated Runtime Version Update
+
+            #### Node.js
+            * **Previous versions**: ${{ steps.update-matrix.outputs.old-node-versions }}
+            * **New versions**: ${{ steps.update-matrix.outputs.new-node-versions }}
+            * **Supported versions**: ${{ steps.update-matrix.outputs.supported-node-versions }}
+
+            #### Python
+            * **Previous versions**: ${{ steps.update-matrix.outputs.old-python-versions }}
+            * **New versions**: ${{ steps.update-matrix.outputs.new-python-versions }}
+
+            This PR is automatically updated when runtime versions change.
+          files-to-commit: .forgejo/workflows/build.yml README.md
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Runtime Version Check Summary" >> $GITHUB_STEP_SUMMARY
+          if [[ "${{ steps.update-matrix.outputs.update-needed }}" == "true" ]]; then
+            echo "✅ **Update Required**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Node.js" >> $GITHUB_STEP_SUMMARY
+            echo "- Previous: ${{ steps.update-matrix.outputs.old-node-versions }}" >> $GITHUB_STEP_SUMMARY
+            echo "- New: ${{ steps.update-matrix.outputs.new-node-versions }}" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Python" >> $GITHUB_STEP_SUMMARY
+            echo "- Previous: ${{ steps.update-matrix.outputs.old-python-versions }}" >> $GITHUB_STEP_SUMMARY
+            echo "- New: ${{ steps.update-matrix.outputs.new-python-versions }}" >> $GITHUB_STEP_SUMMARY
+            if [[ "${{ github.event.inputs.dry_run }}" == "true" ]]; then
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "⚠️ **Dry run mode** - No PR was created" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "✅ **No update needed** - Runtime versions are current" >> $GITHUB_STEP_SUMMARY
+          fi

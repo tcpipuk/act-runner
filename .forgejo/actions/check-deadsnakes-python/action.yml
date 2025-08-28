@@ -1,0 +1,152 @@
+name: Check Deadsnakes Python Versions
+description: Find Python versions available across specified Ubuntu releases in the deadsnakes PPA
+author: Tom Foster
+
+inputs:
+  ubuntu-versions:
+    description: Space-separated list of Ubuntu versions (e.g. "22.04 24.04 25.04")
+    required: true
+  limit:
+    description: Maximum number of Python versions to return (newest versions are selected)
+    required: false
+    default: "3"
+
+outputs:
+  python-versions:
+    description: Space-separated list of Python versions available across all specified Ubuntu releases
+    value: ${{ steps.check.outputs.versions }}
+
+runs:
+  using: composite
+  steps:
+    - name: Check Python versions
+      id: check
+      shell: python
+      run: |
+        import json
+        import re
+        import urllib.request
+        import sys
+        import os
+
+        def get_deadsnakes_info():
+            """Fetch the PPA description from Launchpad API."""
+            url = "https://api.launchpad.net/devel/~deadsnakes/+archive/ubuntu/ppa"
+            with urllib.request.urlopen(url) as response:
+                data = json.loads(response.read().decode())
+            return data.get("description", "")
+
+        def parse_python_versions(description, ubuntu_versions):
+            """Parse Python versions from PPA description for specified Ubuntu versions."""
+            versions_by_ubuntu = {}
+
+            lines = description.split('\n')
+            in_versions_section = False
+
+            for line in lines:
+                if "Supported Ubuntu and Python Versions" in line:
+                    in_versions_section = True
+                    continue
+
+                if in_versions_section:
+                    # Format: - Ubuntu 22.04 (jammy) Python3.7 - Python3.9, Python3.11 - Python3.13
+                    match = re.match(r'- Ubuntu (\d+\.\d+) \((\w+)\) (.+)', line)
+                    if match:
+                        ubuntu_version = match.group(1)
+                        python_parts = match.group(3)
+
+                        if ubuntu_version in ubuntu_versions:
+                            python_versions = set()
+
+                            # Parse Python version ranges and individual versions
+                            parts = python_parts.split(',')
+                            for part in parts:
+                                part = part.strip()
+
+                                if ' - ' in part:
+                                    # Range like "Python3.7 - Python3.9"
+                                    range_match = re.findall(r'Python(\d+\.\d+)', part)
+                                    if len(range_match) == 2:
+                                        start_version = range_match[0]
+                                        end_version = range_match[1]
+
+                                        major = int(start_version.split('.')[0])
+                                        start_minor = int(start_version.split('.')[1])
+                                        end_minor = int(end_version.split('.')[1])
+
+                                        for minor in range(start_minor, end_minor + 1):
+                                            python_versions.add(f"{major}.{minor}")
+                                else:
+                                    # Individual version
+                                    version_match = re.findall(r'Python(\d+\.\d+)', part)
+                                    python_versions.update(version_match)
+
+                            versions_by_ubuntu[ubuntu_version] = python_versions
+
+                    # Stop at Note: line
+                    if line.startswith("- Note:"):
+                        break
+
+            return versions_by_ubuntu
+
+        def find_common_versions(versions_by_ubuntu):
+            """Find Python versions available across all Ubuntu releases."""
+            if not versions_by_ubuntu:
+                return set()
+
+            # Start with all versions from first Ubuntu release
+            common = next(iter(versions_by_ubuntu.values())).copy()
+
+            # Intersect with versions from all other Ubuntu releases
+            for python_versions in versions_by_ubuntu.values():
+                common = common.intersection(python_versions)
+
+            return common
+
+        # Main execution
+        ubuntu_input = "${{ inputs.ubuntu-versions }}"
+        ubuntu_versions = ubuntu_input.strip().split()
+        limit = int("${{ inputs.limit }}")
+
+        print(f"::debug::Checking Python versions for Ubuntu: {ubuntu_versions}")
+        if limit > 0:
+            print(f"::debug::Limiting to {limit} newest versions")
+
+        try:
+            # Fetch and parse PPA description
+            description = get_deadsnakes_info()
+            versions_by_ubuntu = parse_python_versions(description, ubuntu_versions)
+
+            print(f"::debug::Found versions by Ubuntu: {versions_by_ubuntu}")
+
+            # Find common versions across all specified Ubuntu releases
+            if versions_by_ubuntu:
+                common = find_common_versions(versions_by_ubuntu)
+                common_sorted = sorted(common, key=lambda x: tuple(map(int, x.split('.'))))
+
+                # Apply limit if specified (take the newest versions)
+                if limit > 0 and len(common_sorted) > limit:
+                    common_sorted = common_sorted[-limit:]
+
+                versions_output = " ".join(common_sorted)
+            else:
+                # No deadsnakes support for any of the specified versions
+                versions_output = ""
+
+            # Set output using GitHub Actions format
+            with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                f.write(f"versions={versions_output}\n")
+
+            if versions_output:
+                print(f"::notice::Common Python versions: {versions_output}")
+            else:
+                print(f"::warning::No common Python versions found across specified Ubuntu releases")
+
+            # Debug info about unsupported Ubuntu versions
+            unsupported = [v for v in ubuntu_versions if v not in versions_by_ubuntu]
+            if unsupported:
+                print(f"::warning::Ubuntu versions without deadsnakes support: {unsupported}")
+
+        except Exception as e:
+            print(f"::error::Failed to check deadsnakes versions: {e}")
+            sys.exit(1)

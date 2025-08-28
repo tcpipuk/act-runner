@@ -1,0 +1,184 @@
+name: Create Pull Request
+description: Create or update a pull request with Forgejo API
+author: Tom Foster
+
+inputs:
+  token:
+    description: Forgejo/GitHub token for authentication
+    required: true
+  branch-name:
+    description: Name of the branch to create/update
+    required: true
+  commit-message:
+    description: Commit message for the changes
+    required: true
+  pr-title:
+    description: Title for the pull request
+    required: true
+  pr-body:
+    description: Body content for the pull request
+    required: true
+  files-to-commit:
+    description: Space-separated list of files to add to the commit
+    required: true
+  base-branch:
+    description: Base branch to merge into
+    required: false
+    default: "main"
+  git-user-name:
+    description: Git user name for commits
+    required: false
+    default: "Forgejo Actions"
+  git-user-email:
+    description: Git user email for commits
+    required: false
+    default: "git@tomfos.tr"
+
+outputs:
+  pr-created:
+    description: Whether a new PR was created
+    value: ${{ steps.create-pr.outputs.pr_created }}
+  pr-number:
+    description: The PR number
+    value: ${{ steps.create-pr.outputs.pr_number }}
+  pr-url:
+    description: The URL of the PR
+    value: ${{ steps.create-pr.outputs.pr_url }}
+
+runs:
+  using: composite
+  steps:
+    - name: Configure Git
+      shell: bash
+      run: |
+        git config --local user.email "${{ inputs.git-user-email }}"
+        git config --local user.name "${{ inputs.git-user-name }}"
+
+        # Set up authentication for push
+        REPO_URL="${{ github.server_url }}/${{ github.repository }}.git"
+        git remote set-url origin https://${{ inputs.token }}@${REPO_URL#https://}
+
+    - name: Create or update branch
+      shell: bash
+      run: |
+        BRANCH_NAME="${{ inputs.branch-name }}"
+
+        echo "🔄 Preparing update branch..."
+        echo ""
+
+        # Check if the branch exists on remote
+        if git ls-remote --heads origin "$BRANCH_NAME" 2>/dev/null | grep -q "$BRANCH_NAME"; then
+            echo "📌 Found existing branch '$BRANCH_NAME'"
+            # Stash our changes before switching branches
+            git stash push -m "Changes for $BRANCH_NAME" --quiet
+            git fetch origin "$BRANCH_NAME" --quiet
+            git checkout "$BRANCH_NAME" --quiet
+            git reset --hard origin/${{ inputs.base-branch }} --quiet  # Start fresh from base branch
+            # Apply our stashed changes
+            git stash pop --quiet
+            echo "✓ Branch updated from ${{ inputs.base-branch }}"
+        else
+            echo "🌿 Creating new branch '$BRANCH_NAME'"
+            git checkout -b "$BRANCH_NAME" --quiet
+            echo "✓ Branch created"
+        fi
+
+    - name: Commit changes
+      shell: bash
+      run: |
+        echo ""
+        echo "📝 Committing changes..."
+
+        # Add specified files
+        git add ${{ inputs.files-to-commit }}
+
+        # Commit with the provided message
+        git commit --quiet -m "${{ inputs.commit-message }}"
+        echo "✓ Changes committed"
+
+    - name: Push branch
+      shell: bash
+      run: |
+        echo ""
+        echo "⬆️ Pushing to remote..."
+
+        # Push the branch (force-with-lease is safer - fails if branch was manually modified)
+        git push --force-with-lease origin "${{ inputs.branch-name }}" 2>&1 | grep -v "remote:" | grep -v "Create a new pull" || true
+        echo "✓ Branch pushed to origin"
+        echo ""
+
+    - name: Create or update PR
+      id: create-pr
+      shell: python
+      run: |
+        import json
+        import urllib.request
+        import urllib.error
+        import os
+
+        token = "${{ inputs.token }}"
+        api_base = "${{ github.server_url }}/api/v1"
+        repo = "${{ github.repository }}"
+        branch_name = "${{ inputs.branch-name }}"
+        base_branch = "${{ inputs.base-branch }}"
+        pr_title = """${{ inputs.pr-title }}"""
+        pr_body = """${{ inputs.pr-body }}"""
+
+        print("🔍 Checking for existing pull requests...")
+
+        # Check if PR already exists
+        headers = {"Authorization": f"token {token}"}
+        req = urllib.request.Request(
+            f"{api_base}/repos/{repo}/pulls?state=open",
+            headers=headers
+        )
+
+        try:
+            with urllib.request.urlopen(req) as response:
+                pulls = json.loads(response.read())
+
+                # Find PR from our branch
+                existing_pr = None
+                for pr in pulls:
+                    if pr.get('head', {}).get('ref', '') == branch_name:
+                        existing_pr = pr
+                        break
+
+                # Set outputs using GitHub Actions format
+                with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                    if existing_pr:
+                        print(f"✅ PR #{existing_pr['number']} already exists and was updated")
+                        print(f"   {existing_pr.get('html_url', 'N/A')}")
+                        f.write(f"pr_created=false\n")
+                        f.write(f"pr_number={existing_pr['number']}\n")
+                        f.write(f"pr_url={existing_pr.get('html_url', '')}\n")
+                    else:
+                        # Create new PR
+                        print("📋 Creating new pull request...")
+
+                        pr_data = {
+                            "title": pr_title,
+                            "head": branch_name,
+                            "base": base_branch,
+                            "body": pr_body
+                        }
+
+                        req = urllib.request.Request(
+                            f"{api_base}/repos/{repo}/pulls",
+                            data=json.dumps(pr_data).encode('utf-8'),
+                            headers={**headers, "Content-Type": "application/json"},
+                            method='POST'
+                        )
+
+                        with urllib.request.urlopen(req) as response:
+                            new_pr = json.loads(response.read())
+                            print(f"✅ Created PR #{new_pr['number']}")
+                            print(f"   {new_pr.get('html_url', 'N/A')}")
+                            f.write(f"pr_created=true\n")
+                            f.write(f"pr_number={new_pr['number']}\n")
+                            f.write(f"pr_url={new_pr.get('html_url', '')}\n")
+
+        except urllib.error.HTTPError as e:
+            print(f"Error: {e.code} - {e.reason}")
+            print(e.read().decode('utf-8'))
+            exit(1)
