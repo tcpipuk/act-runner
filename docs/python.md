@@ -34,6 +34,7 @@ The following environment variables are pre-configured:
 ## PATH Configuration
 
 The PATH includes `/root/.local/bin` to ensure:
+
 - `uv` itself is available
 - Tools installed via `uv tool install` are accessible
 - No warnings about PATH during tool installation
@@ -43,6 +44,7 @@ The PATH includes `/root/.local/bin` to ensure:
 ### System Packages
 
 Each Python installation includes:
+
 - `python{version}` - The Python interpreter
 - `python{version}-dev` - Development headers for building extensions
 - `python{version}-venv` - Virtual environment support
@@ -50,9 +52,11 @@ Each Python installation includes:
 ### Missing Packages
 
 We deliberately exclude:
+
 - `python-distutils` - Deprecated since Python 3.10, removed in 3.12+
 
 If you need distutils for legacy code, you can install it:
+
 ```bash
 # Ubuntu 22.04/24.04 (from deadsnakes PPA)
 apt-get update && apt-get install -y python3.11-distutils
@@ -107,6 +111,7 @@ source .venv/bin/activate
 ### Why uv?
 
 We use [uv](https://github.com/astral-sh/uv) as our Python package installer because:
+
 - It's 10-100x faster than pip
 - Provides consistent tool management via `uv tool`
 - Reduces CI build times significantly
@@ -115,6 +120,7 @@ We use [uv](https://github.com/astral-sh/uv) as our Python package installer bec
 ### Why these specific tools?
 
 The pre-installed tools cover the most common Python development needs:
+
 - **Linting & Formatting**: ruff, black, isort
 - **Type Checking**: mypy
 - **Testing**: pytest
@@ -127,6 +133,7 @@ image size reasonable.
 
 Python's `distutils` was deprecated in Python 3.10 and removed entirely in Python 3.12. Most
 modern Python packages have migrated to `setuptools` or other build systems. We exclude it to:
+
 - Keep images smaller
 - Encourage modern packaging practices
 - Avoid confusion with deprecated APIs
@@ -134,6 +141,7 @@ modern Python packages have migrated to `setuptools` or other build systems. We 
 ### Why deadsnakes PPA?
 
 The [deadsnakes PPA](https://launchpad.net/~deadsnakes/+archive/ubuntu/ppa) provides:
+
 - Newer Python versions on older Ubuntu releases
 - Consistent Python packaging across Ubuntu versions
 - Regular security updates
