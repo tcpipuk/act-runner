@@ -346,26 +346,67 @@ jobs:
           # Push the branch (force-with-lease is safer - fails if branch was manually modified)
           git push --force-with-lease origin "$BRANCH_NAME"
 
-          # Create PR if it doesn't exist, otherwise it auto-updates
+          # Create PR if it doesn't exist using Forgejo API
+          python3 <<'EOF'
+          import json
+          import urllib.request
+          import urllib.error
+          import os
+
+          token = "${{ secrets.FORGEJO_TOKEN }}"
+          api_base = "https://git.tomfos.tr/api/v1"
+
           # Check if PR already exists
-          PR_EXISTS=$(gh pr list --head "$BRANCH_NAME" --state open --json number --jq '.[0].number' || echo "")
+          headers = {"Authorization": f"token {token}"}
+          req = urllib.request.Request(
+              f"{api_base}/repos/tom/act-runner/pulls?state=open",
+              headers=headers
+          )
 
-          if [ -z "$PR_EXISTS" ]; then
-              echo "Creating new PR"
-              gh pr create \
-                --title "Update Node.js versions" \
-                --body "### Automated Node.js Version Update
+          try:
+              with urllib.request.urlopen(req) as response:
+                  pulls = json.loads(response.read())
+                  # Find PR from our branch
+                  existing_pr = None
+                  for pr in pulls:
+                      if pr.get('head', {}).get('ref') == 'update-node-versions':
+                          existing_pr = pr
+                          break
 
-          - **Previous versions**: ${{ steps.check-versions.outputs.old_versions }}
-          - **New versions**: ${{ steps.check-versions.outputs.new_versions }}
-          - **Supported versions**: ${{ steps.check-versions.outputs.supported_versions }}
+                  if existing_pr:
+                      print(f"PR #{existing_pr['number']} already exists and will be updated with new commit")
+                  else:
+                      # Create new PR
+                      print("Creating new PR via Forgejo API")
+                      pr_body = "### Automated Node.js Version Update\n\n"
+                      pr_body += "* **Previous versions**: ${{ steps.check-versions.outputs.old_versions }}\n"
+                      pr_body += "* **New versions**: ${{ steps.check-versions.outputs.new_versions }}\n"
+                      pr_body += "* **Supported versions**: ${{ steps.check-versions.outputs.supported_versions }}\n\n"
+                      pr_body += "This PR is automatically updated when Node.js versions change."
 
-          This PR is automatically updated when Node.js versions change." \
-                --base main \
-                --head "$BRANCH_NAME"
-          else
-              echo "PR #$PR_EXISTS already exists and will be updated with new commit"
-          fi
+                      pr_data = {
+                          "title": "Update Node.js versions",
+                          "head": "update-node-versions",
+                          "base": "main",
+                          "body": pr_body
+                      }
+
+                      req = urllib.request.Request(
+                          f"{api_base}/repos/tom/act-runner/pulls",
+                          data=json.dumps(pr_data).encode('utf-8'),
+                          headers={**headers, "Content-Type": "application/json"},
+                          method='POST'
+                      )
+
+                      with urllib.request.urlopen(req) as response:
+                          new_pr = json.loads(response.read())
+                          print(f"Created PR #{new_pr['number']}")
+
+          except urllib.error.HTTPError as e:
+              print(f"Error: {e.code} - {e.reason}")
+              print(e.read().decode('utf-8'))
+              exit(1)
+          EOF
 
       - name: Summary
         if: always()
