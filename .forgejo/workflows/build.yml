@@ -148,7 +148,7 @@ jobs:
       matrix:
         ubuntu: ["22.04", "24.04"]
         node_versions: ["20+22", "22+24"]
-        python: ["3.11", "3.13"]
+        python: ["3.9", "3.11", "3.13"]
         include:
           # Add Ubuntu 25.04 builds separately (no deadsnakes, only system Python)
           - ubuntu: "25.04"
