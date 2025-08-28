@@ -278,6 +278,65 @@ jobs:
 
                   return readme_content
 
+              # Generate the available images table based on build matrix
+              def generate_images_table(updated_content):
+                  """Generate the available images table from the build.yml matrix."""
+                  # Parse build.yml to extract matrix values
+                  ubuntu_pattern = r'ubuntu:\s*\[(.+?)\]'
+                  node_pattern = r'node_versions:\s*\[(.+?)\]'
+                  python_pattern = r'python:\s*\[(.+?)\]'
+
+                  ubuntu_match = re.search(ubuntu_pattern, updated_content)
+                  node_match = re.search(node_pattern, updated_content)
+                  python_match = re.search(python_pattern, updated_content)
+
+                  if not all([ubuntu_match, node_match, python_match]):
+                      print("Warning: Could not parse matrix values from build.yml")
+                      return None
+
+                  # Extract and clean the values
+                  ubuntu_versions = [v.strip().strip('"') for v in ubuntu_match.group(1).split(',')]
+                  node_versions = [v.strip().strip('"') for v in node_match.group(1).split(',')]
+                  python_versions = [v.strip().strip('"') for v in python_match.group(1).split(',')]
+
+                  # Build the table
+                  table_lines = []
+                  table_lines.append("| Ubuntu | Node.js | Python Versions Available |")
+                  table_lines.append("|--------|---------|---------------------------|")
+
+                  # Process each Ubuntu version
+                  for ubuntu in sorted(ubuntu_versions, reverse=True):
+                      ubuntu_display = f"{ubuntu} LTS" if ubuntu in ["22.04", "24.04"] else ubuntu
+
+                      # Add node version rows
+                      for node_pair in sorted(node_versions, reverse=True):
+                          node_display = node_pair.replace('+', ', ')
+                          node_tag = node_pair.replace('+', '-')
+
+                          # Build Python version links
+                          python_links = []
+
+                          # Add base node image (no Python)
+                          base_url = f"https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu{ubuntu}-node{node_tag}"
+                          python_links.append(f"[None]({base_url})")
+
+                          # Add Python variants
+                          for py_ver in sorted(python_versions, reverse=True):
+                              # Skip Python 3.11 for Ubuntu 25.04
+                              if ubuntu == "25.04" and py_ver == "3.11":
+                                  continue
+                              py_url = f"https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu{ubuntu}-node{node_tag}-py{py_ver}"
+                              python_links.append(f"[{py_ver}]({py_url})")
+
+                          python_cell = ", ".join(python_links)
+                          table_lines.append(f"| {ubuntu_display} | {node_display} | {python_cell} |")
+
+                      # Add base image row (no Node.js)
+                      base_url = f"https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu{ubuntu}-base"
+                      table_lines.append(f"| {ubuntu_display} | None | [None]({base_url}) |")
+
+                  return "\n".join(table_lines)
+
               # Write the updated files if not in dry run mode
               dry_run = os.environ.get('DRY_RUN', 'false').lower() == 'true'
 
@@ -291,6 +350,17 @@ jobs:
                       readme_content = f.read()
 
                   updated_readme = update_readme_aliases(readme_content, tag_aliases)
+
+                  # Regenerate the available images table
+                  new_table = generate_images_table(updated_content)
+                  if new_table:
+                      # Find and replace the table section
+                      table_pattern = r'(\| Ubuntu \| Node\.js \| Python Versions Available \|\n\|[-]+\|[-]+\|[-]+\|(?:\n\|[^\n]+)*)'
+                      if re.search(table_pattern, updated_readme):
+                          updated_readme = re.sub(table_pattern, new_table, updated_readme)
+                          print("Regenerated available images table")
+                      else:
+                          print("Warning: Could not find images table in README.md")
 
                   with open('README.md', 'w') as f:
                       f.write(updated_readme)
