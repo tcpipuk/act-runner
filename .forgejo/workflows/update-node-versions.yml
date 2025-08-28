@@ -250,11 +250,9 @@ jobs:
               # Update README.md alias table
               def update_readme_aliases(readme_content, tag_aliases):
                   for alias_name, config in tag_aliases.items():
-                      # Build the full image tag
-                      ubuntu_short = config['ubuntu'].replace('.', '')
+                      # Build the full image tag (keep dots in versions)
                       node_tag = config['node_versions'].replace('+', '-')
-                      py_tag = config['python'].replace('.', '')
-                      full_tag = f"ubuntu{ubuntu_short}-node{node_tag}-py{py_tag}"
+                      full_tag = f"ubuntu{config['ubuntu']}-node{node_tag}-py{config['python']}"
 
                       # Determine description based on alias
                       if alias_name == 'edge':
@@ -325,7 +323,8 @@ jobs:
           git config --local user.name "Forgejo Actions"
 
           # Set up authentication for push
-          git remote set-url origin https://${{ secrets.FORGEJO_TOKEN }}@git.tomfos.tr/tom/act-runner.git
+          REPO_URL="${{ github.server_url }}/${{ github.repository }}.git"
+          git remote set-url origin https://${{ secrets.FORGEJO_TOKEN }}@${REPO_URL#https://}
 
           # Use a consistent branch name for all version updates
           BRANCH_NAME="update-node-versions"
@@ -363,30 +362,44 @@ jobs:
           import os
 
           token = "${{ secrets.FORGEJO_TOKEN }}"
-          api_base = "https://git.tomfos.tr/api/v1"
+          api_base = "${{ github.server_url }}/api/v1"  # e.g. https://git.tomfos.tr/api/v1
+          repo = "${{ github.repository }}"  # e.g. tom/act-runner
+          branch_name = "update-node-versions"
+
+          print("=" * 60)
+          print("PR Management Step")
+          print("=" * 60)
 
           # Check if PR already exists
+          print(f"Checking for existing PRs from branch '{branch_name}'...")
           headers = {"Authorization": f"token {token}"}
           req = urllib.request.Request(
-              f"{api_base}/repos/tom/act-runner/pulls?state=open",
+              f"{api_base}/repos/{repo}/pulls?state=open",
               headers=headers
           )
 
           try:
               with urllib.request.urlopen(req) as response:
                   pulls = json.loads(response.read())
+                  print(f"Found {len(pulls)} open PR(s) total")
+
                   # Find PR from our branch
                   existing_pr = None
                   for pr in pulls:
-                      if pr.get('head', {}).get('ref') == 'update-node-versions':
+                      pr_head = pr.get('head', {}).get('ref', '')
+                      print(f"  - PR #{pr['number']}: {pr['title']} (branch: {pr_head})")
+                      if pr_head == branch_name:
                           existing_pr = pr
-                          break
+
+                  print("-" * 60)
 
                   if existing_pr:
-                      print(f"PR #{existing_pr['number']} already exists and will be updated with new commit")
+                      print(f"✓ Found existing PR #{existing_pr['number']}: {existing_pr['title']}")
+                      print(f"  URL: {existing_pr.get('html_url', 'N/A')}")
+                      print(f"  This PR will be automatically updated with the latest commit")
                   else:
                       # Create new PR
-                      print("Creating new PR via Forgejo API")
+                      print("No existing PR found. Creating new PR...")
                       pr_body = "### Automated Node.js Version Update\n\n"
                       pr_body += "* **Previous versions**: ${{ steps.check-versions.outputs.old_versions }}\n"
                       pr_body += "* **New versions**: ${{ steps.check-versions.outputs.new_versions }}\n"
