@@ -315,9 +315,12 @@ jobs:
       - name: Create Pull Request
         if: steps.check-versions.outputs.update_needed == 'true' && github.event.inputs.dry_run != 'true'
         run: |
-          # Configure git
-          git config --local user.email "action@forgejo.org"
+          # Configure git with token authentication
+          git config --local user.email "git@tomfos.tr"
           git config --local user.name "Forgejo Actions"
+
+          # Set up authentication for push
+          git remote set-url origin https://${{ secrets.FORGEJO_TOKEN }}@git.tomfos.tr/tom/act-runner.git
 
           # Use a consistent branch name for all version updates
           BRANCH_NAME="update-node-versions"
