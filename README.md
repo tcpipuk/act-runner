@@ -3,6 +3,12 @@
 Production-ready runner images for [Forgejo Actions](https://forgejo.org/docs/latest/user/actions/)
 and [ACT](https://github.com/nektos/act) with comprehensive language support and nightly updates.
 
+> [!NOTE]
+> Images are built nightly on [my Forgejo instance](https://git.tomfos.tr/tom/act-runner) and
+> automatically mirrored to [GitHub Container Registry](https://github.com/tcpipuk/act-runner) for
+> optimal CDN performance. Both `ghcr.io/tcpipuk/act-runner` and `git.tomfos.tr/tom/act-runner`
+> *should* be identical multi-architecture images supporting amd64, arm64, ppc64le, and s390x.
+
 ## Quick start
 
 Use my convenience tags that track stable versions:
@@ -15,23 +21,23 @@ Use my convenience tags that track stable versions:
 
 ### Usage examples
 
-**Forgejo/Gitea Actions:**
+**GitHub Actions:**
 
 ```yaml
 jobs:
   test:
     runs-on: ubuntu-latest
-    container: git.tomfos.tr/tom/act-runner:latest
+    container: ghcr.io/tcpipuk/act-runner:latest
     steps:
       - uses: actions/checkout@v4
-      - run: python --version  # Python 3.13
-      - run: node --version    # Node.js 20
+      - run: python --version
+      - run: node --version
 ```
 
 **ACT:**
 
 ```bash
-act -P ubuntu-latest=git.tomfos.tr/tom/act-runner:latest
+act -P ubuntu-latest=ghcr.io/tcpipuk/act-runner:latest
 ```
 
 ## Available images
@@ -78,7 +84,7 @@ act -P ubuntu-latest=git.tomfos.tr/tom/act-runner:latest
 
 **Python images add:**
 
-- Python 3.11 and/or 3.13 (see table above)
+- Multiple Python versions (see table above for available versions)
 - [uv](https://docs.astral.sh/uv/) package manager
 - Pre-installed development tools (ruff, mypy, pytest, black, isort, prek)
 - See [docs/python.md](docs/python.md) for full details
