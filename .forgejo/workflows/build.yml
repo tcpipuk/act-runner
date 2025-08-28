@@ -146,20 +146,19 @@ jobs:
       fail-fast: false
       max-parallel: 3 # Limit concurrent builds
       matrix:
-        # Full matrix - generates all combinations
-        ubuntu: ["22.04", "24.04", "25.04"]
+        ubuntu: ["22.04", "24.04"]
         node_versions: ["20+22", "22+24"]
         python: ["3.11", "3.13"]
-        exclude:
-          # Ubuntu 25.04 doesn't have Python 3.11
-          - ubuntu: "25.04"
-            python: "3.11"
         include:
-          # Add tag aliases for specific versions
+          # Add Ubuntu 25.04 builds separately (no deadsnakes, only system Python)
+          - ubuntu: "25.04"
+            node_versions: "20+22"
+            python: "3.13"
           - ubuntu: "25.04"
             node_versions: "22+24"
             python: "3.13"
             tag_alias: "edge"
+          # Add tag aliases for specific versions
           - ubuntu: "24.04"
             node_versions: "20+22"
             python: "3.13"

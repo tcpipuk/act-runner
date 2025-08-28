@@ -1,0 +1,114 @@
+name: Check Node.js Versions
+description: Find currently supported Node.js versions including LTS releases
+author: Tom Foster
+
+outputs:
+  lts-versions:
+    description: Space-separated list of Node.js LTS versions
+    value: ${{ steps.check.outputs.lts }}
+  live-versions:
+    description: Space-separated list of all supported Node.js versions
+    value: ${{ steps.check.outputs.all }}
+
+runs:
+  using: composite
+  steps:
+    - name: Check Node.js versions
+      id: check
+      shell: python
+      run: |
+        import json
+        import urllib.request
+        from datetime import datetime
+        import os
+        import sys
+
+        def get_node_releases():
+            """Fetch Node.js release schedule from official repository."""
+            url = "https://raw.githubusercontent.com/nodejs/Release/main/schedule.json"
+            with urllib.request.urlopen(url) as response:
+                return json.loads(response.read().decode())
+
+        def is_supported(version_info, today):
+            """Check if a version is currently supported and released."""
+            # Must have both start and end dates
+            if 'start' not in version_info or 'end' not in version_info:
+                return False
+
+            start_date = datetime.strptime(version_info['start'], '%Y-%m-%d')
+            end_date = datetime.strptime(version_info['end'], '%Y-%m-%d')
+
+            # Version must be released (start date has passed) and still supported
+            return start_date <= today < end_date
+
+        def get_major_version(version_str):
+            """Extract the major version number."""
+            # Handle both 'v18' and '18' formats
+            version = version_str.replace('v', '')
+            # Handle old versions like 0.8, 0.10, 0.12 - use second part as major
+            if version.startswith('0.'):
+                return int(version.split('.')[1])
+            return int(version)
+
+        # Main execution
+        today = datetime.now()
+
+        print(f"::debug::Fetching Node.js release schedule")
+
+        try:
+            # Fetch release schedule
+            releases = get_node_releases()
+
+            # Filter supported versions
+            all_supported = []
+            lts_versions = []
+
+            for version, info in releases.items():
+                major = get_major_version(version)
+
+                # Only include even-numbered versions (stable releases)
+                # Odd-numbered versions are development/unstable
+                if is_supported(info, today) and major % 2 == 0:
+                    all_supported.append(major)
+
+                    # Check if this is an LTS version
+                    if 'lts' in info and info['lts'] and info['lts'] != False:
+                        # Check if LTS has already started
+                        if isinstance(info['lts'], str):
+                            lts_start = datetime.strptime(info['lts'], '%Y-%m-%d')
+                        else:
+                            # Already in LTS
+                            lts_start = today
+
+                        if lts_start <= today:
+                            lts_versions.append(major)
+
+            # Sort versions in ascending order
+            all_supported.sort()
+            lts_versions.sort()
+
+            # Convert to space-separated strings
+            all_output = " ".join(str(v) for v in all_supported)
+            lts_output = " ".join(str(v) for v in lts_versions)
+
+            print(f"::debug::All supported versions: {all_output}")
+            print(f"::debug::LTS versions: {lts_output}")
+
+            # Set outputs using GitHub Actions format
+            with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                f.write(f"all={all_output}\n")
+                f.write(f"lts={lts_output}\n")
+
+            if all_output:
+                print(f"::notice::All supported Node.js versions: {all_output}")
+            else:
+                print(f"::warning::No supported Node.js versions found")
+
+            if lts_output:
+                print(f"::notice::LTS Node.js versions: {lts_output}")
+            else:
+                print(f"::warning::No LTS Node.js versions found")
+
+        except Exception as e:
+            print(f"::error::Failed to check Node.js versions: {e}")
+            sys.exit(1)

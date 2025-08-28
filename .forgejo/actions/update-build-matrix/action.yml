@@ -1,0 +1,357 @@
+name: Update Build Matrix
+description: Updates build.yml and README.md with new Node.js and Python versions
+author: Tom Foster
+
+inputs:
+  node-versions:
+    description: Space-separated list of all supported Node.js versions
+    required: true
+  lts-versions:
+    description: Space-separated list of LTS Node.js versions
+    required: true
+  python-versions:
+    description: Space-separated list of Python versions
+    required: true
+  dry-run:
+    description: If true, only check for updates without modifying files
+    required: false
+    default: "false"
+
+outputs:
+  update-needed:
+    description: Whether an update is needed
+    value: ${{ steps.update.outputs.update_needed }}
+  old-node-versions:
+    description: Previous Node.js version pairs
+    value: ${{ steps.update.outputs.old_node_versions }}
+  new-node-versions:
+    description: New Node.js version pairs
+    value: ${{ steps.update.outputs.new_node_versions }}
+  old-python-versions:
+    description: Previous Python versions
+    value: ${{ steps.update.outputs.old_python_versions }}
+  new-python-versions:
+    description: New Python versions
+    value: ${{ steps.update.outputs.new_python_versions }}
+  supported-node-versions:
+    description: All supported Node.js versions
+    value: ${{ steps.update.outputs.supported_node_versions }}
+
+runs:
+  using: composite
+  steps:
+    - name: Update build matrix and README
+      id: update
+      shell: python
+      run: |
+        import json
+        import re
+        import os
+        import sys
+
+        # Parse versions from inputs
+        all_versions_str = "${{ inputs.node-versions }}"
+        lts_versions_str = "${{ inputs.lts-versions }}"
+        python_versions_str = "${{ inputs.python-versions }}"
+        dry_run = "${{ inputs.dry-run }}".lower() == "true"
+
+        supported_versions = [int(v) for v in all_versions_str.split()] if all_versions_str else []
+        lts_versions = [int(v) for v in lts_versions_str.split()] if lts_versions_str else []
+        python_versions = python_versions_str.split() if python_versions_str else []
+
+        # Sort versions
+        supported_versions.sort()
+        lts_versions.sort()
+        python_versions.sort(key=lambda x: tuple(map(int, x.split('.'))))
+
+        # Current is the highest supported version
+        current_version = supported_versions[-1] if supported_versions else None
+
+        print(f"Supported Node.js versions: {supported_versions}")
+        print(f"LTS versions: {lts_versions}")
+        print(f"Python versions available: {python_versions}")
+        if current_version:
+            print(f"Current (latest): v{current_version}")
+
+        # Generate version pairs (each build includes 2 versions)
+        # We want overlapping pairs to ensure smooth transitions
+        version_pairs = []
+        for i in range(len(supported_versions) - 1):
+            pair = f"{supported_versions[i]}+{supported_versions[i+1]}"
+            version_pairs.append(pair)
+
+        print(f"Generated version pairs: {version_pairs}")
+
+        # Determine tag aliases
+        # edge = newest pair (highest versions)
+        # latest = pair of two newest LTS versions
+        # lts = pair of two oldest LTS versions
+
+        tag_aliases = {}
+
+        if version_pairs:
+            # Edge is always the newest pair
+            edge_pair = version_pairs[-1]
+            tag_aliases['edge'] = {
+                'ubuntu': '25.04',
+                'node_versions': edge_pair,
+                'python': '3.13'
+            }
+
+            # Build LTS-only pairs if we have LTS versions
+            if len(lts_versions) >= 2:
+                # LTS: pair of two oldest LTS versions
+                lts_pair = f"{lts_versions[0]}+{lts_versions[1]}"
+                if lts_pair in version_pairs:
+                    tag_aliases['lts'] = {
+                        'ubuntu': '22.04',
+                        'node_versions': lts_pair,
+                        'python': '3.13'
+                    }
+
+                # Latest: pair of two newest LTS versions
+                latest_pair = f"{lts_versions[-2]}+{lts_versions[-1]}"
+                if latest_pair in version_pairs:
+                    tag_aliases['latest'] = {
+                        'ubuntu': '24.04',
+                        'node_versions': latest_pair,
+                        'python': '3.13'
+                    }
+            elif len(lts_versions) == 1:
+                # Only one LTS version, find the pair containing it
+                for pair in version_pairs:
+                    if str(lts_versions[0]) in pair.split('+'):
+                        tag_aliases['lts'] = {
+                            'ubuntu': '22.04',
+                            'node_versions': pair,
+                            'python': '3.13'
+                        }
+                        tag_aliases['latest'] = {
+                            'ubuntu': '24.04',
+                            'node_versions': pair,
+                            'python': '3.13'
+                        }
+                        break
+
+        # Read current build.yml
+        with open('.forgejo/workflows/build.yml', 'r') as f:
+            content = f.read()
+
+        # Extract current version pairs from the matrix using regex
+        node_matrix_pattern = r'node_versions:\s*\[(.*?)\]'
+        python_matrix_pattern = r'python:\s*\[(.*?)\]'
+
+        node_match = re.search(node_matrix_pattern, content)
+        if node_match:
+            current_pairs_str = node_match.group(1)
+            # Parse the quoted strings
+            current_pairs = re.findall(r'"([^"]+)"', current_pairs_str)
+        else:
+            current_pairs = []
+
+        python_match = re.search(python_matrix_pattern, content)
+        if python_match:
+            current_python_str = python_match.group(1)
+            # Parse the quoted strings
+            current_python = re.findall(r'"([^"]+)"', current_python_str)
+        else:
+            current_python = []
+
+        print(f"Current Node.js pairs in build.yml: {current_pairs}")
+        print(f"New Node.js pairs needed: {version_pairs}")
+        print(f"Current Python versions in build.yml: {current_python}")
+        print(f"New Python versions needed: {python_versions}")
+
+        # Check if update is needed
+        pairs_changed = set(current_pairs) != set(version_pairs)
+        python_changed = set(current_python) != set(python_versions)
+
+        if pairs_changed or python_changed:
+            print("Update required!")
+
+            # Generate the new matrix lines
+            new_node_matrix_line = 'node_versions: [' + ', '.join(f'"{p}"' for p in version_pairs) + ']'
+            new_python_matrix_line = 'python: [' + ', '.join(f'"{p}"' for p in python_versions) + ']'
+
+            # Update the build.yml content
+            updated_content = re.sub(
+                r'node_versions:\s*\[.*?\]',
+                new_node_matrix_line,
+                content
+            )
+
+            # Update Python versions in the matrix
+            updated_content = re.sub(
+                r'python:\s*\[.*?\]',
+                new_python_matrix_line,
+                updated_content
+            )
+
+            # Update tag aliases in the include section
+            # This is more complex as we need to update the specific entries
+
+            # Function to update a tag alias entry
+            def update_tag_alias(content, alias_name, config):
+                # More flexible pattern that handles whitespace variations
+                # Matches the include block with this specific tag_alias
+                pattern = (
+                    r'- ubuntu:\s*"[^"]+"\s*\n'
+                    r'\s*node_versions:\s*"[^"]+"\s*\n'
+                    r'\s*python:\s*"[^"]+"\s*\n'
+                    r'\s*tag_alias:\s*"' + alias_name + r'"'
+                )
+
+                # Preserve indentation from original
+                replacement = (
+                    f'- ubuntu: "{config["ubuntu"]}"\n'
+                    f'            node_versions: "{config["node_versions"]}"\n'
+                    f'            python: "{config["python"]}"\n'
+                    f'            tag_alias: "{alias_name}"'
+                )
+
+                # Check if this alias exists
+                if re.search(pattern, content, re.MULTILINE):
+                    content = re.sub(pattern, replacement, content, flags=re.MULTILINE)
+                else:
+                    print(f"Warning: Could not find {alias_name} alias in build.yml")
+                    print(f"Manual update may be required for {alias_name} tag alias")
+
+                return content
+
+            # Update each tag alias
+            for alias_name, config in tag_aliases.items():
+                updated_content = update_tag_alias(updated_content, alias_name, config)
+
+            # Update README.md alias table
+            def update_readme_aliases(readme_content, tag_aliases):
+                for alias_name, config in tag_aliases.items():
+                    # Build the full image tag (keep dots in versions)
+                    node_tag = config['node_versions'].replace('+', '-')
+                    full_tag = f"ubuntu{config['ubuntu']}-node{node_tag}-py{config['python']}"
+
+                    # Determine description based on alias
+                    if alias_name == 'edge':
+                        desc = f"Bleeding edge - Ubuntu {config['ubuntu']}, Node.js {config['node_versions'].replace('+', '/')}, Python {config['python']}"
+                    elif alias_name == 'latest':
+                        desc = f"Current stable - Ubuntu {config['ubuntu']} LTS, Node.js {config['node_versions'].replace('+', '/')}, Python {config['python']}"
+                    elif alias_name == 'lts':
+                        desc = f"Previous LTS - Ubuntu {config['ubuntu']} LTS, Node.js {config['node_versions'].replace('+', '/')}, Python {config['python']}"
+
+                    # Pattern to match the table row for this alias
+                    pattern = rf'\| \*\*\[`{alias_name}`\][^\|]+\| [^\|]+ \| \[`[^`]+`\][^\|]+\|'
+
+                    replacement = (
+                        f'| **[`{alias_name}`](https://git.tomfos.tr/tom/-/packages/container/act-runner/{alias_name})**'
+                        f' | {desc}'
+                        f' | [`{full_tag}`](https://git.tomfos.tr/tom/-/packages/container/act-runner/{full_tag}) |'
+                    )
+
+                    if re.search(pattern, readme_content):
+                        readme_content = re.sub(pattern, replacement, readme_content)
+                    else:
+                        print(f"Warning: Could not find {alias_name} alias in README.md")
+
+                return readme_content
+
+            # Generate the available images table based on build matrix
+            def generate_images_table(updated_content):
+                """Generate the available images table from the build.yml matrix."""
+                # Parse build.yml to extract matrix values
+                ubuntu_pattern = r'ubuntu:\s*\[(.+?)\]'
+                node_pattern = r'node_versions:\s*\[(.+?)\]'
+                python_pattern = r'python:\s*\[(.+?)\]'
+
+                ubuntu_match = re.search(ubuntu_pattern, updated_content)
+                node_match = re.search(node_pattern, updated_content)
+                python_match = re.search(python_pattern, updated_content)
+
+                if not all([ubuntu_match, node_match, python_match]):
+                    print("Warning: Could not parse matrix values from build.yml")
+                    return None
+
+                # Extract and clean the values
+                ubuntu_versions = [v.strip().strip('"') for v in ubuntu_match.group(1).split(',')]
+                node_versions = [v.strip().strip('"') for v in node_match.group(1).split(',')]
+                python_versions = [v.strip().strip('"') for v in python_match.group(1).split(',')]
+
+                # Build the table
+                table_lines = []
+                table_lines.append("| Ubuntu | Node.js | Python Versions Available |")
+                table_lines.append("|--------|---------|---------------------------|")
+
+                # Process each Ubuntu version
+                for ubuntu in sorted(ubuntu_versions, reverse=True):
+                    ubuntu_display = f"{ubuntu} LTS" if ubuntu in ["22.04", "24.04"] else ubuntu
+
+                    # Add node version rows
+                    for node_pair in sorted(node_versions, reverse=True):
+                        node_display = node_pair.replace('+', ', ')
+                        node_tag = node_pair.replace('+', '-')
+
+                        # Build Python version links
+                        python_links = []
+
+                        # Add base node image (no Python)
+                        base_url = f"https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu{ubuntu}-node{node_tag}"
+                        python_links.append(f"[None]({base_url})")
+
+                        # Add Python variants
+                        for py_ver in sorted(python_versions, reverse=True):
+                            # Skip Python 3.11 for Ubuntu 25.04
+                            if ubuntu == "25.04" and py_ver == "3.11":
+                                continue
+                            py_url = f"https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu{ubuntu}-node{node_tag}-py{py_ver}"
+                            python_links.append(f"[{py_ver}]({py_url})")
+
+                        python_cell = ", ".join(python_links)
+                        table_lines.append(f"| {ubuntu_display} | {node_display} | {python_cell} |")
+
+                    # Add base image row (no Node.js)
+                    base_url = f"https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu{ubuntu}-base"
+                    table_lines.append(f"| {ubuntu_display} | None | [None]({base_url}) |")
+
+                return "\n".join(table_lines)
+
+            # Write the updated files if not in dry run mode
+            if not dry_run:
+                with open('.forgejo/workflows/build.yml', 'w') as f:
+                    f.write(updated_content)
+                print("Updated build.yml")
+
+                # Update README.md
+                with open('README.md', 'r') as f:
+                    readme_content = f.read()
+
+                updated_readme = update_readme_aliases(readme_content, tag_aliases)
+
+                # Regenerate the available images table
+                new_table = generate_images_table(updated_content)
+                if new_table:
+                    # Find and replace the table section
+                    table_pattern = r'(\| Ubuntu \| Node\.js \| Python Versions Available \|\n\|[-]+\|[-]+\|[-]+\|(?:\n\|[^\n]+)*)'
+                    if re.search(table_pattern, updated_readme):
+                        updated_readme = re.sub(table_pattern, new_table, updated_readme)
+                        print("Regenerated available images table")
+                    else:
+                        print("Warning: Could not find images table in README.md")
+
+                with open('README.md', 'w') as f:
+                    f.write(updated_readme)
+                print("Updated README.md")
+            else:
+                print("DRY RUN - Would update build.yml and README.md")
+
+            # Set outputs using GitHub Actions format
+            with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                f.write(f"update_needed=true\n")
+                f.write(f"old_node_versions={','.join(current_pairs)}\n")
+                f.write(f"new_node_versions={','.join(version_pairs)}\n")
+                f.write(f"old_python_versions={','.join(current_python)}\n")
+                f.write(f"new_python_versions={','.join(python_versions)}\n")
+                f.write(f"supported_node_versions={','.join(str(v) for v in supported_versions)}\n")
+
+        else:
+            print("No update needed - versions are current")
+            # Set outputs using GitHub Actions format
+            with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                f.write(f"update_needed=false\n")
