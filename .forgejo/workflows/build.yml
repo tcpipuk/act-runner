@@ -245,3 +245,119 @@ jobs:
             NODE_VERSIONS=${{ steps.python-tags.outputs.node_versions_spaced }}
             PYTHON_VERSION=${{ matrix.python }}
           platforms: linux/amd64,linux/arm64/v8,linux/ppc64le,linux/s390x
+
+  mirror-to-github:
+    name: Mirror Images to GitHub Container Registry
+    runs-on: ubuntu-latest
+    needs: build-python
+    if: github.ref == 'refs/heads/main'  # Only mirror from main branch
+    steps:
+      - name: Install skopeo and jq
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y skopeo jq
+
+      - name: Discover and mirror image tags
+        env:
+          SOURCE_REGISTRY: git.tomfos.tr
+          SOURCE_IMAGE: tom/act-runner
+          DEST_REGISTRY: ghcr.io
+          DEST_IMAGE: tcpipuk/act-runner
+        run: |
+          echo "🔍 Discovering tags from source registry..."
+
+          # Get all tags from source registry
+          ALL_TAGS=$(skopeo list-tags docker://${SOURCE_REGISTRY}/${SOURCE_IMAGE} | jq -r '.Tags[]' | sort)
+
+          # Filter tags: exclude branch builds and other unwanted patterns
+          TAGS_TO_MIRROR=()
+
+          for TAG in $ALL_TAGS; do
+            # Skip tags with branch suffixes (anything after a dash that isn't our standard pattern)
+            if [[ "$TAG" =~ -(dev|main|update-.*|test.*|feature.*|fix.*)$ ]]; then
+              echo "⏭️  Skipping branch tag: $TAG"
+              continue
+            fi
+
+            # Include our standard patterns:
+            # - Alias tags: latest, lts, edge
+            # - Base images: ubuntu{version}-base
+            # - Node images: ubuntu{version}-node{versions}
+            # - Python images: ubuntu{version}-node{versions}-py{version}
+            if [[ "$TAG" =~ ^(latest|lts|edge)$ ]] || \
+               [[ "$TAG" =~ ^ubuntu[0-9]+\.[0-9]+-base$ ]] || \
+               [[ "$TAG" =~ ^ubuntu[0-9]+\.[0-9]+-node[0-9]+-[0-9]+$ ]] || \
+               [[ "$TAG" =~ ^ubuntu[0-9]+\.[0-9]+-node[0-9]+-[0-9]+-py[0-9]+\.[0-9]+$ ]]; then
+              TAGS_TO_MIRROR+=("$TAG")
+              echo "✅ Will mirror: $TAG"
+            else
+              echo "⏭️  Skipping unknown pattern: $TAG"
+            fi
+          done
+
+          # Mirror the filtered tags
+          echo ""
+          echo "🔄 Starting mirror of ${#TAGS_TO_MIRROR[@]} multi-architecture images to GHCR..."
+          FAILED=0
+          SUCCEEDED=0
+
+          for TAG in "${TAGS_TO_MIRROR[@]}"; do
+            echo ""
+            echo "📦 Mirroring: ${TAG}"
+
+            # Use skopeo copy with --all flag for multi-arch manifests
+            if skopeo copy \
+              --all \
+              --retry-times 3 \
+              --src-no-creds \
+              --dest-creds "tcpipuk:${{ secrets.GHCR_SYNC }}" \
+              "docker://${SOURCE_REGISTRY}/${SOURCE_IMAGE}:${TAG}" \
+              "docker://${DEST_REGISTRY}/${DEST_IMAGE}:${TAG}"; then
+              echo "✅ Successfully mirrored: ${TAG}"
+              SUCCEEDED=$((SUCCEEDED + 1))
+            else
+              echo "❌ Failed to mirror: ${TAG}"
+              FAILED=$((FAILED + 1))
+            fi
+          done
+
+          # Summary report
+          echo ""
+          echo "================================================"
+          echo "📊 Mirror Summary:"
+          echo "   Total discovered: $(echo "$ALL_TAGS" | wc -w) tags"
+          echo "   Filtered for mirroring: ${#TAGS_TO_MIRROR[@]} tags"
+          echo "   Successfully mirrored: ${SUCCEEDED}"
+          echo "   Failed: ${FAILED}"
+          echo "================================================"
+
+          if [ $FAILED -gt 0 ]; then
+            echo "⚠️ Warning: Some images failed to mirror"
+            exit 1
+          else
+            echo "✅ All images mirrored successfully!"
+          fi
+
+      - name: Verify critical tags
+        run: |
+          echo "🔍 Verifying critical tags on GHCR..."
+
+          # Check that our main alias tags exist
+          CRITICAL_TAGS="latest lts edge"
+          MISSING=0
+
+          for TAG in $CRITICAL_TAGS; do
+            if skopeo inspect --no-creds "docker://ghcr.io/tcpipuk/act-runner:${TAG}" > /dev/null 2>&1; then
+              echo "✅ Verified: ${TAG}"
+            else
+              echo "❌ Missing critical tag: ${TAG}"
+              MISSING=$((MISSING + 1))
+            fi
+          done
+
+          if [ $MISSING -gt 0 ]; then
+            echo "❌ Critical tags missing!"
+            exit 1
+          else
+            echo "✅ All critical tags verified!"
+          fi

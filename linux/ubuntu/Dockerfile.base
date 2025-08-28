@@ -79,16 +79,21 @@ RUN --mount=type=cache,target=/tmp/downloads,sharing=locked,id=downloads-${UBUNT
     --mount=type=cache,target=/var/lib/apt,sharing=locked,id=apt-lib-${UBUNTU_VERSION}-${TARGETARCH} \
     mkdir -p -m 755 /etc/apt/keyrings /etc/apt/sources.list.d && \
     \
+    # Clean up any old apt keys from previous builds and refresh APT's key cache
+    rm -f /etc/apt/trusted.gpg.d/apt.llvm.org.asc 2>/dev/null || true && \
+    rm -f /var/lib/apt/keyrings/apt.llvm.org.asc 2>/dev/null || true && \
+    apt-key del 15CF4D18AF4F7421 2>/dev/null || true && \
+    \
     # LLVM/Clang - for C/C++ development
     wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | \
-    tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc && \
-    echo "deb http://apt.llvm.org/$(lsb_release -cs)/ llvm-toolchain-$(lsb_release -cs) main" \
+    gpg --dearmor -o /etc/apt/keyrings/llvm-archive-keyring.gpg && \
+    echo "deb [signed-by=/etc/apt/keyrings/llvm-archive-keyring.gpg] \
+    http://apt.llvm.org/$(lsb_release -cs)/ llvm-toolchain-$(lsb_release -cs) main" \
     > /etc/apt/sources.list.d/llvm.list && \
     \
     # Kubernetes - for k8s operations
     curl -fsSL https://pkgs.k8s.io/core:/stable:/v${K8S_VERSION}/deb/Release.key | \
     gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg && \
-    chmod go+r /etc/apt/keyrings/kubernetes-apt-keyring.gpg && \
     echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] \
     https://pkgs.k8s.io/core:/stable:/v${K8S_VERSION}/deb/ /" \
     > /etc/apt/sources.list.d/kubernetes.list && \
@@ -96,15 +101,13 @@ RUN --mount=type=cache,target=/tmp/downloads,sharing=locked,id=downloads-${UBUNT
     # HashiCorp - for Terraform, Vault, Consul, etc.
     wget -O- https://apt.releases.hashicorp.com/gpg | \
     gpg --dearmor -o /etc/apt/keyrings/hashicorp-archive-keyring.gpg && \
-    chmod go+r /etc/apt/keyrings/hashicorp-archive-keyring.gpg && \
     echo "deb [signed-by=/etc/apt/keyrings/hashicorp-archive-keyring.gpg] \
     https://apt.releases.hashicorp.com $(lsb_release -cs) main" \
     > /etc/apt/sources.list.d/hashicorp.list && \
     \
     # GitHub CLI - for GitHub/Forgejo operations
     wget -q -O- https://cli.github.com/packages/githubcli-archive-keyring.gpg | \
-    tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null && \
-    chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg && \
+    gpg --dearmor -o /etc/apt/keyrings/githubcli-archive-keyring.gpg && \
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] \
     https://cli.github.com/packages stable main" \
     > /etc/apt/sources.list.d/github-cli.list && \
@@ -112,7 +115,6 @@ RUN --mount=type=cache,target=/tmp/downloads,sharing=locked,id=downloads-${UBUNT
     # PostgreSQL - for database tools
     curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | \
     gpg --dearmor -o /etc/apt/keyrings/postgresql-keyring.gpg && \
-    chmod go+r /etc/apt/keyrings/postgresql-keyring.gpg && \
     echo "deb [signed-by=/etc/apt/keyrings/postgresql-keyring.gpg] \
     http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
     > /etc/apt/sources.list.d/postgresql.list && \
@@ -131,7 +133,10 @@ RUN --mount=type=cache,target=/tmp/downloads,sharing=locked,id=downloads-${UBUNT
         software-properties-common \
         && add-apt-repository ppa:deadsnakes/ppa -y \
         && rm -rf /var/lib/apt/lists/*; \
-    fi
+    fi && \
+    \
+    # Ensure all apt keys have correct permissions (safety net)
+    chmod 644 /etc/apt/keyrings/*.gpg 2>/dev/null || true
 
 # Layer 3: Frequently updated tools - Docker, GitHub CLI, Rust
 # Using docker.io package for consistent multi-architecture support

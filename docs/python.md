@@ -5,10 +5,12 @@ environment variables, and configuration decisions.
 
 ## Python Versions
 
-We provide Python 3.11 and 3.13 across our Ubuntu versions:
+We provide multiple Python versions across our Ubuntu images. The specific versions available
+depend on the Ubuntu release and what's available through the system packages or
+[deadsnakes PPA](https://launchpad.net/~deadsnakes/+archive/ubuntu/ppa).
 
-- **Ubuntu 22.04 & 24.04**: Python 3.11 and 3.13 via [deadsnakes PPA](https://launchpad.net/~deadsnakes/+archive/ubuntu/ppa)
-- **Ubuntu 25.04**: Python 3.13 only (from system packages)
+See the [main README](../README.md#available-images) for the current list of available Python
+versions for each image.
 
 ## Pre-installed Python Tools
 
