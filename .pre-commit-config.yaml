@@ -22,13 +22,6 @@ repos:
       - id: check-merge-conflict
       - id: check-added-large-files
 
-  - repo: https://github.com/crate-ci/typos
-    rev: v1.35.5
-    hooks:
-      - id: typos
-      - id: typos
-        name: commit-msg-typos
-        stages: [commit-msg]
 
   - repo: https://github.com/compilerla/conventional-pre-commit
     rev: v4.2.0
