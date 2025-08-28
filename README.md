@@ -11,7 +11,7 @@ Use my convenience tags that track stable versions:
 |-----|-------------|-----------|
 | **[`latest`](https://git.tomfos.tr/tom/-/packages/container/act-runner/latest)** | Current stable - Ubuntu 24.04 LTS, Node.js 20/22, Python 3.13 | [`ubuntu24.04-node20-22-py3.13`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu24.04-node20-22-py3.13) |
 | **[`lts`](https://git.tomfos.tr/tom/-/packages/container/act-runner/lts)** | Previous LTS - Ubuntu 22.04 LTS, Node.js 20/22, Python 3.13 | [`ubuntu22.04-node20-22-py3.13`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu22.04-node20-22-py3.13) |
-| **[`edge`](https://git.tomfos.tr/tom/-/packages/container/act-runner/edge)** | Bleeding edge - Ubuntu 25.04, Node.js 22/24, Python 3.14 | [`ubuntu25.04-node22-24-py3.14`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu25.04-node22-24-py3.14) |
+| **[`edge`](https://git.tomfos.tr/tom/-/packages/container/act-runner/edge)** | Bleeding edge - Ubuntu 25.04, Node.js 22/24, Python 3.13 | [`ubuntu25.04-node22-24-py3.13`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu25.04-node22-24-py3.13) |
 
 ### Usage Examples
 
@@ -40,17 +40,14 @@ act -P ubuntu-latest=git.tomfos.tr/tom/act-runner:latest
 
 | Ubuntu | Node.js | Python Versions Available |
 |--------|---------|---------------------------|
-| 25.04 | 22, 24 | [None](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu25.04-node22-24), [3.13](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu25.04-node22-24-py3.13), [3.11](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu25.04-node22-24-py3.11) |
-| 25.04 | 20, 22 | [None](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu25.04-node20-22), [3.13](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu25.04-node20-22-py3.13), [3.11](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu25.04-node20-22-py3.11) |
-| 25.04 | 18, 20 | [None](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu25.04-node18-20), [3.13](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu25.04-node18-20-py3.13), [3.11](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu25.04-node18-20-py3.11) |
+| 25.04 | 22, 24 | [None](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu25.04-node22-24), [3.13](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu25.04-node22-24-py3.13) |
+| 25.04 | 20, 22 | [None](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu25.04-node20-22), [3.13](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu25.04-node20-22-py3.13) |
 | 25.04 | None | [None](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu25.04-base) |
 | 24.04 LTS | 22, 24 | [None](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu24.04-node22-24), [3.13](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu24.04-node22-24-py3.13), [3.11](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu24.04-node22-24-py3.11) |
 | 24.04 LTS | 20, 22 | [None](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu24.04-node20-22), [3.13](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu24.04-node20-22-py3.13), [3.11](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu24.04-node20-22-py3.11) |
-| 24.04 LTS | 18, 20 | [None](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu24.04-node18-20), [3.13](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu24.04-node18-20-py3.13), [3.11](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu24.04-node18-20-py3.11) |
 | 24.04 LTS | None | [None](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu24.04-base) |
 | 22.04 LTS | 22, 24 | [None](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu22.04-node22-24), [3.13](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu22.04-node22-24-py3.13), [3.11](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu22.04-node22-24-py3.11) |
 | 22.04 LTS | 20, 22 | [None](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu22.04-node20-22), [3.13](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu22.04-node20-22-py3.13), [3.11](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu22.04-node20-22-py3.11) |
-| 22.04 LTS | 18, 20 | [None](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu22.04-node18-20), [3.13](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu22.04-node18-20-py3.13), [3.11](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu22.04-node18-20-py3.11) |
 | 22.04 LTS | None | [None](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu22.04-base) |
 
 ## Why These Images?
