@@ -10,6 +10,11 @@ name: Update Node.js Versions
 # - Python code embedded in workflow (not separate script) for security
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.forgejo/workflows/update-node-versions.yml'
   schedule:
     # Run daily at 5am UTC (after the nightly build at 4am)
     - cron: '0 5 * * *'
@@ -328,9 +333,13 @@ jobs:
           # Check if the branch exists on remote
           if git ls-remote --heads origin "$BRANCH_NAME" | grep -q "$BRANCH_NAME"; then
               echo "Branch exists, updating existing PR"
+              # Stash our changes before switching branches
+              git stash push -m "Node.js version updates"
               git fetch origin "$BRANCH_NAME"
               git checkout "$BRANCH_NAME"
               git reset --hard origin/main  # Start fresh from main
+              # Apply our stashed changes
+              git stash pop
           else
               echo "Creating new branch for PR"
               git checkout -b "$BRANCH_NAME"
