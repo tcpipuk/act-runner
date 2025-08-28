@@ -3,7 +3,7 @@
 Production-ready runner images for [Forgejo Actions](https://forgejo.org/docs/latest/user/actions/)
 and [ACT](https://github.com/nektos/act) with comprehensive language support and nightly updates.
 
-## Quick Start
+## Quick start
 
 Use my convenience tags that track stable versions:
 
@@ -13,7 +13,7 @@ Use my convenience tags that track stable versions:
 | **[`lts`](https://git.tomfos.tr/tom/-/packages/container/act-runner/lts)** | Previous LTS - Ubuntu 22.04 LTS, Node.js 20/22, Python 3.13 | [`ubuntu22.04-node20-22-py3.13`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu22.04-node20-22-py3.13) |
 | **[`edge`](https://git.tomfos.tr/tom/-/packages/container/act-runner/edge)** | Bleeding edge - Ubuntu 25.04, Node.js 22/24, Python 3.13 | [`ubuntu25.04-node22-24-py3.13`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu25.04-node22-24-py3.13) |
 
-### Usage Examples
+### Usage examples
 
 **Forgejo/Gitea Actions:**
 
@@ -34,7 +34,7 @@ jobs:
 act -P ubuntu-latest=git.tomfos.tr/tom/act-runner:latest
 ```
 
-## Available Images
+## Available images
 
 **[View all available tags and versions →](https://git.tomfos.tr/tom/-/packages/container/act-runner/versions)**
 
@@ -50,15 +50,15 @@ act -P ubuntu-latest=git.tomfos.tr/tom/act-runner:latest
 | 22.04 LTS | 20, 22 | [None](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu22.04-node20-22), [3.9](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu22.04-node20-22-py3.9), [3.13](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu22.04-node20-22-py3.13), [3.11](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu22.04-node20-22-py3.11) |
 | 22.04 LTS | None | [None](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu22.04-base) |
 
-## Why These Images?
+## Why these images?
 
 - **Wide compatibility** - Works with Forgejo Actions, Gitea Actions, and ACT
-- **Extensive version matrix** - Ubuntu 22.04/24.04/25.04, Python 3.11/3.13, Node.js 18-24
+- **Always current** - Automatically tracks all supported Node.js and Python versions
 - **Nightly updates** with intelligent layering - only download what's changed
 - **Pre-configured tools** - Docker, build-essential, gh CLI, and development libraries ready to go
 - **Smart caching** - Layered architecture means updates are incremental, not full re-downloads
 
-## What's Included
+## What's included
 
 **All images include:**
 
@@ -81,7 +81,7 @@ act -P ubuntu-latest=git.tomfos.tr/tom/act-runner:latest
 - Pre-installed development tools (ruff, mypy, pytest, black, isort, prek)
 - See [docs/python.md](docs/python.md) for full details
 
-## Building Your Own
+## Building your own
 
 Need to customise these images? See [docs/self-build.md](docs/self-build.md) for detailed build instructions.
 
