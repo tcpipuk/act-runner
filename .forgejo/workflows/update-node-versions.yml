@@ -329,30 +329,43 @@ jobs:
           # Use a consistent branch name for all version updates
           BRANCH_NAME="update-node-versions"
 
+          echo "🔄 Preparing update branch..."
+          echo ""
+
           # Check if the branch exists on remote
-          if git ls-remote --heads origin "$BRANCH_NAME" | grep -q "$BRANCH_NAME"; then
-              echo "Branch exists, updating existing PR"
+          if git ls-remote --heads origin "$BRANCH_NAME" 2>/dev/null | grep -q "$BRANCH_NAME"; then
+              echo "📌 Found existing branch '$BRANCH_NAME'"
               # Stash our changes before switching branches
-              git stash push -m "Node.js version updates"
-              git fetch origin "$BRANCH_NAME"
-              git checkout "$BRANCH_NAME"
-              git reset --hard origin/main  # Start fresh from main
+              git stash push -m "Node.js version updates" --quiet
+              git fetch origin "$BRANCH_NAME" --quiet
+              git checkout "$BRANCH_NAME" --quiet
+              git reset --hard origin/main --quiet  # Start fresh from main
               # Apply our stashed changes
-              git stash pop
+              git stash pop --quiet
+              echo "✓ Branch updated from main"
           else
-              echo "Creating new branch for PR"
-              git checkout -b "$BRANCH_NAME"
+              echo "🌿 Creating new branch '$BRANCH_NAME'"
+              git checkout -b "$BRANCH_NAME" --quiet
+              echo "✓ Branch created"
           fi
 
+          echo ""
+          echo "📝 Committing changes..."
           # Commit changes
           git add .forgejo/workflows/build.yml README.md
-          git commit -m "Update Node.js versions
+          git commit --quiet -m "Update Node.js versions
 
           - Previous: ${{ steps.check-versions.outputs.old_versions }}
           - New: ${{ steps.check-versions.outputs.new_versions }}"
+          echo "✓ Changes committed"
 
+          echo ""
+          echo "⬆️ Pushing to remote..."
           # Push the branch (force-with-lease is safer - fails if branch was manually modified)
-          git push --force-with-lease origin "$BRANCH_NAME"
+          git push --force-with-lease origin "$BRANCH_NAME" 2>&1 | grep -v "remote:" | grep -v "Create a new pull" || true
+          echo "✓ Branch pushed to origin"
+
+          echo ""
 
           # Create PR if it doesn't exist using Forgejo API
           python3 <<'EOF'
@@ -366,12 +379,9 @@ jobs:
           repo = "${{ github.repository }}"  # e.g. tom/act-runner
           branch_name = "update-node-versions"
 
-          print("=" * 60)
-          print("PR Management Step")
-          print("=" * 60)
+          print("🔍 Checking for existing pull requests...")
 
           # Check if PR already exists
-          print(f"Checking for existing PRs from branch '{branch_name}'...")
           headers = {"Authorization": f"token {token}"}
           req = urllib.request.Request(
               f"{api_base}/repos/{repo}/pulls?state=open",
@@ -381,25 +391,20 @@ jobs:
           try:
               with urllib.request.urlopen(req) as response:
                   pulls = json.loads(response.read())
-                  print(f"Found {len(pulls)} open PR(s) total")
 
                   # Find PR from our branch
                   existing_pr = None
                   for pr in pulls:
-                      pr_head = pr.get('head', {}).get('ref', '')
-                      print(f"  - PR #{pr['number']}: {pr['title']} (branch: {pr_head})")
-                      if pr_head == branch_name:
+                      if pr.get('head', {}).get('ref', '') == branch_name:
                           existing_pr = pr
-
-                  print("-" * 60)
+                          break
 
                   if existing_pr:
-                      print(f"✓ Found existing PR #{existing_pr['number']}: {existing_pr['title']}")
-                      print(f"  URL: {existing_pr.get('html_url', 'N/A')}")
-                      print(f"  This PR will be automatically updated with the latest commit")
+                      print(f"✅ PR #{existing_pr['number']} already exists and was updated")
+                      print(f"   {existing_pr.get('html_url', 'N/A')}")
                   else:
                       # Create new PR
-                      print("No existing PR found. Creating new PR...")
+                      print("📋 Creating new pull request...")
                       pr_body = "### Automated Node.js Version Update\n\n"
                       pr_body += "* **Previous versions**: ${{ steps.check-versions.outputs.old_versions }}\n"
                       pr_body += "* **New versions**: ${{ steps.check-versions.outputs.new_versions }}\n"
@@ -414,7 +419,7 @@ jobs:
                       }
 
                       req = urllib.request.Request(
-                          f"{api_base}/repos/tom/act-runner/pulls",
+                          f"{api_base}/repos/{repo}/pulls",
                           data=json.dumps(pr_data).encode('utf-8'),
                           headers={**headers, "Content-Type": "application/json"},
                           method='POST'
@@ -422,7 +427,8 @@ jobs:
 
                       with urllib.request.urlopen(req) as response:
                           new_pr = json.loads(response.read())
-                          print(f"Created PR #{new_pr['number']}")
+                          print(f"✅ Created PR #{new_pr['number']}")
+                          print(f"   {new_pr.get('html_url', 'N/A')}")
 
           except urllib.error.HTTPError as e:
               print(f"Error: {e.code} - {e.reason}")
