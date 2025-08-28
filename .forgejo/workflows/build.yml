@@ -80,7 +80,7 @@ jobs:
       max-parallel: 3 # Limit concurrent builds
       matrix:
         ubuntu: ["22.04", "24.04", "25.04"]
-        node_versions: ["18+20", "20+22", "22+24"]
+        node_versions: ["20+22", "22+24"]
 
     steps:
       - name: Checkout
@@ -148,7 +148,7 @@ jobs:
       matrix:
         # Full matrix - generates all combinations
         ubuntu: ["22.04", "24.04", "25.04"]
-        node_versions: ["18+20", "20+22", "22+24"]
+        node_versions: ["20+22", "22+24"]
         python: ["3.11", "3.13"]
         exclude:
           # Ubuntu 25.04 doesn't have Python 3.11
