@@ -5,8 +5,8 @@ and [ACT](https://github.com/nektos/act) with comprehensive language support and
 
 > [!NOTE]
 > Images are built nightly on [my Forgejo instance](https://git.tomfos.tr/tom/act-runner) and
-> automatically mirrored to [GitHub Container Registry](https://github.com/tcpipuk/act-runner) for
-> optimal CDN performance. Both `ghcr.io/tcpipuk/act-runner` and `git.tomfos.tr/tom/act-runner`
+> automatically mirrored to [GitHub Container Registry](https://github.com/tcpipuk/act-runner/pkgs/container/act-runner)
+> for optimal CDN performance. Both `ghcr.io/tcpipuk/act-runner` and `git.tomfos.tr/tom/act-runner`
 > *should* be identical multi-architecture images supporting amd64, arm64, ppc64le, and s390x.
 
 ## Quick start
@@ -15,9 +15,10 @@ Use my convenience tags that track stable versions:
 
 | Tag | Description | Points To |
 |-----|-------------|-----------|
-| **[`latest`](https://git.tomfos.tr/tom/-/packages/container/act-runner/latest)** | Current stable - Ubuntu 24.04 LTS, Node.js 20/22, Python 3.13 | [`ubuntu24.04-node20-22-py3.13`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu24.04-node20-22-py3.13) |
-| **[`lts`](https://git.tomfos.tr/tom/-/packages/container/act-runner/lts)** | Previous LTS - Ubuntu 22.04 LTS, Node.js 20/22, Python 3.13 | [`ubuntu22.04-node20-22-py3.13`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu22.04-node20-22-py3.13) |
-| **[`edge`](https://git.tomfos.tr/tom/-/packages/container/act-runner/edge)** | Bleeding edge - Ubuntu 25.04, Node.js 22/24, Python 3.13 | [`ubuntu25.04-node22-24-py3.13`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu25.04-node22-24-py3.13) |
+| **[`ubuntu-latest`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu-latest)** | Current stable - Ubuntu 24.04 LTS, Node.js 20/22, Python 3.13 | [`ubuntu24.04-node20-22-py3.13`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu24.04-node20-22-py3.13) |
+| **[`ubuntu-lts`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu-lts)** | Previous LTS - Ubuntu 22.04 LTS, Node.js 20/22, Python 3.13 | [`ubuntu22.04-node20-22-py3.13`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu22.04-node20-22-py3.13) |
+| **[`ubuntu-edge`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu-edge)** | Bleeding edge - Ubuntu 25.04, Node.js 22/24, Python 3.13 | [`ubuntu25.04-node22-24-py3.13`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu25.04-node22-24-py3.13) |
+| **[`fedora-latest`](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora-latest)** | Current stable - Fedora 42 with development tools | [`fedora42-base`](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora42-base) |
 
 ### Usage examples
 
@@ -27,7 +28,7 @@ Use my convenience tags that track stable versions:
 jobs:
   test:
     runs-on: ubuntu-latest
-    container: ghcr.io/tcpipuk/act-runner:latest
+    container: ghcr.io/tcpipuk/act-runner:ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - run: python --version
@@ -37,7 +38,7 @@ jobs:
 **ACT:**
 
 ```bash
-act -P ubuntu-latest=ghcr.io/tcpipuk/act-runner:latest
+act -P ubuntu-latest=ghcr.io/tcpipuk/act-runner:ubuntu-latest
 ```
 
 ## Available images

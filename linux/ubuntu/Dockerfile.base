@@ -79,11 +79,6 @@ RUN --mount=type=cache,target=/tmp/downloads,sharing=locked,id=downloads-${UBUNT
     --mount=type=cache,target=/var/lib/apt,sharing=locked,id=apt-lib-${UBUNTU_VERSION}-${TARGETARCH} \
     mkdir -p -m 755 /etc/apt/keyrings /etc/apt/sources.list.d && \
     \
-    # Clean up any old apt keys from previous builds and refresh APT's key cache
-    rm -f /etc/apt/trusted.gpg.d/apt.llvm.org.asc 2>/dev/null || true && \
-    rm -f /var/lib/apt/keyrings/apt.llvm.org.asc 2>/dev/null || true && \
-    apt-key del 15CF4D18AF4F7421 2>/dev/null || true && \
-    \
     # LLVM/Clang - for C/C++ development
     wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | \
     gpg --dearmor -o /etc/apt/keyrings/llvm-archive-keyring.gpg && \
