@@ -313,10 +313,10 @@ jobs:
             echo ""
             echo "📦 Mirroring: ${TAG}"
 
-            # Use skopeo copy with --all flag for multi-arch manifests
             if skopeo copy \
               --all \
               --retry-times 3 \
+              --dest-precompute-digests \
               --src-no-creds \
               --dest-creds "tcpipuk:${{ secrets.GHCR_SYNC }}" \
               "docker://${SOURCE_REGISTRY}/${SOURCE_IMAGE}:${TAG}" \
