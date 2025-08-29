@@ -44,7 +44,6 @@ RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=dnf-cache-${FEDOR
     patch \
     pkg-config \
     procps-ng \
-    redhat-lsb-core \
     rpkg \
     rpm-build \
     rpmdevtools \
