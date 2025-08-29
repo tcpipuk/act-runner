@@ -63,7 +63,7 @@ ARG K8S_VERSION=1.31
 RUN mkdir -p /etc/yum.repos.d && \
     \
     # GitHub CLI
-    dnf config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo && \
+    dnf config-manager addrepo --from-repofile=https://cli.github.com/packages/rpm/gh-cli.repo && \
     \
     # Kubernetes
     echo '[kubernetes]' > /etc/yum.repos.d/kubernetes.repo && \
@@ -73,10 +73,10 @@ RUN mkdir -p /etc/yum.repos.d && \
     echo 'gpgcheck=1' >> /etc/yum.repos.d/kubernetes.repo && \
     echo "gpgkey=https://pkgs.k8s.io/core:/stable:/v${K8S_VERSION}/rpm/repodata/repomd.xml.key" >> /etc/yum.repos.d/kubernetes.repo && \
     # HashiCorp (Terraform, Vault, Consul, etc.)
-    dnf config-manager --add-repo https://rpm.releases.hashicorp.com/fedora/hashicorp.repo && \
+    dnf config-manager addrepo --from-repofile=https://rpm.releases.hashicorp.com/fedora/hashicorp.repo && \
     \
     # Docker CE
-    dnf config-manager --add-repo https://download.docker.com/linux/fedora/docker-ce.repo && \
+    dnf config-manager addrepo --from-repofile=https://download.docker.com/linux/fedora/docker-ce.repo && \
     \
     # Microsoft (PowerShell, .NET, Azure CLI)
     rpm --import https://packages.microsoft.com/keys/microsoft.asc && \
