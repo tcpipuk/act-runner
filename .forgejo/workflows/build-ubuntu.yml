@@ -75,7 +75,6 @@ jobs:
           tags: ${{ steps.base-tags.outputs.tags }}
           build-args: |
             UBUNTU_VERSION=${{ matrix.ubuntu }}
-            ENABLE_DEADSNAKES=${{ matrix.ubuntu != '25.04' && 'true' || 'false' }}
             K8S_VERSION=${{ needs.prepare-build.outputs.k8s-version }}
           platforms: linux/amd64,linux/arm64/v8,linux/ppc64le,linux/s390x
 
