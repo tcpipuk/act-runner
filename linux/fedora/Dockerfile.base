@@ -74,8 +74,7 @@ baseurl=https://pkgs.k8s.io/core:/stable:/v${K8S_VERSION}/rpm/
 enabled=1
 gpgcheck=1
 gpgkey=https://pkgs.k8s.io/core:/stable:/v${K8S_VERSION}/rpm/repodata/repomd.xml.key
-EOF
-    \
+EOF && \
     # HashiCorp (Terraform, Vault, Consul, etc.)
     dnf config-manager --add-repo https://rpm.releases.hashicorp.com/fedora/hashicorp.repo && \
     \
@@ -91,8 +90,7 @@ baseurl=https://packages.microsoft.com/fedora/\$releasever/prod/
 enabled=1
 gpgcheck=1
 gpgkey=https://packages.microsoft.com/keys/microsoft.asc
-EOF
-    \
+EOF && \
     # PostgreSQL
     dnf install -y https://download.postgresql.org/pub/repos/yum/reporpms/F-${FEDORA_VERSION}-x86_64/pgdg-fedora-repo-latest.noarch.rpm && \
     \
