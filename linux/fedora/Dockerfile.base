@@ -67,14 +67,12 @@ RUN mkdir -p /etc/yum.repos.d && \
     dnf config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo && \
     \
     # Kubernetes
-    cat <<EOF > /etc/yum.repos.d/kubernetes.repo
-[kubernetes]
-name=Kubernetes
-baseurl=https://pkgs.k8s.io/core:/stable:/v${K8S_VERSION}/rpm/
-enabled=1
-gpgcheck=1
-gpgkey=https://pkgs.k8s.io/core:/stable:/v${K8S_VERSION}/rpm/repodata/repomd.xml.key
-EOF && \
+    echo '[kubernetes]' > /etc/yum.repos.d/kubernetes.repo && \
+    echo 'name=Kubernetes' >> /etc/yum.repos.d/kubernetes.repo && \
+    echo "baseurl=https://pkgs.k8s.io/core:/stable:/v${K8S_VERSION}/rpm/" >> /etc/yum.repos.d/kubernetes.repo && \
+    echo 'enabled=1' >> /etc/yum.repos.d/kubernetes.repo && \
+    echo 'gpgcheck=1' >> /etc/yum.repos.d/kubernetes.repo && \
+    echo "gpgkey=https://pkgs.k8s.io/core:/stable:/v${K8S_VERSION}/rpm/repodata/repomd.xml.key" >> /etc/yum.repos.d/kubernetes.repo && \
     # HashiCorp (Terraform, Vault, Consul, etc.)
     dnf config-manager --add-repo https://rpm.releases.hashicorp.com/fedora/hashicorp.repo && \
     \
@@ -83,14 +81,12 @@ EOF && \
     \
     # Microsoft (PowerShell, .NET, Azure CLI)
     rpm --import https://packages.microsoft.com/keys/microsoft.asc && \
-    cat <<EOF > /etc/yum.repos.d/microsoft.repo
-[packages-microsoft-prod]
-name=Microsoft packages
-baseurl=https://packages.microsoft.com/fedora/\$releasever/prod/
-enabled=1
-gpgcheck=1
-gpgkey=https://packages.microsoft.com/keys/microsoft.asc
-EOF && \
+    echo '[packages-microsoft-prod]' > /etc/yum.repos.d/microsoft.repo && \
+    echo 'name=Microsoft packages' >> /etc/yum.repos.d/microsoft.repo && \
+    echo 'baseurl=https://packages.microsoft.com/fedora/$releasever/prod/' >> /etc/yum.repos.d/microsoft.repo && \
+    echo 'enabled=1' >> /etc/yum.repos.d/microsoft.repo && \
+    echo 'gpgcheck=1' >> /etc/yum.repos.d/microsoft.repo && \
+    echo 'gpgkey=https://packages.microsoft.com/keys/microsoft.asc' >> /etc/yum.repos.d/microsoft.repo && \
     # PostgreSQL
     dnf install -y https://download.postgresql.org/pub/repos/yum/reporpms/F-${FEDORA_VERSION}-x86_64/pgdg-fedora-repo-latest.noarch.rpm && \
     \
