@@ -14,7 +14,18 @@ ARG UBUNTU_VERSION
 ARG NODE_VERSIONS
 ARG TARGETARCH
 
-# Install Python packages (deadsnakes PPA already added in base if needed)
+# Add deadsnakes PPA for Python versions if not Ubuntu 25.04
+# Ubuntu 25.04 has Python 3.13 in the main repo
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache-${UBUNTU_VERSION}-${TARGETARCH} \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked,id=apt-lib-${UBUNTU_VERSION}-${TARGETARCH} \
+    if [ "${UBUNTU_VERSION}" != "25.04" ]; then \
+        apt-get update && apt-get install -y --no-install-recommends \
+        software-properties-common \
+        && add-apt-repository ppa:deadsnakes/ppa -y \
+        && rm -rf /var/lib/apt/lists/*; \
+    fi
+
+# Install Python packages
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache-${UBUNTU_VERSION}-${TARGETARCH} \
     --mount=type=cache,target=/var/lib/apt,sharing=locked,id=apt-lib-${UBUNTU_VERSION}-${TARGETARCH} \
     apt-get update && apt-get install -y --no-install-recommends \
@@ -45,6 +56,77 @@ RUN --mount=type=cache,target=/root/.cache/uv,sharing=locked,id=uv-cache-${UBUNT
     && uv tool install pytest \
     && uv tool install black \
     && uv tool install isort
+
+# Install additional development tools - GitHub CLI and Rust
+# These are frequently updated but small, so we install them after Python
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache-${UBUNTU_VERSION}-${TARGETARCH} \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked,id=apt-lib-${UBUNTU_VERSION}-${TARGETARCH} \
+    mkdir -p -m 755 /etc/apt/keyrings /etc/apt/sources.list.d && \
+    \
+    # GitHub CLI repository
+    wget -q -O- https://cli.github.com/packages/githubcli-archive-keyring.gpg | \
+    gpg --dearmor -o /etc/apt/keyrings/githubcli-archive-keyring.gpg && \
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] \
+    https://cli.github.com/packages stable main" \
+    > /etc/apt/sources.list.d/github-cli.list && \
+    \
+    # Install GitHub CLI
+    apt-get update && apt-get install -y --no-install-recommends gh && \
+    rm -rf /var/lib/apt/lists/* && \
+    \
+    # Install Rust via official installer (rustup only, no default toolchain)
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
+        sh -s -- -y --no-modify-path --profile minimal --default-toolchain none && \
+    echo 'source $HOME/.cargo/env' >> /etc/bash.bashrc
+
+# Update PATH to include Rust
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+# Configure additional APT repositories for user convenience
+# This layer is intentionally last to minimize cache invalidation impact
+# Users can install: clang, docker-ce, dotnet, kubectl, psql, terraform, etc.
+ARG K8S_VERSION=1.31
+RUN --mount=type=cache,target=/tmp/downloads,sharing=locked,id=downloads-${UBUNTU_VERSION}-${TARGETARCH} \
+    mkdir -p -m 755 /etc/apt/keyrings /etc/apt/sources.list.d && \
+    \
+    # LLVM/Clang - for C/C++ development
+    wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | \
+    gpg --dearmor -o /etc/apt/keyrings/llvm-archive-keyring.gpg && \
+    echo "deb [signed-by=/etc/apt/keyrings/llvm-archive-keyring.gpg] \
+    http://apt.llvm.org/$(lsb_release -cs)/ llvm-toolchain-$(lsb_release -cs) main" \
+    > /etc/apt/sources.list.d/llvm.list && \
+    \
+    # Kubernetes - for k8s operations
+    curl -fsSL https://pkgs.k8s.io/core:/stable:/v${K8S_VERSION}/deb/Release.key | \
+    gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg && \
+    echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] \
+    https://pkgs.k8s.io/core:/stable:/v${K8S_VERSION}/deb/ /" \
+    > /etc/apt/sources.list.d/kubernetes.list && \
+    \
+    # HashiCorp - for Terraform, Vault, Consul, etc.
+    wget -O- https://apt.releases.hashicorp.com/gpg | \
+    gpg --dearmor -o /etc/apt/keyrings/hashicorp-archive-keyring.gpg && \
+    echo "deb [signed-by=/etc/apt/keyrings/hashicorp-archive-keyring.gpg] \
+    https://apt.releases.hashicorp.com $(lsb_release -cs) main" \
+    > /etc/apt/sources.list.d/hashicorp.list && \
+    \
+    # PostgreSQL - for database tools
+    curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | \
+    gpg --dearmor -o /etc/apt/keyrings/postgresql-keyring.gpg && \
+    echo "deb [signed-by=/etc/apt/keyrings/postgresql-keyring.gpg] \
+    http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+    > /etc/apt/sources.list.d/postgresql.list && \
+    \
+    # Microsoft ecosystem (PowerShell, .NET, Azure CLI)
+    PACKAGE_PATH="/tmp/downloads/packages-microsoft-prod-$(lsb_release -rs).deb" && \
+    if [ ! -f "${PACKAGE_PATH}" ]; then \
+    wget -q https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/packages-microsoft-prod.deb \
+    -O "${PACKAGE_PATH}"; \
+    fi && \
+    dpkg -i "${PACKAGE_PATH}" && \
+    \
+    # Ensure all apt keys have correct permissions (safety net)
+    chmod 644 /etc/apt/keyrings/*.gpg 2>/dev/null || true
 
 # Metadata labels (static values only for better caching)
 LABEL org.opencontainers.image.title="act-runner-ubuntu${UBUNTU_VERSION}-node${NODE_VERSIONS// /-}-py${PYTHON_VERSION}" \
