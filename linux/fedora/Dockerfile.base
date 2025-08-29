@@ -1,0 +1,134 @@
+# Base ACT runner image for Fedora with essential tools
+ARG FEDORA_VERSION=42
+FROM fedora:${FEDORA_VERSION} AS base
+
+# Re-declare ARG after FROM
+ARG FEDORA_VERSION
+ARG TARGETARCH
+
+# Set shell options for better error detection
+SHELL ["/bin/bash", "-e", "-c"]
+
+# Metadata
+LABEL org.opencontainers.image.title="act-runner-fedora${FEDORA_VERSION}-base" \
+    org.opencontainers.image.description="Optimized ACT/Forgejo runner base image with essential CI tools for Fedora ${FEDORA_VERSION}" \
+    org.opencontainers.image.url="https://git.tomfos.tr/tom/act-runner" \
+    org.opencontainers.image.source="https://git.tomfos.tr/tom/act-runner" \
+    org.opencontainers.image.documentation="https://git.tomfos.tr/tom/act-runner/src/branch/main/README.md" \
+    org.opencontainers.image.vendor="git.tomfos.tr" \
+    org.opencontainers.image.licenses="MIT" \
+    org.opencontainers.image.authors="Tom Foster"
+
+# Layer 1: Core system tools and libraries (rarely change)
+RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=dnf-cache-${FEDORA_VERSION}-${TARGETARCH} \
+    dnf install -y \
+    # Essentials and build tools (alphabetically sorted)
+    bzip2 \
+    ca-certificates \
+    cmake \
+    curl \
+    fedora-packager \
+    file \
+    findutils \
+    gcc \
+    gcc-c++ \
+    git \
+    git-lfs \
+    gnupg2 \
+    gzip \
+    jq \
+    libffi-devel \
+    make \
+    openssh-clients \
+    openssl-devel \
+    patch \
+    pkg-config \
+    procps-ng \
+    redhat-lsb-core \
+    rpkg \
+    rpm-build \
+    rpmdevtools \
+    rsync \
+    sudo \
+    tar \
+    unzip \
+    wget \
+    which \
+    xz \
+    zip \
+    && dnf clean all
+
+# Layer 2: Configure package repositories
+# This enables users to easily install: docker-ce, gh, dotnet, kubectl, terraform, etc.
+ARG K8S_VERSION=1.31
+RUN mkdir -p /etc/yum.repos.d && \
+    \
+    # GitHub CLI
+    dnf config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo && \
+    \
+    # Kubernetes
+    cat <<EOF > /etc/yum.repos.d/kubernetes.repo
+[kubernetes]
+name=Kubernetes
+baseurl=https://pkgs.k8s.io/core:/stable:/v${K8S_VERSION}/rpm/
+enabled=1
+gpgcheck=1
+gpgkey=https://pkgs.k8s.io/core:/stable:/v${K8S_VERSION}/rpm/repodata/repomd.xml.key
+EOF
+    \
+    # HashiCorp (Terraform, Vault, Consul, etc.)
+    dnf config-manager --add-repo https://rpm.releases.hashicorp.com/fedora/hashicorp.repo && \
+    \
+    # Docker CE
+    dnf config-manager --add-repo https://download.docker.com/linux/fedora/docker-ce.repo && \
+    \
+    # Microsoft (PowerShell, .NET, Azure CLI)
+    rpm --import https://packages.microsoft.com/keys/microsoft.asc && \
+    cat <<EOF > /etc/yum.repos.d/microsoft.repo
+[packages-microsoft-prod]
+name=Microsoft packages
+baseurl=https://packages.microsoft.com/fedora/\$releasever/prod/
+enabled=1
+gpgcheck=1
+gpgkey=https://packages.microsoft.com/keys/microsoft.asc
+EOF
+    \
+    # PostgreSQL
+    dnf install -y https://download.postgresql.org/pub/repos/yum/reporpms/F-${FEDORA_VERSION}-x86_64/pgdg-fedora-repo-latest.noarch.rpm && \
+    \
+    # Update repository metadata
+    dnf makecache
+
+# Layer 3: Frequently updated tools - Docker, GitHub CLI, Node.js, Python, development tools
+# Using moby-engine (Fedora's Docker package) for consistent support
+RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=dnf-cache-${FEDORA_VERSION}-${TARGETARCH} \
+    dnf install -y \
+    moby-engine \
+    docker-compose \
+    gh \
+    nodejs \
+    npm \
+    python3 \
+    python3-pip \
+    && dnf clean all \
+    && systemctl disable docker.service docker.socket || true \
+    && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
+        sh -s -- -y --no-modify-path --profile minimal --default-toolchain none && \
+    echo 'source $HOME/.cargo/env' >> /etc/bashrc \
+    && mkdir -p -m 755 /opt/hostedtoolcache
+
+# Set up environment
+ENV AGENT_TOOLSDIRECTORY=/opt/hostedtoolcache \
+    FEDORA_VERSION=${FEDORA_VERSION} \
+    PATH="/root/.cargo/bin:${PATH}"
+
+WORKDIR /tmp
+
+# Verify installations
+RUN git --version && \
+    docker --version && \
+    gh --version && \
+    node --version && \
+    npm --version && \
+    python3 --version && \
+    rustup --version

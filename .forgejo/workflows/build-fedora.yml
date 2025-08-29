@@ -1,0 +1,189 @@
+name: Build Fedora Runner Images
+
+on:
+  push:
+    paths:
+      - "linux/fedora/**"
+      - ".forgejo/workflows/build-fedora.yml"
+  schedule:
+    - cron: '0 4 * * *'  # Run daily at 4am UTC
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: git.tomfos.tr
+  IMAGE_NAME: tom/act-runner
+
+jobs:
+  prepare-build:
+    name: Prepare Build
+    runs-on: ubuntu-latest
+    outputs:
+      k8s-version: ${{ steps.k8s.outputs.version }}
+    steps:
+      - name: Get stable K8s version
+        id: k8s
+        run: |
+          K8S_VERSION=$(curl -L -s https://dl.k8s.io/release/stable.txt | cut -d. -f1-2 | sed 's/v//')
+          echo "version=${K8S_VERSION}" >> $GITHUB_OUTPUT
+          echo "🎯 Kubernetes stable version: ${K8S_VERSION}"
+
+  build-fedora-base:
+    name: Build Fedora 42 Base
+    runs-on: ubuntu-latest
+    needs: prepare-build
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver: remote
+          endpoint: tcp://buildkit:8125
+
+      - name: Log in to Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.FORGEJO_TOKEN }}
+
+      - name: Generate Fedora tags
+        id: fedora-tags
+        run: |
+          BASE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:fedora42-base"
+          ALIAS_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:fedora-latest"
+
+          if [ "${{ github.ref_name }}" != "main" ]; then
+            BASE_TAG="${BASE_TAG}-${{ github.ref_name }}"
+            ALIAS_TAG="${ALIAS_TAG}-${{ github.ref_name }}"
+          fi
+
+          TAGS="${BASE_TAG},${ALIAS_TAG}"
+          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
+          echo "📦 Fedora image tags: ${TAGS}"
+
+      - name: Build and push Fedora base image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./linux/fedora
+          file: ./linux/fedora/Dockerfile.base
+          push: true
+          tags: ${{ steps.fedora-tags.outputs.tags }}
+          build-args: |
+            FEDORA_VERSION=42
+            K8S_VERSION=${{ needs.prepare-build.outputs.k8s-version }}
+          platforms: linux/amd64,linux/arm64/v8,linux/ppc64le,linux/s390x
+
+  mirror-to-github:
+    name: Mirror Images to GHCR
+    runs-on: ubuntu-latest
+    needs: build-fedora-base
+    if: github.ref == 'refs/heads/main'  # Only mirror from main branch
+    steps:
+      - name: Install skopeo and jq
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y skopeo jq
+
+      - name: Discover and mirror Fedora image tags
+        env:
+          SOURCE_REGISTRY: git.tomfos.tr
+          SOURCE_IMAGE: tom/act-runner
+          DEST_REGISTRY: ghcr.io
+          DEST_IMAGE: tcpipuk/act-runner
+        run: |
+          echo "🔍 Discovering Fedora tags from source registry..."
+
+          # Get all tags from source registry
+          ALL_TAGS=$(skopeo list-tags docker://${SOURCE_REGISTRY}/${SOURCE_IMAGE} | jq -r '.Tags[]' | sort)
+
+          # Filter tags: only Fedora-related tags
+          TAGS_TO_MIRROR=()
+
+          for TAG in $ALL_TAGS; do
+            # Skip tags with branch suffixes (anything after a dash that isn't our standard pattern)
+            if [[ "$TAG" =~ -(dev|main|update-.*|test.*|feature.*|fix.*)$ ]]; then
+              echo "⏭️  Skipping branch tag: $TAG"
+              continue
+            fi
+
+            # Include our Fedora patterns:
+            # - Alias tag: fedora-latest
+            # - Base images: fedora{version}-base
+            if [[ "$TAG" =~ ^fedora-latest$ ]] || \
+               [[ "$TAG" =~ ^fedora[0-9]+-base$ ]]; then
+              TAGS_TO_MIRROR+=("$TAG")
+              echo "✅ Will mirror: $TAG"
+            fi
+          done
+
+          # Mirror the filtered tags
+          echo ""
+          echo "🔄 Starting mirror of ${#TAGS_TO_MIRROR[@]} Fedora multi-architecture images to GHCR..."
+          FAILED=0
+          SUCCEEDED=0
+
+          for TAG in "${TAGS_TO_MIRROR[@]}"; do
+            echo ""
+            echo "📦 Mirroring: ${TAG}"
+
+            if skopeo copy \
+              --all \
+              --retry-times 3 \
+              --dest-precompute-digests \
+              --src-no-creds \
+              --dest-creds "tcpipuk:${{ secrets.GHCR_SYNC }}" \
+              "docker://${SOURCE_REGISTRY}/${SOURCE_IMAGE}:${TAG}" \
+              "docker://${DEST_REGISTRY}/${DEST_IMAGE}:${TAG}"; then
+              echo "✅ Successfully mirrored: ${TAG}"
+              SUCCEEDED=$((SUCCEEDED + 1))
+            else
+              echo "❌ Failed to mirror: ${TAG}"
+              FAILED=$((FAILED + 1))
+            fi
+          done
+
+          # Summary report
+          echo ""
+          echo "================================================"
+          echo "📊 Mirror Summary:"
+          echo "   Filtered for mirroring: ${#TAGS_TO_MIRROR[@]} Fedora tags"
+          echo "   Successfully mirrored: ${SUCCEEDED}"
+          echo "   Failed: ${FAILED}"
+          echo "================================================"
+
+          if [ $FAILED -gt 0 ]; then
+            echo "⚠️ Warning: Some images failed to mirror"
+            exit 1
+          else
+            echo "✅ All Fedora images mirrored successfully!"
+          fi
+
+      - name: Verify critical Fedora tags
+        run: |
+          echo "🔍 Verifying critical Fedora tags on GHCR..."
+
+          # Check that our main Fedora alias tag exists
+          CRITICAL_TAGS="fedora-latest"
+          MISSING=0
+
+          for TAG in $CRITICAL_TAGS; do
+            if skopeo inspect --no-creds "docker://ghcr.io/tcpipuk/act-runner:${TAG}" > /dev/null 2>&1; then
+              echo "✅ Verified: ${TAG}"
+            else
+              echo "❌ Missing critical tag: ${TAG}"
+              MISSING=$((MISSING + 1))
+            fi
+          done
+
+          if [ $MISSING -gt 0 ]; then
+            echo "❌ Critical Fedora tags missing!"
+            exit 1
+          else
+            echo "✅ All critical Fedora tags verified!"
+          fi

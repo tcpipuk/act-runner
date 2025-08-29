@@ -1,10 +1,10 @@
-name: Build Runner Images
+name: Build Ubuntu Runner Images
 
 on:
   push:
     paths:
-      - "linux/**"
-      - ".forgejo/workflows/build.yml"
+      - "linux/ubuntu/**"
+      - ".forgejo/workflows/build-ubuntu.yml"
   schedule:
     - cron: '0 4 * * *'  # Run daily at 4am UTC
   workflow_dispatch:
@@ -171,16 +171,16 @@ jobs:
           - ubuntu: "25.04"
             node_versions: "22+24"
             python: "3.13"
-            tag_alias: "edge"
+            tag_alias: "ubuntu-edge"
           # Add tag aliases for specific versions
           - ubuntu: "24.04"
             node_versions: "20+22"
             python: "3.13"
-            tag_alias: "latest"
+            tag_alias: "ubuntu-latest"
           - ubuntu: "22.04"
             node_versions: "20+22"
             python: "3.13"
-            tag_alias: "lts"
+            tag_alias: "ubuntu-lts"
 
     steps:
       - name: Checkout
@@ -255,7 +255,7 @@ jobs:
           platforms: linux/amd64,linux/arm64/v8,linux/ppc64le,linux/s390x
 
   mirror-to-github:
-    name: Mirror Images to GitHub Container Registry
+    name: Mirror Images to GHCR
     runs-on: ubuntu-latest
     needs: build-python
     if: github.ref == 'refs/heads/main'  # Only mirror from main branch
@@ -287,12 +287,7 @@ jobs:
               continue
             fi
 
-            # Include our standard patterns:
-            # - Alias tags: latest, lts, edge
-            # - Base images: ubuntu{version}-base
-            # - Node images: ubuntu{version}-node{versions}
-            # - Python images: ubuntu{version}-node{versions}-py{version}
-            if [[ "$TAG" =~ ^(latest|lts|edge)$ ]] || \
+            if [[ "$TAG" =~ ^(ubuntu-latest|ubuntu-lts|ubuntu-edge)$ ]] || \
                [[ "$TAG" =~ ^ubuntu[0-9]+\.[0-9]+-base$ ]] || \
                [[ "$TAG" =~ ^ubuntu[0-9]+\.[0-9]+-node[0-9]+-[0-9]+$ ]] || \
                [[ "$TAG" =~ ^ubuntu[0-9]+\.[0-9]+-node[0-9]+-[0-9]+-py[0-9]+\.[0-9]+$ ]]; then
@@ -351,7 +346,7 @@ jobs:
           echo "🔍 Verifying critical tags on GHCR..."
 
           # Check that our main alias tags exist
-          CRITICAL_TAGS="latest lts edge"
+          CRITICAL_TAGS="ubuntu-latest ubuntu-lts ubuntu-edge"
           MISSING=0
 
           for TAG in $CRITICAL_TAGS; do
