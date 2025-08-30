@@ -600,10 +600,13 @@ jobs:
           token: ${{ secrets.FORGEJO_TOKEN }}
           fetch-depth: 0
 
-      - name: Generate Quick Start table
-        id: quickstart
+      - name: Generate Ubuntu images table
+        id: ubuntu-table
         run: |
-          echo "📝 Generating Quick Start table..."
+          echo "📝 Generating Ubuntu images table..."
+
+          # Define all Python versions we support (matches the matrix in build-python)
+          PYTHON_VERSIONS="3.10 3.11 3.12 3.13"
 
           # Get versions from prepare-build outputs
           LTS_VERSION="${{ needs.prepare-build.outputs.lts-ubuntu }}"
@@ -621,49 +624,14 @@ jobs:
           NODE_LTS_TAG=$(echo "${NODE_LTS}" | tr '+' '-')
           NODE_LATEST_TAG=$(echo "${NODE_LATEST}" | tr '+' '-')
 
-          # Generate Quick Start table
-          {
-            echo "| Tag | Description | Points To |"
-            echo "|-----|-------------|-----------|"
-            echo "| **[\`ubuntu-rolling\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu-rolling)** | Bleeding edge - Ubuntu ${ROLLING_VERSION}, Node.js ${NODE_LATEST_DISPLAY}, Python ${ROLLING_PYTHON} | [\`ubuntu${ROLLING_VERSION}-node${NODE_LATEST_TAG}-py${ROLLING_PYTHON}\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${ROLLING_VERSION}-node${NODE_LATEST_TAG}-py${ROLLING_PYTHON}) |"
-            echo "| **[\`ubuntu-latest\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu-latest)** | Current stable - Ubuntu ${LATEST_VERSION} LTS, Node.js ${NODE_LATEST_DISPLAY}, Python ${LATEST_PYTHON} | [\`ubuntu${LATEST_VERSION}-node${NODE_LATEST_TAG}-py${LATEST_PYTHON}\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${LATEST_VERSION}-node${NODE_LATEST_TAG}-py${LATEST_PYTHON}) |"
-            echo "| **[\`ubuntu-lts\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu-lts)** | Previous LTS - Ubuntu ${LTS_VERSION} LTS, Node.js ${NODE_LTS_DISPLAY}, Python ${LTS_PYTHON} | [\`ubuntu${LTS_VERSION}-node${NODE_LTS_TAG}-py${LTS_PYTHON}\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${LTS_VERSION}-node${NODE_LTS_TAG}-py${LTS_PYTHON}) |"
-            echo "| **[\`fedora-latest\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora-latest)** | Current stable - Fedora 42 with development tools | [\`fedora42-base\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora42-base) |"
-          } > /tmp/quickstart.md
-
-          echo "✅ Generated Quick Start table:"
-          echo "================================================"
-          cat /tmp/quickstart.md
-          echo "================================================"
-
-      - name: Generate Available Images table
-        id: images
-        run: |
-          echo "📝 Generating Available Images table..."
-
-          # Define all Python versions we support (matches the matrix in build-python)
-          PYTHON_VERSIONS="3.10 3.11 3.12 3.13"
-
-          # Get versions from prepare-build outputs
-          LTS_VERSION="${{ needs.prepare-build.outputs.lts-ubuntu }}"
-          LTS_PYTHON="${{ needs.prepare-build.outputs.lts-python }}"
-          LATEST_VERSION="${{ needs.prepare-build.outputs.latest-ubuntu }}"
-          LATEST_PYTHON="${{ needs.prepare-build.outputs.latest-python }}"
-          ROLLING_VERSION="${{ needs.prepare-build.outputs.rolling-ubuntu }}"
-          ROLLING_PYTHON="${{ needs.prepare-build.outputs.rolling-python }}"
-          NODE_LTS="${{ needs.prepare-build.outputs.node-lts }}"
-          NODE_LATEST="${{ needs.prepare-build.outputs.node-latest }}"
-
-          # Convert Node versions for display and tags
-          NODE_LTS_DISPLAY=$(echo "${NODE_LTS}" | tr '+' '/')
-          NODE_LATEST_DISPLAY=$(echo "${NODE_LATEST}" | tr '+' '/')
-          NODE_LTS_TAG=$(echo "${NODE_LTS}" | tr '+' '-')
-          NODE_LATEST_TAG=$(echo "${NODE_LATEST}" | tr '+' '-')
-
-          # Generate Available Images table
+          # Generate Ubuntu images table with convenience tags at top
           {
             echo "| Ubuntu | Node.js | Python Versions Available |"
             echo "|--------|---------|---------------------------|"
+            echo "| **[\`ubuntu-rolling\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu-rolling)** - Bleeding edge | ${NODE_LATEST_DISPLAY} | [\`ubuntu${ROLLING_VERSION}-node${NODE_LATEST_TAG}-py${ROLLING_PYTHON}\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${ROLLING_VERSION}-node${NODE_LATEST_TAG}-py${ROLLING_PYTHON}) |"
+            echo "| **[\`ubuntu-latest\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu-latest)** - Current stable | ${NODE_LATEST_DISPLAY} | [\`ubuntu${LATEST_VERSION}-node${NODE_LATEST_TAG}-py${LATEST_PYTHON}\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${LATEST_VERSION}-node${NODE_LATEST_TAG}-py${LATEST_PYTHON}) |"
+            echo "| **[\`ubuntu-lts\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu-lts)** - Previous LTS | ${NODE_LTS_DISPLAY} | [\`ubuntu${LTS_VERSION}-node${NODE_LTS_TAG}-py${LTS_PYTHON}\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${LTS_VERSION}-node${NODE_LTS_TAG}-py${LTS_PYTHON}) |"
+            echo "|  |  |  |"
 
             # Rolling release rows (only native Python)
             echo "| ${ROLLING_VERSION} | ${NODE_LATEST_DISPLAY} | [None](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${ROLLING_VERSION}-node${NODE_LATEST_TAG}), [**${ROLLING_PYTHON}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${ROLLING_VERSION}-node${NODE_LATEST_TAG}-py${ROLLING_PYTHON}) |"
@@ -713,36 +681,26 @@ jobs:
             done
             echo "| ${LTS_VERSION} LTS | ${NODE_LTS_DISPLAY} | ${LTS_PYTHON_LINKS_LTS} |"
             echo "| ${LTS_VERSION} LTS | None | [None](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${LTS_VERSION}-base) |"
-          } > /tmp/images.md
+          } > /tmp/ubuntu-images.md
 
-          echo "✅ Generated Available Images table:"
+          echo "✅ Generated Ubuntu images table:"
           echo "================================================"
-          cat /tmp/images.md
+          cat /tmp/ubuntu-images.md
           echo "================================================"
 
       - name: Update README
         id: update
         run: |
-          echo "📝 Updating README with new tables..."
+          echo "📝 Updating README with Ubuntu images table..."
 
           # Read current README
           CURRENT_README=$(cat README.md)
 
-          # Extract and update Quick Start table
-          QUICKSTART_CONTENT=$(cat /tmp/quickstart.md)
-          NEW_README=$(echo "$CURRENT_README" | awk -v table="$QUICKSTART_CONTENT" '
+          # Extract and update Ubuntu images table
+          UBUNTU_CONTENT=$(cat /tmp/ubuntu-images.md)
+          NEW_README=$(echo "$CURRENT_README" | awk -v table="$UBUNTU_CONTENT" '
             BEGIN { in_table = 0 }
-            /^Use my convenience tags/ { print; getline; print; getline; print table; in_table = 1; next }
-            in_table && /^\|/ { next }
-            in_table && !/^\|/ { in_table = 0 }
-            { print }
-          ')
-
-          # Extract and update Available Images table
-          IMAGES_CONTENT=$(cat /tmp/images.md)
-          NEW_README=$(echo "$NEW_README" | awk -v table="$IMAGES_CONTENT" '
-            BEGIN { in_table = 0 }
-            /^\*\*\[View all available tags/ { print; getline; print; getline; print table; in_table = 1; next }
+            /^## Ubuntu images/ { print; getline; print; getline; print; getline; print table; in_table = 1; next }
             in_table && /^\|/ { next }
             in_table && !/^\|/ { in_table = 0 }
             { print }
@@ -775,12 +733,12 @@ jobs:
           git config user.email "actions@noreply.git.tomfos.tr"
 
           # Create or update branch
-          BRANCH_NAME="update-readme-versions"
+          BRANCH_NAME="update-ubuntu-versions"
           git checkout -B $BRANCH_NAME
 
           # Commit changes
           git add README.md
-          git commit -m "chore: update README with current versions
+          git commit -m "chore: update Ubuntu images in README
 
           Node.js LTS: ${{ needs.prepare-build.outputs.node-lts }}
           Node.js Latest: ${{ needs.prepare-build.outputs.node-latest }}
@@ -801,10 +759,10 @@ jobs:
               -H "Content-Type: application/json" \
               "https://git.tomfos.tr/api/v1/repos/tom/act-runner/pulls" \
               -d "{
-                \"title\": \"chore: update README with current versions\",
+                \"title\": \"chore: update Ubuntu images in README\",
                 \"head\": \"$BRANCH_NAME\",
                 \"base\": \"main\",
-                \"body\": \"### Automated README Update\\n\\nThis PR updates the README tables to reflect the current runtime versions:\\n\\n- **Node.js LTS**: ${{ needs.prepare-build.outputs.node-lts }}\\n- **Node.js Latest**: ${{ needs.prepare-build.outputs.node-latest }}\\n- **Ubuntu Rolling**: ${{ needs.prepare-build.outputs.rolling-ubuntu }}\\n- **Python Rolling**: ${{ needs.prepare-build.outputs.rolling-python }}\\n\\nThe tables are regenerated based on the actual images being built.\"
+                \"body\": \"### Automated Ubuntu Images Update\\n\\nThis PR updates the Ubuntu images table to reflect the current runtime versions:\\n\\n- **Node.js LTS**: ${{ needs.prepare-build.outputs.node-lts }}\\n- **Node.js Latest**: ${{ needs.prepare-build.outputs.node-latest }}\\n- **Ubuntu Rolling**: ${{ needs.prepare-build.outputs.rolling-ubuntu }}\\n- **Python Rolling**: ${{ needs.prepare-build.outputs.rolling-python }}\\n\\nThe Ubuntu images table is regenerated based on the actual images being built.\"
               }"
             echo "✅ Created new PR for README updates"
           else

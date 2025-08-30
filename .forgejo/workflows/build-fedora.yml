@@ -23,6 +23,14 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       k8s-version: ${{ steps.k8s.outputs.version }}
+      lts-node: ${{ steps.node.outputs.lts }}
+      latest-node: ${{ steps.node.outputs.latest }}
+      fedora-lts: ${{ steps.fedora-lts.outputs.fedora }}
+      fedora-lts-python: ${{ steps.fedora-lts.outputs.python }}
+      fedora-latest: ${{ steps.fedora-latest.outputs.fedora }}
+      fedora-latest-python: ${{ steps.fedora-latest.outputs.python }}
+      fedora-rawhide: ${{ steps.fedora-rawhide.outputs.fedora }}
+      fedora-rawhide-python: ${{ steps.fedora-rawhide.outputs.python }}
     steps:
       - name: Get stable K8s version
         id: k8s
@@ -31,10 +39,97 @@ jobs:
           echo "version=${K8S_VERSION}" >> $GITHUB_OUTPUT
           echo "🎯 Kubernetes stable version: ${K8S_VERSION}"
 
-  build-fedora-base:
-    name: Build Fedora 42 Base
+      - name: Detect Node.js versions
+        id: node
+        run: |
+          # Get Node.js release schedule
+          SCHEDULE=$(curl -sL https://raw.githubusercontent.com/nodejs/Release/main/schedule.json)
+
+          # Get current date
+          TODAY=$(date -u +%Y-%m-%d)
+
+          # Find LTS versions (must have lts field and be in Active/Maintenance)
+          LTS_VERSIONS=$(echo "$SCHEDULE" | jq -r --arg today "$TODAY" '
+            to_entries
+            | map(select(
+                .value.lts != null and
+                .value.start <= $today and
+                .value.end >= $today
+              ))
+            | map(ltrimstr("v"))
+            | sort_by(. | tonumber)
+            | .[-2:]
+            | join("+")
+          ')
+
+          # Find latest versions (Current/Active, including latest non-LTS)
+          LATEST_VERSIONS=$(echo "$SCHEDULE" | jq -r --arg today "$TODAY" '
+            to_entries
+            | map(select(.value.start <= $today and .value.end >= $today))
+            | map(ltrimstr("v"))
+            | sort_by(. | tonumber)
+            | .[-2:]
+            | join("+")
+          ')
+
+          echo "lts=${LTS_VERSIONS}" >> $GITHUB_OUTPUT
+          echo "latest=${LATEST_VERSIONS}" >> $GITHUB_OUTPUT
+          echo "📦 Node.js LTS versions: ${LTS_VERSIONS}"
+          echo "📦 Node.js latest versions: ${LATEST_VERSIONS}"
+
+      - name: Detect Fedora LTS version
+        id: fedora-lts
+        run: |
+          # Fedora 41 is our designated LTS
+          docker pull fedora:41
+          FEDORA_VERSION=$(docker run --rm fedora:41 bash -c "grep VERSION_ID /etc/os-release | cut -d= -f2 | tr -d '\"'")
+          # Check what Python version is available
+          PYTHON_VERSION=$(docker run --rm fedora:41 bash -c "
+            dnf info python3 2>/dev/null | grep '^Version' | head -1 | awk '{print \$3}' | cut -d. -f1-2
+          ")
+          echo "fedora=${FEDORA_VERSION}" >> $GITHUB_OUTPUT
+          echo "python=${PYTHON_VERSION}" >> $GITHUB_OUTPUT
+          echo "📦 Fedora LTS is ${FEDORA_VERSION} with Python ${PYTHON_VERSION}"
+
+      - name: Detect Fedora latest version
+        id: fedora-latest
+        run: |
+          docker pull fedora:latest
+          FEDORA_VERSION=$(docker run --rm fedora:latest bash -c "grep VERSION_ID /etc/os-release | cut -d= -f2 | tr -d '\"'")
+          # Check what Python version is available
+          PYTHON_VERSION=$(docker run --rm fedora:latest bash -c "
+            dnf info python3 2>/dev/null | grep '^Version' | head -1 | awk '{print \$3}' | cut -d. -f1-2
+          ")
+          echo "fedora=${FEDORA_VERSION}" >> $GITHUB_OUTPUT
+          echo "python=${PYTHON_VERSION}" >> $GITHUB_OUTPUT
+          echo "📦 Fedora latest is ${FEDORA_VERSION} with Python ${PYTHON_VERSION}"
+
+      - name: Detect Fedora rawhide version
+        id: fedora-rawhide
+        run: |
+          docker pull fedora:rawhide
+          # Rawhide doesn't have a VERSION_ID, so we use "rawhide"
+          # Check what Python version is available
+          PYTHON_VERSION=$(docker run --rm fedora:rawhide bash -c "
+            dnf info python3 2>/dev/null | grep '^Version' | head -1 | awk '{print \$3}' | cut -d. -f1-2
+          ")
+          echo "fedora=rawhide" >> $GITHUB_OUTPUT
+          echo "python=${PYTHON_VERSION}" >> $GITHUB_OUTPUT
+          echo "📦 Fedora rawhide is development branch with Python ${PYTHON_VERSION}"
+
+  build-fedora:
+    name: Build Fedora ${{ matrix.fedora == 'lts' && 'LTS' || matrix.fedora == 'latest' && 'Latest' || matrix.fedora == 'rawhide' && 'Rawhide' }} with Node.js ${{ matrix.node_label == 'lts' && 'LTS' || 'Latest' }}
     runs-on: ubuntu-latest
     needs: prepare-build
+    strategy:
+      fail-fast: false
+      matrix:
+        fedora: ["lts", "latest", "rawhide"]
+        node_label: ["lts", "latest"]
+        exclude:
+          # Rawhide only gets latest Node.js
+          - fedora: "rawhide"
+            node_label: "lts"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -54,20 +149,75 @@ jobs:
 
       - name: Generate Fedora tags
         id: fedora-tags
+        env:
+          NODE_LTS: ${{ needs.prepare-build.outputs.lts-node }}
+          NODE_LATEST: ${{ needs.prepare-build.outputs.latest-node }}
         run: |
-          BASE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:fedora42-base"
-          ALIAS_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:fedora-latest"
+          # Resolve the actual Fedora version and Python version
+          if [ "${{ matrix.fedora }}" = "lts" ]; then
+            FEDORA_VERSION="${{ needs.prepare-build.outputs.fedora-lts }}"
+            PYTHON_VERSION="${{ needs.prepare-build.outputs.fedora-lts-python }}"
+          elif [ "${{ matrix.fedora }}" = "latest" ]; then
+            FEDORA_VERSION="${{ needs.prepare-build.outputs.fedora-latest }}"
+            PYTHON_VERSION="${{ needs.prepare-build.outputs.fedora-latest-python }}"
+          elif [ "${{ matrix.fedora }}" = "rawhide" ]; then
+            FEDORA_VERSION="${{ needs.prepare-build.outputs.fedora-rawhide }}"
+            PYTHON_VERSION="${{ needs.prepare-build.outputs.fedora-rawhide-python }}"
+          fi
+          echo "fedora-version=${FEDORA_VERSION}" >> $GITHUB_OUTPUT
+          echo "python-version=${PYTHON_VERSION}" >> $GITHUB_OUTPUT
 
-          if [ "${{ github.ref_name }}" != "main" ]; then
-            BASE_TAG="${BASE_TAG}-${{ github.ref_name }}"
-            ALIAS_TAG="${ALIAS_TAG}-${{ github.ref_name }}"
+          # Select actual Node versions based on the label
+          if [ "${{ matrix.node_label }}" = "lts" ]; then
+            NODE_VERSIONS="${NODE_LTS}"
+          else
+            NODE_VERSIONS="${NODE_LATEST}"
           fi
 
-          TAGS="${BASE_TAG},${ALIAS_TAG}"
-          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
-          echo "📦 Fedora image tags: ${TAGS}"
+          NODE_TAG=$(echo "${NODE_VERSIONS}" | tr '+' '-')
+          NODE_VERSIONS_SPACED=$(echo "${NODE_VERSIONS}" | tr '+' ' ')
 
-      - name: Build and push Fedora base image
+          # Include Python version in tags for consistency with Ubuntu
+          BASE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:fedora${FEDORA_VERSION}-node${NODE_TAG}-py${PYTHON_VERSION}"
+
+          # Add branch suffix if not on main
+          if [ "${{ github.ref_name }}" != "main" ]; then
+            BASE_TAG="${BASE_TAG}-${{ github.ref_name }}"
+          fi
+
+          TAGS="${BASE_TAG}"
+
+          # Auto-generate alias tags based on combination
+          # fedora-lts: lts + lts node
+          # fedora-latest: latest + latest node
+          # fedora-rawhide: rawhide + latest node
+          if [ "${{ matrix.fedora }}" = "lts" ] && [ "${{ matrix.node_label }}" = "lts" ]; then
+            ALIAS_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:fedora-lts"
+            if [ "${{ github.ref_name }}" != "main" ]; then
+              ALIAS_TAG="${ALIAS_TAG}-${{ github.ref_name }}"
+            fi
+            TAGS="${TAGS},${ALIAS_TAG}"
+          elif [ "${{ matrix.fedora }}" = "latest" ] && [ "${{ matrix.node_label }}" = "latest" ]; then
+            ALIAS_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:fedora-latest"
+            if [ "${{ github.ref_name }}" != "main" ]; then
+              ALIAS_TAG="${ALIAS_TAG}-${{ github.ref_name }}"
+            fi
+            TAGS="${TAGS},${ALIAS_TAG}"
+          elif [ "${{ matrix.fedora }}" = "rawhide" ] && [ "${{ matrix.node_label }}" = "latest" ]; then
+            ALIAS_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:fedora-rawhide"
+            if [ "${{ github.ref_name }}" != "main" ]; then
+              ALIAS_TAG="${ALIAS_TAG}-${{ github.ref_name }}"
+            fi
+            TAGS="${TAGS},${ALIAS_TAG}"
+          fi
+
+          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
+          echo "node_versions_spaced=${NODE_VERSIONS_SPACED}" >> $GITHUB_OUTPUT
+          echo "📦 Fedora image tags: ${TAGS}"
+          echo "🔧 Node.js versions: ${NODE_VERSIONS_SPACED}"
+          echo "🐍 Python version: ${PYTHON_VERSION}"
+
+      - name: Build and push Fedora image
         uses: docker/build-push-action@v6
         with:
           context: ./linux/fedora
@@ -75,14 +225,15 @@ jobs:
           push: true
           tags: ${{ steps.fedora-tags.outputs.tags }}
           build-args: |
-            FEDORA_VERSION=42
+            FEDORA_VERSION=${{ steps.fedora-tags.outputs.fedora-version }}
+            NODE_VERSIONS=${{ steps.fedora-tags.outputs.node_versions_spaced }}
             K8S_VERSION=${{ needs.prepare-build.outputs.k8s-version }}
           platforms: linux/amd64,linux/arm64/v8,linux/ppc64le,linux/s390x
 
   mirror-to-github:
     name: Mirror Images to GHCR
     runs-on: ubuntu-latest
-    needs: build-fedora-base
+    needs: build-fedora
     if: github.ref == 'refs/heads/main'  # Only mirror from main branch
     steps:
       - name: Install skopeo and jq
@@ -113,10 +264,11 @@ jobs:
             fi
 
             # Include our Fedora patterns:
-            # - Alias tag: fedora-latest
-            # - Base images: fedora{version}-base
-            if [[ "$TAG" =~ ^fedora-latest$ ]] || \
-               [[ "$TAG" =~ ^fedora[0-9]+-base$ ]]; then
+            # - Alias tags: fedora-latest, fedora-lts, fedora-rawhide
+            # - Node+Python images: fedora{version}-node{versions}-py{python}
+            if [[ "$TAG" =~ ^fedora-(latest|lts|rawhide)$ ]] || \
+               [[ "$TAG" =~ ^fedora[0-9]+-node[0-9]+-[0-9]+-py[0-9]+\.[0-9]+$ ]] || \
+               [[ "$TAG" =~ ^fedora-?rawhide-node[0-9]+-[0-9]+-py[0-9]+\.[0-9]+$ ]]; then
               TAGS_TO_MIRROR+=("$TAG")
               echo "✅ Will mirror: $TAG"
             fi
@@ -168,8 +320,8 @@ jobs:
         run: |
           echo "🔍 Verifying critical Fedora tags on GHCR..."
 
-          # Check that our main Fedora alias tag exists
-          CRITICAL_TAGS="fedora-latest"
+          # Check that our main Fedora alias tags exist
+          CRITICAL_TAGS="fedora-latest fedora-lts fedora-rawhide"
           MISSING=0
 
           for TAG in $CRITICAL_TAGS; do
@@ -186,4 +338,145 @@ jobs:
             exit 1
           else
             echo "✅ All critical Fedora tags verified!"
+          fi
+
+  update-readme:
+    name: Update README if needed
+    runs-on: ubuntu-latest
+    needs: [build-fedora, prepare-build]
+    if: github.ref == 'refs/heads/main'  # Only update from main branch
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.FORGEJO_TOKEN }}
+          fetch-depth: 0
+
+      - name: Generate Fedora images table
+        id: fedora-table
+        run: |
+          echo "📝 Generating Fedora images table..."
+
+          # Get versions from prepare-build outputs
+          LTS_VERSION="${{ needs.prepare-build.outputs.fedora-lts }}"
+          LTS_PYTHON="${{ needs.prepare-build.outputs.fedora-lts-python }}"
+          LATEST_VERSION="${{ needs.prepare-build.outputs.fedora-latest }}"
+          LATEST_PYTHON="${{ needs.prepare-build.outputs.fedora-latest-python }}"
+          RAWHIDE_VERSION="${{ needs.prepare-build.outputs.fedora-rawhide }}"
+          RAWHIDE_PYTHON="${{ needs.prepare-build.outputs.fedora-rawhide-python }}"
+          NODE_LTS="${{ needs.prepare-build.outputs.lts-node }}"
+          NODE_LATEST="${{ needs.prepare-build.outputs.latest-node }}"
+
+          # Convert Node versions for display and tags
+          NODE_LTS_DISPLAY=$(echo "${NODE_LTS}" | tr '+' '/')
+          NODE_LATEST_DISPLAY=$(echo "${NODE_LATEST}" | tr '+' '/')
+          NODE_LTS_TAG=$(echo "${NODE_LTS}" | tr '+' '-')
+          NODE_LATEST_TAG=$(echo "${NODE_LATEST}" | tr '+' '-')
+
+          # Generate Fedora images table with convenience tags at top
+          {
+            echo "| Fedora | Node.js | Python Versions Available |"
+            echo "|--------|---------|---------------------------|"
+            echo "| **[\`fedora-rawhide\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora-rawhide)** - Development | ${NODE_LATEST_DISPLAY} | [\`fedora${RAWHIDE_VERSION}-node${NODE_LATEST_TAG}-py${RAWHIDE_PYTHON}\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora${RAWHIDE_VERSION}-node${NODE_LATEST_TAG}-py${RAWHIDE_PYTHON}) |"
+            echo "| **[\`fedora-latest\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora-latest)** - Current stable | ${NODE_LATEST_DISPLAY} | [\`fedora${LATEST_VERSION}-node${NODE_LATEST_TAG}-py${LATEST_PYTHON}\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora${LATEST_VERSION}-node${NODE_LATEST_TAG}-py${LATEST_PYTHON}) |"
+            echo "| **[\`fedora-lts\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora-lts)** - LTS release | ${NODE_LTS_DISPLAY} | [\`fedora${LTS_VERSION}-node${NODE_LTS_TAG}-py${LTS_PYTHON}\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora${LTS_VERSION}-node${NODE_LTS_TAG}-py${LTS_PYTHON}) |"
+            echo "|  |  |  |"
+
+            # Rawhide rows
+            echo "| Rawhide | ${NODE_LATEST_DISPLAY} | [**${RAWHIDE_PYTHON}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora${RAWHIDE_VERSION}-node${NODE_LATEST_TAG}-py${RAWHIDE_PYTHON}) |"
+
+            # Latest rows
+            echo "| ${LATEST_VERSION} | ${NODE_LATEST_DISPLAY} | [**${LATEST_PYTHON}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora${LATEST_VERSION}-node${NODE_LATEST_TAG}-py${LATEST_PYTHON}) |"
+            echo "| ${LATEST_VERSION} | ${NODE_LTS_DISPLAY} | [**${LATEST_PYTHON}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora${LATEST_VERSION}-node${NODE_LTS_TAG}-py${LATEST_PYTHON}) |"
+
+            # LTS rows
+            echo "| ${LTS_VERSION} | ${NODE_LATEST_DISPLAY} | [**${LTS_PYTHON}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora${LTS_VERSION}-node${NODE_LATEST_TAG}-py${LTS_PYTHON}) |"
+            echo "| ${LTS_VERSION} | ${NODE_LTS_DISPLAY} | [**${LTS_PYTHON}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora${LTS_VERSION}-node${NODE_LTS_TAG}-py${LTS_PYTHON}) |"
+          } > /tmp/fedora-images.md
+
+          echo "✅ Generated Fedora images table:"
+          echo "================================================"
+          cat /tmp/fedora-images.md
+          echo "================================================"
+
+      - name: Update README
+        id: update
+        run: |
+          echo "📝 Updating README with Fedora images table..."
+
+          # Read current README
+          CURRENT_README=$(cat README.md)
+
+          # Extract and update Fedora images table
+          FEDORA_CONTENT=$(cat /tmp/fedora-images.md)
+          NEW_README=$(echo "$CURRENT_README" | awk -v table="$FEDORA_CONTENT" '
+            BEGIN { in_table = 0 }
+            /^## Fedora images/ { print; getline; print; getline; print; getline; print table; in_table = 1; next }
+            in_table && /^\|/ { next }
+            in_table && !/^\|/ { in_table = 0 }
+            { print }
+          ')
+
+          # Write updated README
+          echo "$NEW_README" > README.md
+
+          # Check if there are changes
+          if git diff --quiet README.md; then
+            echo "❌ No changes to README.md"
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "✅ README.md has been updated"
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo ""
+            echo "📝 Changes to README.md:"
+            echo "================================================"
+            git diff --color=always README.md | head -100
+            echo "================================================"
+          fi
+
+      - name: Create Pull Request
+        if: steps.update.outputs.changed == 'true'
+        env:
+          FORGEJO_TOKEN: ${{ secrets.FORGEJO_TOKEN }}
+        run: |
+          # Configure git
+          git config user.name "forgejo-actions[bot]"
+          git config user.email "actions@noreply.git.tomfos.tr"
+
+          # Create or update branch
+          BRANCH_NAME="update-fedora-versions"
+          git checkout -B $BRANCH_NAME
+
+          # Commit changes
+          git add README.md
+          git commit -m "chore: update Fedora images in README
+
+          Node.js LTS: ${{ needs.prepare-build.outputs.lts-node }}
+          Node.js Latest: ${{ needs.prepare-build.outputs.latest-node }}
+          Fedora LTS: ${{ needs.prepare-build.outputs.fedora-lts }} with Python ${{ needs.prepare-build.outputs.fedora-lts-python }}
+          Fedora Latest: ${{ needs.prepare-build.outputs.fedora-latest }} with Python ${{ needs.prepare-build.outputs.fedora-latest-python }}
+          Fedora Rawhide: with Python ${{ needs.prepare-build.outputs.fedora-rawhide-python }}"
+
+          # Push changes
+          git push -f origin $BRANCH_NAME
+
+          # Check if PR already exists
+          PR_EXISTS=$(curl -s -H "Authorization: token $FORGEJO_TOKEN" \
+            "https://git.tomfos.tr/api/v1/repos/tom/act-runner/pulls?state=open&head=tom:$BRANCH_NAME" | \
+            jq '. | length')
+
+          if [ "$PR_EXISTS" -eq "0" ]; then
+            # Create new PR
+            curl -X POST -H "Authorization: token $FORGEJO_TOKEN" \
+              -H "Content-Type: application/json" \
+              "https://git.tomfos.tr/api/v1/repos/tom/act-runner/pulls" \
+              -d "{
+                \"title\": \"chore: update Fedora images in README\",
+                \"head\": \"$BRANCH_NAME\",
+                \"base\": \"main\",
+                \"body\": \"### Automated Fedora Images Update\\n\\nThis PR updates the Fedora images table to reflect the current runtime versions:\\n\\n- **Node.js LTS**: ${{ needs.prepare-build.outputs.lts-node }}\\n- **Node.js Latest**: ${{ needs.prepare-build.outputs.latest-node }}\\n- **Fedora LTS**: ${{ needs.prepare-build.outputs.fedora-lts }} with Python ${{ needs.prepare-build.outputs.fedora-lts-python }}\\n- **Fedora Latest**: ${{ needs.prepare-build.outputs.fedora-latest }} with Python ${{ needs.prepare-build.outputs.fedora-latest-python }}\\n- **Fedora Rawhide**: with Python ${{ needs.prepare-build.outputs.fedora-rawhide-python }}\\n\\nThe Fedora images table is regenerated based on the actual images being built.\"
+              }"
+            echo "✅ Created new PR for README updates"
+          else
+            echo "✅ PR already exists, changes have been pushed"
           fi
