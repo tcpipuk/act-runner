@@ -41,6 +41,7 @@ jobs:
           # Pull rolling image and get version info
           docker pull ubuntu:rolling
           UBUNTU_VERSION=$(docker run --rm ubuntu:rolling bash -c "grep VERSION_ID /etc/os-release | cut -d= -f2 | tr -d '\"'")
+          UBUNTU_CODENAME=$(docker run --rm ubuntu:rolling bash -c "lsb_release -cs")
           # Check what Python version is available in the repositories
           PYTHON_VERSION=$(docker run --rm ubuntu:rolling bash -c "
             apt-get update >/dev/null 2>&1
@@ -48,8 +49,9 @@ jobs:
           ")
 
           echo "ubuntu=${UBUNTU_VERSION}" >> $GITHUB_OUTPUT
+          echo "codename=${UBUNTU_CODENAME}" >> $GITHUB_OUTPUT
           echo "python=${PYTHON_VERSION}" >> $GITHUB_OUTPUT
-          echo "🔄 Ubuntu rolling is currently ${UBUNTU_VERSION} with Python ${PYTHON_VERSION}"
+          echo "🔄 Ubuntu rolling is currently ${UBUNTU_VERSION} (${UBUNTU_CODENAME}) with Python ${PYTHON_VERSION}"
 
       - name: Detect Node.js versions
         id: node
