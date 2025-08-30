@@ -42,34 +42,20 @@ jobs:
       - name: Detect Node.js versions
         id: node
         run: |
-          # Get Node.js release schedule
-          SCHEDULE=$(curl -sL https://raw.githubusercontent.com/nodejs/Release/main/schedule.json)
+          # Get Node.js version information
+          SCHEDULE_JSON=$(curl -sL https://nodejs.org/dist/index.json)
 
-          # Get current date
-          TODAY=$(date -u +%Y-%m-%d)
-
-          # Find LTS versions (must have lts field and be in Active/Maintenance)
-          LTS_VERSIONS=$(echo "$SCHEDULE" | jq -r --arg today "$TODAY" '
-            to_entries
-            | map(select(
-                .value.lts != null and
-                .value.start <= $today and
-                .value.end >= $today
-              ))
-            | map(ltrimstr("v"))
-            | sort_by(. | tonumber)
-            | .[-2:]
-            | join("+")
+          # Extract versions in Active or Maintenance LTS status
+          LTS_VERSIONS=$(echo "$SCHEDULE_JSON" | jq -r '
+            [.[] | select(.lts != false) | .version[1:] | split(".")[0] | tonumber]
+            | unique | sort | reverse | .[0:2] | join("+")
           ')
 
-          # Find latest versions (Current/Active, including latest non-LTS)
-          LATEST_VERSIONS=$(echo "$SCHEDULE" | jq -r --arg today "$TODAY" '
-            to_entries
-            | map(select(.value.start <= $today and .value.end >= $today))
-            | map(ltrimstr("v"))
-            | sort_by(. | tonumber)
-            | .[-2:]
-            | join("+")
+          # Get the two most recent stable versions
+          # Node.js follows odd=development, even=stable convention
+          LATEST_VERSIONS=$(echo "$SCHEDULE_JSON" | jq -r '
+            [.[] | .version[1:] | split(".")[0] | tonumber | select(. % 2 == 0)]
+            | unique | sort | reverse | .[0:2] | join("+")
           ')
 
           echo "lts=${LTS_VERSIONS}" >> $GITHUB_OUTPUT
