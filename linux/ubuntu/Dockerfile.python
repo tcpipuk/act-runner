@@ -53,20 +53,18 @@ RUN if [ -z "${USE_NATIVE_PYTHON}" ]; then \
 ENV UV_PYTHON=${PYTHON_VERSION} \
     UV_LINK_MODE=copy
 
-# Install uv (installs to /root/.local/bin by default)
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh
-
 # Add uv and its tools to PATH
 ENV PATH="/root/.local/bin:${PATH}"
 
-# Install Python tools via uv
+# Install uv and Python tools in single layer
 RUN --mount=type=cache,target=/root/.cache/uv,sharing=locked,id=uv-cache-${UBUNTU_VERSION}-${TARGETARCH} \
-    uv tool install prek \
-    && uv tool install ruff \
-    && uv tool install mypy \
-    && uv tool install pytest \
-    && uv tool install black \
-    && uv tool install isort
+    curl -LsSf https://astral.sh/uv/install.sh | sh \
+    && /root/.local/bin/uv tool install prek \
+    && /root/.local/bin/uv tool install ruff \
+    && /root/.local/bin/uv tool install mypy \
+    && /root/.local/bin/uv tool install pytest \
+    && /root/.local/bin/uv tool install black \
+    && /root/.local/bin/uv tool install isort
 
 # Install additional development tools - GitHub CLI and Rust
 # These are frequently updated but small, so we install them after Python
