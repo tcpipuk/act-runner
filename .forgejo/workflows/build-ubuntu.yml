@@ -41,7 +41,11 @@ jobs:
           # Pull rolling image and get version info
           docker pull ubuntu:rolling
           UBUNTU_VERSION=$(docker run --rm ubuntu:rolling bash -c "grep VERSION_ID /etc/os-release | cut -d= -f2 | tr -d '\"'")
-          PYTHON_VERSION=$(docker run --rm ubuntu:rolling bash -c "python3 --version 2>/dev/null | cut -d' ' -f2 | cut -d. -f1-2 || echo '3.13'")
+          # Check what Python version is available in the repositories
+          PYTHON_VERSION=$(docker run --rm ubuntu:rolling bash -c "
+            apt-get update >/dev/null 2>&1
+            apt-cache show python3 | grep '^Version:' | head -1 | cut -d' ' -f2 | cut -d. -f1-2
+          ")
 
           echo "ubuntu=${UBUNTU_VERSION}" >> $GITHUB_OUTPUT
           echo "python=${PYTHON_VERSION}" >> $GITHUB_OUTPUT
@@ -59,9 +63,10 @@ jobs:
             | unique | sort | reverse | .[0:2] | join("+")
           ')
 
-          # Get the two most recent versions (including Current)
+          # Get the two most recent stable versions
+          # Node.js follows odd=development, even=stable convention
           LATEST_VERSIONS=$(echo "$SCHEDULE_JSON" | jq -r '
-            [.[] | .version[1:] | split(".")[0] | tonumber]
+            [.[] | .version[1:] | split(".")[0] | tonumber | select(. % 2 == 0)]
             | unique | sort | reverse | .[0:2] | join("+")
           ')
 
