@@ -86,9 +86,6 @@ RUN mkdir -p /etc/yum.repos.d && \
     echo 'enabled=1' >> /etc/yum.repos.d/microsoft.repo && \
     echo 'gpgcheck=1' >> /etc/yum.repos.d/microsoft.repo && \
     echo 'gpgkey=https://packages.microsoft.com/keys/microsoft.asc' >> /etc/yum.repos.d/microsoft.repo && \
-    # PostgreSQL (convert TARGETARCH to PostgreSQL naming: x86_64 or aarch64)
-    PG_ARCH=$(echo ${TARGETARCH} | sed 's/amd64/x86_64/;s/arm64/aarch64/') && \
-    dnf install -y https://download.postgresql.org/pub/repos/yum/reporpms/F-${FEDORA_VERSION}-${PG_ARCH}/pgdg-fedora-repo-latest.noarch.rpm && \
     \
     # Update repository metadata
     dnf makecache
