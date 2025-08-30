@@ -45,7 +45,6 @@ Repository configurations are included for easy installation of additional tools
 - **HashiCorp** - Terraform, Vault, Consul
 - **Docker CE** - Alternative Docker installation
 - **Microsoft** - PowerShell, .NET, Azure CLI
-- **PostgreSQL** - Database tools and clients
 
 ## Environment configuration
 

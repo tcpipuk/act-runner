@@ -85,7 +85,7 @@ act -P ubuntu-latest=ghcr.io/tcpipuk/act-runner:ubuntu-latest
 - [GitHub CLI](https://cli.github.com/manual/) (`gh`)
 - Git and Git LFS
 - Common utilities (curl, wget, jq, tar, zip)
-- Pre-configured package repositories (LLVM, Kubernetes, HashiCorp, PostgreSQL, Microsoft)
+- Pre-configured package repositories (LLVM, Kubernetes, HashiCorp, Microsoft)
 
 **Node.js images add:**
 
