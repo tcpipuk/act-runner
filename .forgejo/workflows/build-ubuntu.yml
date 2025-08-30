@@ -76,7 +76,7 @@ jobs:
           echo "📦 Node.js latest versions: ${LATEST_VERSIONS}"
 
   build-base:
-    name: Build Ubuntu ${{ matrix.ubuntu }} Base
+    name: Build Ubuntu ${{ matrix.ubuntu-alias || matrix.ubuntu }} Base
     runs-on: ubuntu-latest
     needs: prepare-build
     strategy:
@@ -86,6 +86,7 @@ jobs:
         include:
           # Add rolling release which tracks latest development version
           - ubuntu: "${{ needs.prepare-build.outputs.rolling-ubuntu }}"
+            ubuntu-alias: "Rolling"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -126,20 +127,22 @@ jobs:
           platforms: linux/amd64,linux/arm64/v8,linux/ppc64le,linux/s390x
 
   build-node:
-    name: Build Ubuntu ${{ matrix.ubuntu }} Node ${{ matrix.node_versions }}
+    name: Build Ubuntu ${{ matrix.ubuntu-alias || matrix.ubuntu }} Node ${{ matrix.node_versions }}
     runs-on: ubuntu-latest
     needs: [build-base, prepare-build]
     strategy:
       fail-fast: false
       matrix:
         ubuntu: ["22.04", "24.04"]
-        node_versions: ["${{ needs.prepare-build.outputs.node-lts }}", "${{ needs.prepare-build.outputs.node-latest }}"]
+        node_versions: ["lts", "latest"]
         include:
           # Add rolling release builds
           - ubuntu: "${{ needs.prepare-build.outputs.rolling-ubuntu }}"
-            node_versions: "${{ needs.prepare-build.outputs.node-lts }}"
+            ubuntu-alias: "Rolling"
+            node_versions: "lts"
           - ubuntu: "${{ needs.prepare-build.outputs.rolling-ubuntu }}"
-            node_versions: "${{ needs.prepare-build.outputs.node-latest }}"
+            ubuntu-alias: "Rolling"
+            node_versions: "latest"
 
     steps:
       - name: Checkout
@@ -160,9 +163,19 @@ jobs:
 
       - name: Generate node tags
         id: node-tags
+        env:
+          NODE_LTS: ${{ needs.prepare-build.outputs.node-lts }}
+          NODE_LATEST: ${{ needs.prepare-build.outputs.node-latest }}
         run: |
-          NODE_TAG=$(echo "${{ matrix.node_versions }}" | tr '+' '-')
-          NODE_VERSIONS_SPACED=$(echo "${{ matrix.node_versions }}" | tr '+' ' ')
+          # Select actual versions based on the label
+          if [ "${{ matrix.node_versions }}" = "lts" ]; then
+            NODE_VERSIONS="${NODE_LTS}"
+          else
+            NODE_VERSIONS="${NODE_LATEST}"
+          fi
+
+          NODE_TAG=$(echo "${NODE_VERSIONS}" | tr '+' '-')
+          NODE_VERSIONS_SPACED=$(echo "${NODE_VERSIONS}" | tr '+' ' ')
           BASE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:ubuntu${{ matrix.ubuntu }}-node${NODE_TAG}"
 
           # Add branch suffix if not on main
@@ -198,43 +211,47 @@ jobs:
           platforms: linux/amd64,linux/arm64/v8,linux/ppc64le,linux/s390x
 
   build-python:
-    name: Build Ubuntu ${{ matrix.ubuntu }} Node ${{ matrix.node_versions }} Python ${{ matrix.python }}
+    name: Build Ubuntu ${{ matrix.ubuntu-alias || matrix.ubuntu }} Node ${{ matrix.node_versions }} Python ${{ matrix.python-alias || matrix.python }}
     runs-on: ubuntu-latest
     needs: [build-node, prepare-build]
     strategy:
       fail-fast: false
       matrix:
         ubuntu: ["22.04", "24.04"]
-        node_versions: ["${{ needs.prepare-build.outputs.node-lts }}", "${{ needs.prepare-build.outputs.node-latest }}"]
+        node_versions: ["lts", "latest"]
         python: ["3.9", "3.11", "3.13"]
         include:
           # Native Python versions for each Ubuntu release
           - ubuntu: "22.04"
-            node_versions: "${{ needs.prepare-build.outputs.node-lts }}"
+            node_versions: "lts"
             python: "3.10"
             use_native_python: "true"
             tag_alias: "ubuntu-lts"
           - ubuntu: "22.04"
-            node_versions: "${{ needs.prepare-build.outputs.node-latest }}"
+            node_versions: "latest"
             python: "3.10"
             use_native_python: "true"
           - ubuntu: "24.04"
-            node_versions: "${{ needs.prepare-build.outputs.node-lts }}"
+            node_versions: "lts"
             python: "3.12"
             use_native_python: "true"
           - ubuntu: "24.04"
-            node_versions: "${{ needs.prepare-build.outputs.node-latest }}"
+            node_versions: "latest"
             python: "3.12"
             use_native_python: "true"
             tag_alias: "ubuntu-latest"
           # Rolling release - uses detected version and Python
           - ubuntu: "${{ needs.prepare-build.outputs.rolling-ubuntu }}"
-            node_versions: "${{ needs.prepare-build.outputs.node-lts }}"
+            ubuntu-alias: "Rolling"
+            node_versions: "lts"
             python: "${{ needs.prepare-build.outputs.rolling-python }}"
+            python-alias: "Native"
             use_native_python: "true"
           - ubuntu: "${{ needs.prepare-build.outputs.rolling-ubuntu }}"
-            node_versions: "${{ needs.prepare-build.outputs.node-latest }}"
+            ubuntu-alias: "Rolling"
+            node_versions: "latest"
             python: "${{ needs.prepare-build.outputs.rolling-python }}"
+            python-alias: "Native"
             use_native_python: "true"
             tag_alias: "ubuntu-rolling"
 
@@ -257,9 +274,19 @@ jobs:
 
       - name: Generate python tags
         id: python-tags
+        env:
+          NODE_LTS: ${{ needs.prepare-build.outputs.node-lts }}
+          NODE_LATEST: ${{ needs.prepare-build.outputs.node-latest }}
         run: |
-          NODE_TAG=$(echo "${{ matrix.node_versions }}" | tr '+' '-')
-          NODE_VERSIONS_SPACED=$(echo "${{ matrix.node_versions }}" | tr '+' ' ')
+          # Select actual versions based on the label
+          if [ "${{ matrix.node_versions }}" = "lts" ]; then
+            NODE_VERSIONS="${NODE_LTS}"
+          else
+            NODE_VERSIONS="${NODE_LATEST}"
+          fi
+
+          NODE_TAG=$(echo "${NODE_VERSIONS}" | tr '+' '-')
+          NODE_VERSIONS_SPACED=$(echo "${NODE_VERSIONS}" | tr '+' ' ')
           BASE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:ubuntu${{ matrix.ubuntu }}-node${NODE_TAG}-py${{ matrix.python }}"
 
           # Add branch suffix if not on main
