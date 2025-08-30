@@ -397,7 +397,7 @@ jobs:
           FEDORA_CONTENT=$(cat /tmp/fedora-images.md)
           NEW_README=$(echo "$CURRENT_README" | awk -v table="$FEDORA_CONTENT" '
             BEGIN { in_table = 0 }
-            /^## Fedora images/ { print; getline; print; getline; print; getline; print table; in_table = 1; next }
+            /^## Fedora images/ { print; getline; print; getline; print; getline; print; print table; in_table = 1; next }
             in_table && /^\|/ { next }
             in_table && !/^\|/ { in_table = 0 }
             { print }
