@@ -449,7 +449,7 @@ jobs:
               continue
             fi
 
-            if [[ "$TAG" =~ ^(ubuntu-latest|ubuntu-lts|ubuntu-edge)$ ]] || \
+            if [[ "$TAG" =~ ^(ubuntu-latest|ubuntu-lts|ubuntu-rolling)$ ]] || \
                [[ "$TAG" =~ ^ubuntu[0-9]+\.[0-9]+-base$ ]] || \
                [[ "$TAG" =~ ^ubuntu[0-9]+\.[0-9]+-node[0-9]+-[0-9]+$ ]] || \
                [[ "$TAG" =~ ^ubuntu[0-9]+\.[0-9]+-node[0-9]+-[0-9]+-py[0-9]+\.[0-9]+$ ]]; then
@@ -471,6 +471,7 @@ jobs:
             echo "📦 Mirroring: ${TAG}"
 
             if skopeo copy \
+              --quiet \
               --all \
               --retry-times 3 \
               --dest-precompute-digests \
@@ -508,7 +509,7 @@ jobs:
           echo "🔍 Verifying critical tags on GHCR..."
 
           # Check that our main alias tags exist
-          CRITICAL_TAGS="ubuntu-latest ubuntu-lts ubuntu-edge"
+          CRITICAL_TAGS="ubuntu-latest ubuntu-lts ubuntu-rolling"
           MISSING=0
 
           for TAG in $CRITICAL_TAGS; do
