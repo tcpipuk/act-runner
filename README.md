@@ -33,7 +33,6 @@ act -P ubuntu-latest=ghcr.io/tcpipuk/act-runner:ubuntu-latest
 ## Ubuntu images
 
 **[View all available tags and versions →](https://git.tomfos.tr/tom/-/packages/container/act-runner/versions)**
-
 | Ubuntu | Node.js | Python Versions Available |
 |--------|---------|---------------------------|
 | **[`ubuntu-rolling`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu-rolling)** - Bleeding edge | 24/22 | [`ubuntu25.04-node24-22-py3.13`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu25.04-node24-22-py3.13) |
