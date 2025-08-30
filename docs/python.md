@@ -1,18 +1,28 @@
-# Python Configuration
+# Python configuration
 
 This document details the Python setup in our ACT runner images, including installed tools,
 environment variables, and configuration decisions.
 
-## Python Versions
+## What's included
 
-We provide multiple Python versions across our Ubuntu images. The specific versions available
-depend on the Ubuntu release and what's available through the system packages or
-[deadsnakes PPA](https://launchpad.net/~deadsnakes/+archive/ubuntu/ppa).
+### Python installations
 
-See the [main README](../README.md#available-images) for the current list of available Python
-versions for each image.
+Images include either the Ubuntu distribution's native Python or additional versions from the
+[deadsnakes PPA](https://launchpad.net/~deadsnakes/+archive/ubuntu/ppa). The native Python version
+varies by Ubuntu release and includes `python3-apt` for system package compatibility.
 
-## Pre-installed Python Tools
+Each Python installation includes:
+
+- `python{version}` - The Python interpreter
+- `python{version}-venv` - Virtual environment support
+- `python3-apt` - APT Python bindings (only with native Python versions)
+
+We deliberately exclude `python-distutils` (deprecated since Python 3.10, removed in 3.12+).
+Legacy code requiring distutils may need to install it separately.
+
+See the [main README](../README.md#available-images) for current available versions.
+
+### Pre-installed development tools
 
 All Python images come with these development tools pre-installed via [uv](https://github.com/astral-sh/uv):
 
@@ -23,7 +33,7 @@ All Python images come with these development tools pre-installed via [uv](https
 - [**black**](https://github.com/psf/black) - Code formatter
 - [**isort**](https://github.com/PyCQA/isort) - Import sorter
 
-## Environment Variables
+## Environment configuration
 
 The following environment variables are pre-configured:
 
@@ -33,40 +43,12 @@ The following environment variables are pre-configured:
 | `UV_LINK_MODE` | `copy` | Reduces verbosity in CI logs |
 | `PATH` | `/root/.local/bin:$PATH` | Includes uv and installed tools |
 
-## PATH Configuration
+The PATH modification ensures `uv` itself is available, tools installed via `uv tool install` are
+accessible, and there are no warnings about PATH during tool installation.
 
-The PATH includes `/root/.local/bin` to ensure:
+## Working with Python
 
-- `uv` itself is available
-- Tools installed via `uv tool install` are accessible
-- No warnings about PATH during tool installation
-
-## Package Management
-
-### System Packages
-
-Each Python installation includes:
-
-- `python{version}` - The Python interpreter
-- `python{version}-dev` - Development headers for building extensions
-- `python{version}-venv` - Virtual environment support
-
-### Missing Packages
-
-We deliberately exclude:
-
-- `python-distutils` - Deprecated since Python 3.10, removed in 3.12+
-
-If you need distutils for legacy code, you can install it:
-
-```bash
-# Ubuntu 22.04/24.04 (from deadsnakes PPA)
-apt-get update && apt-get install -y python3.11-distutils
-
-# Note: Not available for Python 3.13 as distutils was removed
-```
-
-## Tool Management
+### Managing tools
 
 All Python tools are managed via uv and can be updated or removed:
 
@@ -85,7 +67,7 @@ uv tool remove black
 uv tool list
 ```
 
-## Virtual Environments
+### Virtual environments
 
 Python virtual environment support is built-in:
 
@@ -100,15 +82,7 @@ uv venv
 source .venv/bin/activate
 ```
 
-## Available Python Versions by Image
-
-| Ubuntu | Python 3.11 | Python 3.13 |
-|--------|-------------|-------------|
-| 22.04 | ✅ | ✅ |
-| 24.04 | ✅ | ✅ |
-| 25.04 | ❌ | ✅ |
-
-## Design Decisions
+## Design decisions
 
 ### Why uv?
 
@@ -151,7 +125,7 @@ The [deadsnakes PPA](https://launchpad.net/~deadsnakes/+archive/ubuntu/ppa) prov
 
 ## Troubleshooting
 
-### Module Not Found
+### Module not found
 
 If you encounter import errors for standard library modules:
 
@@ -164,7 +138,7 @@ python --version
 echo $VIRTUAL_ENV
 ```
 
-### Tool Not in PATH
+### Tool not in PATH
 
 All tools should be in PATH, but if not:
 
@@ -176,7 +150,7 @@ uv tool list
 export PATH="/root/.local/bin:$PATH"
 ```
 
-### Need a Different Python Version?
+### Need a different Python version?
 
 If you need a Python version not included in our images, use the
 [actions/setup-python](https://github.com/actions/setup-python) action in your workflow. It

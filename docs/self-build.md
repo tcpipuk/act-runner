@@ -1,18 +1,12 @@
-# Building ACT Runner Images Locally
+# Building ACT runner images locally
 
 This guide explains how to build your own ACT runner images locally for testing or customisation.
 
 ## Prerequisites
 
-### Docker Installation
-
-You'll need Docker installed and running on your system. Follow the official Docker installation
-guide for your platform:
-
-- [Docker Engine Installation Guide](https://docs.docker.com/engine/install/)
-- Ensure Docker BuildKit is enabled (it's the default in modern Docker versions)
-
-### Repository Setup
+You'll need Docker installed and running on your system. Follow the official [Docker Engine
+Installation Guide](https://docs.docker.com/engine/install/) for your platform. Docker BuildKit
+should be enabled (it's the default in modern Docker versions).
 
 Clone the repository:
 
@@ -21,7 +15,7 @@ git clone https://git.tomfos.tr/tom/act-runner.git
 cd act-runner
 ```
 
-## Building Images
+## Building images
 
 The images use a layered architecture where each image builds upon the previous:
 
@@ -29,7 +23,7 @@ The images use a layered architecture where each image builds upon the previous:
 2. **Node image** - Adds Node.js versions to the base image
 3. **Python image** - Adds Python and development tools to the Node image
 
-### Build a Base Image
+### Build a base image
 
 ```bash
 docker build -f linux/ubuntu/Dockerfile.base \
@@ -38,13 +32,10 @@ docker build -f linux/ubuntu/Dockerfile.base \
   ./linux/ubuntu
 ```
 
-Available Ubuntu versions:
+Available Ubuntu versions typically include current LTS releases and the rolling release. Check the
+workflow files for the current matrix of supported versions.
 
-- `22.04` - Ubuntu 22.04 LTS (Jammy)
-- `24.04` - Ubuntu 24.04 LTS (Noble)
-- `25.04` - Ubuntu 25.04 (Plucky)
-
-### Build a Node.js Image
+### Build a Node.js image
 
 First build the base image, then:
 
@@ -57,13 +48,10 @@ docker build -f linux/ubuntu/Dockerfile.node \
   ./linux/ubuntu
 ```
 
-Available Node.js version combinations:
+Node.js versions follow the LTS and current releases from nodejs.org. Multiple versions can be
+installed by providing space-separated version numbers.
 
-- `"18 20"` - Node.js 18 and 20
-- `"20 22"` - Node.js 20 and 22
-- `"22 24"` - Node.js 22 and 24
-
-### Build a Python Image
+### Build a Python image
 
 First build the base and Node images, then:
 
@@ -77,39 +65,34 @@ docker build -f linux/ubuntu/Dockerfile.python \
   ./linux/ubuntu
 ```
 
-Available Python versions:
+Python versions include the Ubuntu native version and additional versions from the deadsnakes PPA.
+Check the workflow files for currently supported versions.
 
-- `3.10`, `3.11`, `3.12`, `3.13`, `3.14`
+## Build arguments
 
-## Build Arguments
+All Dockerfiles accept these common build arguments:
 
-### Common Arguments
-
-All Dockerfiles accept these build arguments:
-
-- `UBUNTU_VERSION` - Ubuntu version (22.04, 24.04, 25.04)
+- `UBUNTU_VERSION` - Ubuntu version to use
 - `BUILD_DATE` - Build timestamp (optional)
 - `BUILD_VERSION` - Version tag (optional)
 - `BUILD_REVISION` - Git commit hash (optional)
 
-### Image-Specific Arguments
+Image-specific arguments:
 
-**Dockerfile.base:**
-
-- No additional required arguments
+**Dockerfile.base:** No additional required arguments
 
 **Dockerfile.node:**
 
 - `BASE_IMAGE` - The base image to build from
-- `NODE_VERSIONS` - Space-separated Node.js versions (e.g., "20 22")
+- `NODE_VERSIONS` - Space-separated Node.js versions (e.g. "20 22")
 
 **Dockerfile.python:**
 
 - `NODE_IMAGE` - The Node image to build from
 - `NODE_VERSIONS` - Must match the Node image's versions
-- `PYTHON_VERSION` - Python version (e.g., 3.13)
+- `PYTHON_VERSION` - Python version (e.g. 3.13)
 
-## BuildKit Features
+## BuildKit features
 
 The Dockerfiles use BuildKit cache mounts for optimal caching:
 
@@ -132,7 +115,7 @@ docker buildx build -f linux/ubuntu/Dockerfile.base \
   ./linux/ubuntu
 ```
 
-## Multi-Architecture Builds
+## Multi-architecture builds
 
 To build for multiple architectures (requires Docker Buildx):
 
@@ -149,21 +132,21 @@ docker buildx build -f linux/ubuntu/Dockerfile.base \
   ./linux/ubuntu
 ```
 
-## Testing Your Images
+## Testing your images
 
-### With Docker
+With Docker:
 
 ```bash
 docker run --rm -it act-runner:ubuntu24.04-node20-22-py3.13 bash
 ```
 
-### With ACT
+With ACT:
 
 ```bash
 act -P ubuntu-latest=act-runner:ubuntu24.04-node20-22-py3.13
 ```
 
-### In GitHub/Forgejo Actions
+In GitHub/Forgejo Actions:
 
 ```yaml
 jobs:
@@ -176,36 +159,33 @@ jobs:
       - run: node --version
 ```
 
-## Customisation Tips
+## Customisation tips
 
-### Adding System Packages
-
-Edit the appropriate Dockerfile and add packages to the `apt-get install` command. Remember to:
+To add system packages, edit the appropriate Dockerfile and add packages to the `apt-get install`
+command. Remember to:
 
 - Keep packages alphabetically sorted for maintainability
 - Use `--no-install-recommends` to minimise image size
 - Clear apt lists with `rm -rf /var/lib/apt/lists/*`
 
-### Changing Tool Versions
+To change tool versions:
 
 - **Node.js**: Modify `NODE_VERSIONS` build argument
 - **Python**: Modify `PYTHON_VERSION` build argument
 - **Ubuntu**: Modify `UBUNTU_VERSION` build argument
 
-### Adding New Tools
-
-For tools that should be available in all images, add them to `Dockerfile.base`.
-For language-specific tools, add them to the appropriate Dockerfile.
+For tools that should be available in all images, add them to `Dockerfile.base`. For
+language-specific tools, add them to the appropriate Dockerfile.
 
 ## Troubleshooting
 
-### Build Failures
+### Build failures
 
 1. **Missing base image**: Ensure you build images in order (base → node → python)
 2. **Network issues**: Check your internet connection and Docker's DNS settings
 3. **Space issues**: Ensure you have enough disk space for Docker images
 
-### Cache Issues
+### Cache issues
 
 If builds aren't using cache as expected:
 
