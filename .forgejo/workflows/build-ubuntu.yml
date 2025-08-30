@@ -700,7 +700,7 @@ jobs:
           UBUNTU_CONTENT=$(cat /tmp/ubuntu-images.md)
           NEW_README=$(echo "$CURRENT_README" | awk -v table="$UBUNTU_CONTENT" '
             BEGIN { in_table = 0 }
-            /^## Ubuntu images/ { print; getline; print; getline; print; getline; print table; in_table = 1; next }
+            /^## Ubuntu images/ { print; getline; print; getline; print; getline; print; print table; in_table = 1; next }
             in_table && /^\|/ { next }
             in_table && !/^\|/ { in_table = 0 }
             { print }
