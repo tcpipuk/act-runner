@@ -85,7 +85,7 @@ act -P ubuntu-latest=ghcr.io/tcpipuk/act-runner:ubuntu-latest
 
 **Python images add:**
 
-- Multiple Python versions (see table above for available versions)
+- Python (native Ubuntu version or from deadsnakes PPA)
 - [uv](https://docs.astral.sh/uv/) package manager
 - Pre-installed development tools (ruff, mypy, pytest, black, isort, prek)
 - See [docs/python.md](docs/python.md) for full details

@@ -94,7 +94,6 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache-${UBUNT
 ENV PATH="/root/.cargo/bin:${PATH}"
 
 # Configure additional APT repositories for user convenience
-# This layer is intentionally last to minimize cache invalidation impact
 # Users can install: clang, docker-ce, dotnet, kubectl, psql, terraform, etc.
 ARG K8S_VERSION=1.31
 RUN --mount=type=cache,target=/tmp/downloads,sharing=locked,id=downloads-${UBUNTU_VERSION}-${TARGETARCH} \

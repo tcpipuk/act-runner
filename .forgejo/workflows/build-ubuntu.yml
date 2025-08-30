@@ -440,7 +440,11 @@ jobs:
           ALL_TAGS=$(skopeo list-tags docker://${SOURCE_REGISTRY}/${SOURCE_IMAGE} | jq -r '.Tags[]' | sort)
 
           # Filter tags: exclude branch builds and other unwanted patterns
-          TAGS_TO_MIRROR=()
+          # Separate tags by category for proper ordering
+          BASE_TAGS=()
+          NODE_TAGS=()
+          PYTHON_TAGS=()
+          ALIAS_TAGS=()
 
           for TAG in $ALL_TAGS; do
             # Skip tags with branch suffixes (anything after a dash that isn't our standard pattern)
@@ -449,14 +453,70 @@ jobs:
               continue
             fi
 
-            if [[ "$TAG" =~ ^(ubuntu-latest|ubuntu-lts|ubuntu-rolling)$ ]] || \
-               [[ "$TAG" =~ ^ubuntu[0-9]+\.[0-9]+-base$ ]] || \
-               [[ "$TAG" =~ ^ubuntu[0-9]+\.[0-9]+-node[0-9]+-[0-9]+$ ]] || \
-               [[ "$TAG" =~ ^ubuntu[0-9]+\.[0-9]+-node[0-9]+-[0-9]+-py[0-9]+\.[0-9]+$ ]]; then
-              TAGS_TO_MIRROR+=("$TAG")
-              echo "✅ Will mirror: $TAG"
+            # Categorize tags for proper ordering
+            if [[ "$TAG" =~ ^ubuntu[0-9]+\.[0-9]+-base$ ]]; then
+              BASE_TAGS+=("$TAG")
+            elif [[ "$TAG" =~ ^ubuntu[0-9]+\.[0-9]+-node[0-9]+-[0-9]+$ ]]; then
+              NODE_TAGS+=("$TAG")
+            elif [[ "$TAG" =~ ^ubuntu[0-9]+\.[0-9]+-node[0-9]+-[0-9]+-py[0-9]+\.[0-9]+$ ]]; then
+              PYTHON_TAGS+=("$TAG")
+            elif [[ "$TAG" =~ ^(ubuntu-latest|ubuntu-lts|ubuntu-rolling)$ ]]; then
+              ALIAS_TAGS+=("$TAG")
             else
               echo "⏭️  Skipping unknown pattern: $TAG"
+              continue
+            fi
+          done
+
+          # Sort each category (except aliases which have a specific order)
+          IFS=$'\n' BASE_TAGS=($(sort <<<"${BASE_TAGS[*]}")); unset IFS
+          IFS=$'\n' NODE_TAGS=($(sort <<<"${NODE_TAGS[*]}")); unset IFS
+          IFS=$'\n' PYTHON_TAGS=($(sort <<<"${PYTHON_TAGS[*]}")); unset IFS
+
+          # Sort alias tags in specific order: lts, latest, rolling
+          SORTED_ALIAS_TAGS=()
+          for ALIAS in "ubuntu-lts" "ubuntu-latest" "ubuntu-rolling"; do
+            for TAG in "${ALIAS_TAGS[@]}"; do
+              if [ "$TAG" = "$ALIAS" ]; then
+                SORTED_ALIAS_TAGS+=("$TAG")
+                break
+              fi
+            done
+          done
+          ALIAS_TAGS=("${SORTED_ALIAS_TAGS[@]}")
+
+          # Combine in the desired order: base, node, python, then aliases
+          TAGS_TO_MIRROR=()
+
+          # Add base tags first
+          for TAG in "${BASE_TAGS[@]}"; do
+            if [ -n "$TAG" ]; then
+              TAGS_TO_MIRROR+=("$TAG")
+              echo "✅ Will mirror: $TAG"
+            fi
+          done
+
+          # Then node-only tags
+          for TAG in "${NODE_TAGS[@]}"; do
+            if [ -n "$TAG" ]; then
+              TAGS_TO_MIRROR+=("$TAG")
+              echo "✅ Will mirror: $TAG"
+            fi
+          done
+
+          # Then python tags
+          for TAG in "${PYTHON_TAGS[@]}"; do
+            if [ -n "$TAG" ]; then
+              TAGS_TO_MIRROR+=("$TAG")
+              echo "✅ Will mirror: $TAG"
+            fi
+          done
+
+          # Finally alias tags
+          for TAG in "${ALIAS_TAGS[@]}"; do
+            if [ -n "$TAG" ]; then
+              TAGS_TO_MIRROR+=("$TAG")
+              echo "✅ Will mirror: $TAG"
             fi
           done
 
