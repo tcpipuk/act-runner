@@ -25,47 +25,47 @@ LABEL org.opencontainers.image.title="act-runner-ubuntu${UBUNTU_VERSION}-base" \
     org.opencontainers.image.licenses="MIT" \
     org.opencontainers.image.authors="Tom Foster"
 
-# Layer 1: Core essentials and build tools (rarely change)
+# Layer 1: Core build tools (rarely change - every few months)
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache-${UBUNTU_VERSION}-${TARGETARCH} \
     --mount=type=cache,target=/var/lib/apt,sharing=locked,id=apt-lib-${UBUNTU_VERSION}-${TARGETARCH} \
     apt-get update && apt-get install -y --no-install-recommends \
-    # Essentials and build tools (alphabetically sorted)
+    # Build tools and compression utilities (alphabetically sorted)
     apt-utils \
     build-essential \
-    ca-certificates \
+    bzip2 \
     cmake \
     curl \
+    file \
     g++ \
     gcc \
+    gzip \
+    jq \
+    libffi-dev \
+    make \
+    patch \
+    pkg-config \
+    rsync \
+    tar \
+    unzip \
+    wget \
+    xz-utils \
+    zip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Layer 2: Monthly-update tools (git, security packages, certificates)
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache-${UBUNTU_VERSION}-${TARGETARCH} \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked,id=apt-lib-${UBUNTU_VERSION}-${TARGETARCH} \
+    apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
     git \
     git-lfs \
     gnupg \
     gpg \
-    libffi-dev \
     libssl-dev \
     lsb-release \
-    make \
-    pkg-config \
-    software-properties-common \
-    wget \
-    && rm -rf /var/lib/apt/lists/*
-
-# Layer 2: Utilities (occasional changes, alphabetically sorted)
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache-${UBUNTU_VERSION}-${TARGETARCH} \
-    --mount=type=cache,target=/var/lib/apt,sharing=locked,id=apt-lib-${UBUNTU_VERSION}-${TARGETARCH} \
-    apt-get update && apt-get install -y --no-install-recommends \
-    bzip2 \
-    file \
-    gzip \
-    jq \
     openssh-client \
-    patch \
-    rsync \
+    software-properties-common \
     sudo \
-    tar \
-    unzip \
-    xz-utils \
-    zip \
     && rm -rf /var/lib/apt/lists/*
 
 # Layer 3: Docker installation
