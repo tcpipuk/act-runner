@@ -50,9 +50,7 @@ RUN if [ -z "${USE_NATIVE_PYTHON}" ]; then \
     fi
 
 # Set up uv environment variables
-# For native Python, we use "python3" instead of a specific version
-ARG USE_NATIVE_PYTHON=""
-ENV UV_PYTHON=${USE_NATIVE_PYTHON:+python3}${USE_NATIVE_PYTHON:-python${PYTHON_VERSION}} \
+ENV UV_PYTHON=${PYTHON_VERSION} \
     UV_LINK_MODE=copy
 
 # Install uv (installs to /root/.local/bin by default)
