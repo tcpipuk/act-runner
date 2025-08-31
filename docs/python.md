@@ -39,7 +39,6 @@ The following environment variables are pre-configured:
 
 | Variable | Value | Purpose |
 |----------|-------|---------|
-| `UV_PYTHON` | `python{version}` | Tells uv which Python to use |
 | `UV_LINK_MODE` | `copy` | Reduces verbosity in CI logs |
 | `PATH` | `/root/.local/bin:$PATH` | Includes uv and installed tools |
 

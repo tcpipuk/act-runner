@@ -50,8 +50,7 @@ RUN if [ -z "${USE_NATIVE_PYTHON}" ]; then \
     fi
 
 # Set up uv environment variables
-ENV UV_PYTHON=${PYTHON_VERSION} \
-    UV_LINK_MODE=copy
+ENV UV_LINK_MODE=copy
 
 # Add uv and its tools to PATH
 ENV PATH="/root/.local/bin:${PATH}"
