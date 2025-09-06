@@ -16,8 +16,8 @@ SHELL ["/bin/bash", "-e", "-c"]
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Metadata (static values only for better caching)
-LABEL org.opencontainers.image.title="act-runner-ubuntu${UBUNTU_VERSION}-base" \
-    org.opencontainers.image.description="Optimized ACT/Forgejo runner base image with essential CI tools for Ubuntu ${UBUNTU_VERSION}" \
+LABEL org.opencontainers.image.title="act-runner-ubuntu${UBUNTU_VERSION}-node${NODE_VERSIONS// /-}" \
+    org.opencontainers.image.description="ACT/Forgejo runner with Node.js ${NODE_VERSIONS} for Ubuntu ${UBUNTU_VERSION}" \
     org.opencontainers.image.url="https://git.tomfos.tr/tom/act-runner" \
     org.opencontainers.image.source="https://git.tomfos.tr/tom/act-runner" \
     org.opencontainers.image.documentation="https://git.tomfos.tr/tom/act-runner/src/branch/main/README.md" \
@@ -78,6 +78,36 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache-${UBUNT
     docker.io \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir -p -m 755 /opt/hostedtoolcache
+
+# Layer 4: Node.js installation
+ARG NODE_VERSIONS="20 22"
+RUN --mount=type=cache,target=/tmp/downloads,sharing=locked,id=downloads-${UBUNTU_VERSION}-${TARGETARCH} \
+    for VERSION in ${NODE_VERSIONS}; do \
+    NODE_URL="https://nodejs.org/dist/latest-v${VERSION}.x/"; \
+    NODE_VERSION=$(curl -sL ${NODE_URL} | grep -oP 'node-v\K[0-9]+\.[0-9]+\.[0-9]+' | head -1); \
+    FULL_VERSION="v${NODE_VERSION}"; \
+    ARCH=$(dpkg --print-architecture | sed 's/amd64/x64/;s/ppc64el/ppc64le/'); \
+    TARBALL="/tmp/downloads/node-${FULL_VERSION}-linux-${ARCH}.tar.xz"; \
+    if [ ! -f "${TARBALL}" ] || ! xz -t "${TARBALL}" 2>/dev/null; then \
+    echo "Downloading Node.js ${FULL_VERSION} for ${ARCH}..."; \
+    rm -f "${TARBALL}"; \
+    curl -fSL "${NODE_URL}/node-${FULL_VERSION}-linux-${ARCH}.tar.xz" -o "${TARBALL}" || \
+    (echo "Failed to download Node.js ${FULL_VERSION} for ${ARCH}" && exit 1); \
+    xz -t "${TARBALL}" || (echo "Downloaded file is corrupted" && rm -f "${TARBALL}" && exit 1); \
+    fi; \
+    NODE_PATH="/opt/hostedtoolcache/node/${NODE_VERSION}/${ARCH}"; \
+    mkdir -p "${NODE_PATH}"; \
+    echo "Extracting Node.js ${FULL_VERSION} to ${NODE_PATH}..."; \
+    tar -xJf "${TARBALL}" --strip-components=1 -C "${NODE_PATH}"; \
+    done
+
+# Add newest Node version to PATH
+RUN NODE_VERSION=$(ls /opt/hostedtoolcache/node | sort -V | tail -1) && \
+    ARCH=$(dpkg --print-architecture | sed 's/amd64/x64/;s/armhf/armv7l/;s/ppc64el/ppc64le/') && \
+    echo "export PATH=/opt/hostedtoolcache/node/${NODE_VERSION}/${ARCH}/bin:\$PATH" >> /etc/profile.d/node.sh && \
+    ln -sf /opt/hostedtoolcache/node/${NODE_VERSION}/${ARCH}/bin/node /usr/local/bin/node && \
+    ln -sf /opt/hostedtoolcache/node/${NODE_VERSION}/${ARCH}/bin/npm /usr/local/bin/npm && \
+    ln -sf /opt/hostedtoolcache/node/${NODE_VERSION}/${ARCH}/bin/npx /usr/local/bin/npx
 
 # Set up environment
 ENV AGENT_TOOLSDIRECTORY=/opt/hostedtoolcache \

@@ -2,10 +2,10 @@
 ARG UBUNTU_VERSION=24.04
 ARG NODE_VERSIONS="20 22"
 ARG PYTHON_VERSION=3.13
-ARG NODE_IMAGE=git.tomfos.tr/tom/act-runner:ubuntu${UBUNTU_VERSION}-node20-22
+ARG BASE_IMAGE=git.tomfos.tr/tom/act-runner:ubuntu${UBUNTU_VERSION}-node20-22
 
-# Use our node image as base
-FROM ${NODE_IMAGE} AS base
+# Use our base image (now includes Node.js)
+FROM ${BASE_IMAGE} AS base
 
 # Python installation
 FROM base AS final
