@@ -81,6 +81,9 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache-${UBUNT
 
 # Set up environment
 ENV AGENT_TOOLSDIRECTORY=/opt/hostedtoolcache \
+    BUILDKIT_PROGRESS=plain \
+    CI=true \
+    DOCKER_BUILDKIT=1 \
     UBUNTU_VERSION=${UBUNTU_VERSION}
 
 WORKDIR /tmp
