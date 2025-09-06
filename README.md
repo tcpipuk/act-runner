@@ -40,9 +40,11 @@ act -P ubuntu-latest=ghcr.io/tcpipuk/act-runner:ubuntu-latest
 | **[`ubuntu-latest`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu-latest)** - Current stable | 24/22 | [`ubuntu24.04-node24-22-py3.12`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu24.04-node24-22-py3.12) |
 | **[`ubuntu-lts`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu-lts)** - Previous LTS | 22/20 | [`ubuntu22.04-node22-20-py3.10`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu22.04-node22-20-py3.10) |
 |  |  |  |
-| 25.04 | 24/22 | [`None`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu25.04-node24-22), [**3.13**](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu25.04-node24-22-py3.13) |
-| 24.04 LTS | 24/22 | [`None`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu24.04-node24-22), [3.13](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu24.04-node24-22-py3.13), [**3.12**](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu24.04-node24-22-py3.12) |
-| 22.04 LTS | 22/20 | [`None`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu22.04-node22-20), [3.13](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu22.04-node22-20-py3.13), [**3.10**](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu22.04-node22-20-py3.10) |
+| 25.04 | 24/22 | [`None`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu25.04-node24-22), [***3.13***](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu25.04-node24-22-py3.13) |
+| 24.04 LTS | 24/22 | [`None`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu24.04-node24-22), [3.13](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu24.04-node24-22-py3.13), [***3.12***](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu24.04-node24-22-py3.12) |
+| 22.04 LTS | 22/20 | [`None`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu22.04-node22-20), [3.13](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu22.04-node22-20-py3.13), [***3.10***](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu22.04-node22-20-py3.10) |
+
+**Note**: ***Italicised*** versions are the native Python for each Ubuntu release. `None` provides Node.js without Python, whilst non-native versions use the latest stable Python (3.13) from deadsnakes PPA.
 
 ## Fedora images
 
