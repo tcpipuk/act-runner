@@ -118,74 +118,19 @@ jobs:
           echo "📦 Node.js latest versions: ${LATEST_VERSIONS}"
 
   build-base:
-    name: Build Ubuntu ${{ matrix.ubuntu == 'lts' && 'LTS' || matrix.ubuntu == 'latest' && 'Latest' || matrix.ubuntu == 'rolling' && 'Rolling' || matrix.ubuntu }} Base
+    name: Build Ubuntu ${{ matrix.ubuntu == 'lts' && 'LTS' || matrix.ubuntu == 'latest' && 'Latest' || matrix.ubuntu == 'rolling' && 'Rolling' || matrix.ubuntu }} Node ${{ matrix.node_versions == 'lts' && 'LTS' || matrix.node_versions == 'latest' && 'Latest' || matrix.node_versions }}
     runs-on: ubuntu-latest
     needs: prepare-build
     strategy:
       fail-fast: false
       matrix:
-        ubuntu: ["lts", "latest", "rolling"]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Docker
-        uses: docker/setup-buildx-action@v3
-        with:
-          driver: remote
-          endpoint: tcp://buildkit:8125
-
-      - name: Log in to Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.FORGEJO_TOKEN }}
-
-      - name: Generate base tags
-        id: base-tags
-        run: |
-          # Resolve the actual Ubuntu version
-          if [ "${{ matrix.ubuntu }}" = "lts" ]; then
-            UBUNTU_VERSION="${{ needs.prepare-build.outputs.lts-ubuntu }}"
-          elif [ "${{ matrix.ubuntu }}" = "latest" ]; then
-            UBUNTU_VERSION="${{ needs.prepare-build.outputs.latest-ubuntu }}"
-          elif [ "${{ matrix.ubuntu }}" = "rolling" ]; then
-            UBUNTU_VERSION="${{ needs.prepare-build.outputs.rolling-ubuntu }}"
-          else
-            UBUNTU_VERSION="${{ matrix.ubuntu }}"
-          fi
-          echo "ubuntu-version=${UBUNTU_VERSION}" >> $GITHUB_OUTPUT
-
-          BASE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:ubuntu${UBUNTU_VERSION}-base"
-          if [ "${{ github.ref_name }}" != "main" ]; then
-            BASE_TAG="${BASE_TAG}-${{ github.ref_name }}"
-          fi
-          echo "tags=${BASE_TAG}" >> $GITHUB_OUTPUT
-          echo "📦 Base image tag: ${BASE_TAG}"
-
-      - name: Build and push base image
-        uses: docker/build-push-action@v6
-        with:
-          context: ./linux/ubuntu
-          file: ./linux/ubuntu/Dockerfile.base
-          push: true
-          tags: ${{ steps.base-tags.outputs.tags }}
-          build-args: |
-            UBUNTU_VERSION=${{ steps.base-tags.outputs.ubuntu-version }}
-            K8S_VERSION=${{ needs.prepare-build.outputs.k8s-version }}
-          platforms: linux/amd64,linux/arm64/v8,linux/ppc64le,linux/s390x
-
-  build-node:
-    name: Build Ubuntu ${{ matrix.ubuntu == 'lts' && 'LTS' || matrix.ubuntu == 'latest' && 'Latest' || matrix.ubuntu == 'rolling' && 'Rolling' || matrix.ubuntu }} Node ${{ matrix.node_versions == 'lts' && 'LTS' || matrix.node_versions == 'latest' && 'Latest' || matrix.node_versions }}
-    runs-on: ubuntu-latest
-    needs: [build-base, prepare-build]
-    strategy:
-      fail-fast: false
-      matrix:
-        ubuntu: ["lts", "latest", "rolling"]
-        node_versions: ["lts", "latest"]
-
+        include:
+          - ubuntu: "lts"
+            node_versions: "lts"
+          - ubuntu: "latest"
+            node_versions: "latest"
+          - ubuntu: "rolling"
+            node_versions: "latest"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -240,53 +185,46 @@ jobs:
           echo "tags=${BASE_TAG}" >> $GITHUB_OUTPUT
           echo "node_versions_spaced=${NODE_VERSIONS_SPACED}" >> $GITHUB_OUTPUT
 
-          # Generate base image reference with branch suffix
-          BASE_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:ubuntu${UBUNTU_VERSION}-base"
-          if [ "${{ github.ref_name }}" != "main" ]; then
-            BASE_IMAGE="${BASE_IMAGE}-${{ github.ref_name }}"
-          fi
-          echo "base_image=${BASE_IMAGE}" >> $GITHUB_OUTPUT
-
           echo "📦 Node image tag: ${BASE_TAG}"
           echo "🔧 Node versions: ${NODE_VERSIONS_SPACED}"
-          echo "🏗️ Building from: ${BASE_IMAGE}"
 
       - name: Build and push node image
         uses: docker/build-push-action@v6
         with:
           context: ./linux/ubuntu
-          file: ./linux/ubuntu/Dockerfile.node
+          file: ./linux/ubuntu/Dockerfile.base
           push: true
           tags: ${{ steps.node-tags.outputs.tags }}
           build-args: |
             UBUNTU_VERSION=${{ steps.node-tags.outputs.ubuntu-version }}
-            BASE_IMAGE=${{ steps.node-tags.outputs.base_image }}
             NODE_VERSIONS=${{ steps.node-tags.outputs.node_versions_spaced }}
+            K8S_VERSION=${{ needs.prepare-build.outputs.k8s-version }}
           platforms: linux/amd64,linux/arm64/v8,linux/ppc64le,linux/s390x
+
 
   build-python:
     name: Build Ubuntu ${{ matrix.ubuntu == 'lts' && 'LTS' || matrix.ubuntu == 'latest' && 'Latest' || matrix.ubuntu == 'rolling' && 'Rolling' || matrix.ubuntu }} Node ${{ matrix.node_versions == 'lts' && 'LTS' || matrix.node_versions == 'latest' && 'Latest' || matrix.node_versions }} Python ${{ matrix.python == 'native' && 'Native' || matrix.python }}
     runs-on: ubuntu-latest
-    needs: [build-node, prepare-build]
+    needs: [build-base, prepare-build]
     strategy:
       fail-fast: false
       matrix:
-        ubuntu: ["lts", "latest"]
-        node_versions: ["lts", "latest"]
-        python: ["3.10", "3.11", "3.12", "3.13", "native"]
-        exclude:
-          # Exclude versions that duplicate the native Python
-          # LTS (22.04) has native Python 3.10
-          - ubuntu: "lts"
-            python: "3.10"
-          # Latest (24.04) has native Python 3.12
-          - ubuntu: "latest"
-            python: "3.12"
         include:
-          # Rolling release - only supports native Python
-          - ubuntu: "rolling"
+          # LTS Ubuntu with LTS Node
+          - ubuntu: "lts"
+            node_versions: "lts"
+            python: "3.13"
+          - ubuntu: "lts"
             node_versions: "lts"
             python: "native"
+          # Latest Ubuntu with Latest Node
+          - ubuntu: "latest"
+            node_versions: "latest"
+            python: "3.13"
+          - ubuntu: "latest"
+            node_versions: "latest"
+            python: "native"
+          # Rolling Ubuntu with Latest Node (native Python only)
           - ubuntu: "rolling"
             node_versions: "latest"
             python: "native"
@@ -389,17 +327,17 @@ jobs:
           echo "tags=${TAGS}" >> $GITHUB_OUTPUT
           echo "node_versions_spaced=${NODE_VERSIONS_SPACED}" >> $GITHUB_OUTPUT
 
-          # Generate node image reference with branch suffix
-          NODE_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:ubuntu${UBUNTU_VERSION}-node${NODE_TAG}"
+          # Generate base image reference with branch suffix (now includes Node.js)
+          BASE_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:ubuntu${UBUNTU_VERSION}-node${NODE_TAG}"
           if [ "${{ github.ref_name }}" != "main" ]; then
-            NODE_IMAGE="${NODE_IMAGE}-${{ github.ref_name }}"
+            BASE_IMAGE="${BASE_IMAGE}-${{ github.ref_name }}"
           fi
-          echo "node_image=${NODE_IMAGE}" >> $GITHUB_OUTPUT
+          echo "base_image=${BASE_IMAGE}" >> $GITHUB_OUTPUT
 
           echo "📦 Python image tags: ${TAGS}"
           echo "🐍 Python version: ${PYTHON_VERSION}"
           echo "🔧 Node versions: ${NODE_VERSIONS_SPACED}"
-          echo "🏗️ Building from: ${NODE_IMAGE}"
+          echo "🏗️ Building from: ${BASE_IMAGE}"
 
       - name: Build and push python image
         uses: docker/build-push-action@v6
@@ -410,7 +348,7 @@ jobs:
           tags: ${{ steps.python-tags.outputs.tags }}
           build-args: |
             UBUNTU_VERSION=${{ steps.python-tags.outputs.ubuntu-version }}
-            NODE_IMAGE=${{ steps.python-tags.outputs.node_image }}
+            BASE_IMAGE=${{ steps.python-tags.outputs.base_image }}
             NODE_VERSIONS=${{ steps.python-tags.outputs.node_versions_spaced }}
             PYTHON_VERSION=${{ steps.python-tags.outputs.python-version }}
             USE_NATIVE_PYTHON=${{ steps.python-tags.outputs.use-native-python }}
@@ -441,7 +379,6 @@ jobs:
 
           # Filter tags: exclude branch builds and other unwanted patterns
           # Separate tags by category for proper ordering
-          BASE_TAGS=()
           NODE_TAGS=()
           PYTHON_TAGS=()
           ALIAS_TAGS=()
@@ -454,8 +391,7 @@ jobs:
             fi
 
             # Categorize tags for proper ordering
-            if [[ "$TAG" =~ ^ubuntu[0-9]+\.[0-9]+-base$ ]]; then
-              BASE_TAGS+=("$TAG")
+            # No longer have -base tags, they're now node tags
             elif [[ "$TAG" =~ ^ubuntu[0-9]+\.[0-9]+-node[0-9]+-[0-9]+$ ]]; then
               NODE_TAGS+=("$TAG")
             elif [[ "$TAG" =~ ^ubuntu[0-9]+\.[0-9]+-node[0-9]+-[0-9]+-py[0-9]+\.[0-9]+$ ]]; then
@@ -469,7 +405,6 @@ jobs:
           done
 
           # Sort each category (except aliases which have a specific order)
-          IFS=$'\n' BASE_TAGS=($(sort <<<"${BASE_TAGS[*]}")); unset IFS
           IFS=$'\n' NODE_TAGS=($(sort <<<"${NODE_TAGS[*]}")); unset IFS
           IFS=$'\n' PYTHON_TAGS=($(sort <<<"${PYTHON_TAGS[*]}")); unset IFS
 
@@ -485,18 +420,10 @@ jobs:
           done
           ALIAS_TAGS=("${SORTED_ALIAS_TAGS[@]}")
 
-          # Combine in the desired order: base, node, python, then aliases
+          # Combine in the desired order: node, python, then aliases
           TAGS_TO_MIRROR=()
 
-          # Add base tags first
-          for TAG in "${BASE_TAGS[@]}"; do
-            if [ -n "$TAG" ]; then
-              TAGS_TO_MIRROR+=("$TAG")
-              echo "✅ Will mirror: $TAG"
-            fi
-          done
-
-          # Then node-only tags
+          # Add node tags first
           for TAG in "${NODE_TAGS[@]}"; do
             if [ -n "$TAG" ]; then
               TAGS_TO_MIRROR+=("$TAG")
@@ -606,7 +533,7 @@ jobs:
           echo "📝 Generating Ubuntu images table..."
 
           # Define all Python versions we support (matches the matrix in build-python)
-          PYTHON_VERSIONS="3.10 3.11 3.12 3.13"
+          PYTHON_VERSIONS="3.13"
 
           # Get versions from prepare-build outputs
           LTS_VERSION="${{ needs.prepare-build.outputs.lts-ubuntu }}"
@@ -624,7 +551,7 @@ jobs:
           NODE_LTS_TAG=$(echo "${NODE_LTS}" | tr '+' '-')
           NODE_LATEST_TAG=$(echo "${NODE_LATEST}" | tr '+' '-')
 
-          # Generate Ubuntu images table with convenience tags at top
+          # Generate simplified Ubuntu images table matching our new matrix
           {
             echo "| Ubuntu | Node.js | Python Versions Available |"
             echo "|--------|---------|---------------------------|"
@@ -633,54 +560,10 @@ jobs:
             echo "| **[\`ubuntu-lts\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu-lts)** - Previous LTS | ${NODE_LTS_DISPLAY} | [\`ubuntu${LTS_VERSION}-node${NODE_LTS_TAG}-py${LTS_PYTHON}\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${LTS_VERSION}-node${NODE_LTS_TAG}-py${LTS_PYTHON}) |"
             echo "|  |  |  |"
 
-            # Rolling release rows (only native Python)
-            echo "| ${ROLLING_VERSION} | ${NODE_LATEST_DISPLAY} | [None](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${ROLLING_VERSION}-node${NODE_LATEST_TAG}), [**${ROLLING_PYTHON}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${ROLLING_VERSION}-node${NODE_LATEST_TAG}-py${ROLLING_PYTHON}) |"
-            echo "| ${ROLLING_VERSION} | ${NODE_LTS_DISPLAY} | [None](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${ROLLING_VERSION}-node${NODE_LTS_TAG}), [**${ROLLING_PYTHON}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${ROLLING_VERSION}-node${NODE_LTS_TAG}-py${ROLLING_PYTHON}) |"
-            echo "| ${ROLLING_VERSION} | None | [None](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${ROLLING_VERSION}-base) |"
-
-            # Latest LTS rows - build links for all Python versions, bolding the native one
-            LATEST_PYTHON_LINKS="[None](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${LATEST_VERSION}-node${NODE_LATEST_TAG})"
-            for PY in ${PYTHON_VERSIONS}; do
-              if [ "${PY}" = "${LATEST_PYTHON}" ]; then
-                LATEST_PYTHON_LINKS="${LATEST_PYTHON_LINKS}, [**${PY}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${LATEST_VERSION}-node${NODE_LATEST_TAG}-py${PY})"
-              else
-                LATEST_PYTHON_LINKS="${LATEST_PYTHON_LINKS}, [${PY}](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${LATEST_VERSION}-node${NODE_LATEST_TAG}-py${PY})"
-              fi
-            done
-            echo "| ${LATEST_VERSION} LTS | ${NODE_LATEST_DISPLAY} | ${LATEST_PYTHON_LINKS} |"
-
-            LATEST_PYTHON_LINKS_LTS="[None](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${LATEST_VERSION}-node${NODE_LTS_TAG})"
-            for PY in ${PYTHON_VERSIONS}; do
-              if [ "${PY}" = "${LATEST_PYTHON}" ]; then
-                LATEST_PYTHON_LINKS_LTS="${LATEST_PYTHON_LINKS_LTS}, [**${PY}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${LATEST_VERSION}-node${NODE_LTS_TAG}-py${PY})"
-              else
-                LATEST_PYTHON_LINKS_LTS="${LATEST_PYTHON_LINKS_LTS}, [${PY}](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${LATEST_VERSION}-node${NODE_LTS_TAG}-py${PY})"
-              fi
-            done
-            echo "| ${LATEST_VERSION} LTS | ${NODE_LTS_DISPLAY} | ${LATEST_PYTHON_LINKS_LTS} |"
-            echo "| ${LATEST_VERSION} LTS | None | [None](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${LATEST_VERSION}-base) |"
-
-            # LTS rows - build links for all Python versions, bolding the native one
-            LTS_PYTHON_LINKS="[None](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${LTS_VERSION}-node${NODE_LATEST_TAG})"
-            for PY in ${PYTHON_VERSIONS}; do
-              if [ "${PY}" = "${LTS_PYTHON}" ]; then
-                LTS_PYTHON_LINKS="${LTS_PYTHON_LINKS}, [**${PY}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${LTS_VERSION}-node${NODE_LATEST_TAG}-py${PY})"
-              else
-                LTS_PYTHON_LINKS="${LTS_PYTHON_LINKS}, [${PY}](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${LTS_VERSION}-node${NODE_LATEST_TAG}-py${PY})"
-              fi
-            done
-            echo "| ${LTS_VERSION} LTS | ${NODE_LATEST_DISPLAY} | ${LTS_PYTHON_LINKS} |"
-
-            LTS_PYTHON_LINKS_LTS="[None](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${LTS_VERSION}-node${NODE_LTS_TAG})"
-            for PY in ${PYTHON_VERSIONS}; do
-              if [ "${PY}" = "${LTS_PYTHON}" ]; then
-                LTS_PYTHON_LINKS_LTS="${LTS_PYTHON_LINKS_LTS}, [**${PY}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${LTS_VERSION}-node${NODE_LTS_TAG}-py${PY})"
-              else
-                LTS_PYTHON_LINKS_LTS="${LTS_PYTHON_LINKS_LTS}, [${PY}](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${LTS_VERSION}-node${NODE_LTS_TAG}-py${PY})"
-              fi
-            done
-            echo "| ${LTS_VERSION} LTS | ${NODE_LTS_DISPLAY} | ${LTS_PYTHON_LINKS_LTS} |"
-            echo "| ${LTS_VERSION} LTS | None | [None](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${LTS_VERSION}-base) |"
+            # Simplified matrix: each Ubuntu version gets exactly one Node.js version
+            echo "| ${ROLLING_VERSION} | ${NODE_LATEST_DISPLAY} | [\`None\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${ROLLING_VERSION}-node${NODE_LATEST_TAG}), [**${ROLLING_PYTHON}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${ROLLING_VERSION}-node${NODE_LATEST_TAG}-py${ROLLING_PYTHON}) |"
+            echo "| ${LATEST_VERSION} LTS | ${NODE_LATEST_DISPLAY} | [\`None\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${LATEST_VERSION}-node${NODE_LATEST_TAG}), [${PYTHON_VERSIONS}](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${LATEST_VERSION}-node${NODE_LATEST_TAG}-py${PYTHON_VERSIONS}), [**${LATEST_PYTHON}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${LATEST_VERSION}-node${NODE_LATEST_TAG}-py${LATEST_PYTHON}) |"
+            echo "| ${LTS_VERSION} LTS | ${NODE_LTS_DISPLAY} | [\`None\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${LTS_VERSION}-node${NODE_LTS_TAG}), [${PYTHON_VERSIONS}](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${LTS_VERSION}-node${NODE_LTS_TAG}-py${PYTHON_VERSIONS}), [**${LTS_PYTHON}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${LTS_VERSION}-node${NODE_LTS_TAG}-py${LTS_PYTHON}) |"
           } > /tmp/ubuntu-images.md
 
           echo "✅ Generated Ubuntu images table:"
