@@ -32,8 +32,8 @@ jobs:
       ubuntu-previous-python: ${{ steps.ubuntu-previous.outputs.python }}
       ubuntu-latest: ${{ steps.ubuntu-latest.outputs.ubuntu }}
       ubuntu-latest-python: ${{ steps.ubuntu-latest.outputs.python }}
-      ubuntu-devel: ${{ steps.ubuntu-devel.outputs.ubuntu }}
-      ubuntu-devel-python: ${{ steps.ubuntu-devel.outputs.python }}
+      ubuntu-rolling: ${{ steps.ubuntu-rolling.outputs.ubuntu }}
+      ubuntu-rolling-python: ${{ steps.ubuntu-rolling.outputs.python }}
       # Fedora versions and Python
       fedora-previous: ${{ steps.fedora-previous.outputs.fedora }}
       fedora-previous-python: ${{ steps.fedora-previous.outputs.python }}
@@ -110,7 +110,7 @@ jobs:
           echo "📦 Ubuntu latest is ${UBUNTU_VERSION} (${UBUNTU_CODENAME}) with Python ${PYTHON_VERSION}"
 
       - name: Detect Ubuntu rolling version
-        id: ubuntu-devel
+        id: ubuntu-rolling
         run: |
           # Pull rolling image and get version info
           docker pull ubuntu:rolling
@@ -221,8 +221,8 @@ jobs:
             NATIVE_PYTHON="${{ needs.prepare.outputs.ubuntu-latest-python }}"
             NODE_VERSIONS="${NODE_LATEST}"
           elif [ "${{ matrix.variant }}" = "rolling" ]; then
-            UBUNTU_VERSION="${{ needs.prepare.outputs.ubuntu-devel }}"
-            NATIVE_PYTHON="${{ needs.prepare.outputs.ubuntu-devel-python }}"
+            UBUNTU_VERSION="${{ needs.prepare.outputs.ubuntu-rolling }}"
+            NATIVE_PYTHON="${{ needs.prepare.outputs.ubuntu-rolling-python }}"
             NODE_VERSIONS="${NODE_LATEST}"
           fi
           echo "ubuntu-version=${UBUNTU_VERSION}" >> $GITHUB_OUTPUT
@@ -527,8 +527,8 @@ jobs:
           UBUNTU_PREV_PYTHON="${{ needs.prepare.outputs.ubuntu-previous-python }}"
           UBUNTU_LATEST_VERSION="${{ needs.prepare.outputs.ubuntu-latest }}"
           UBUNTU_LATEST_PYTHON="${{ needs.prepare.outputs.ubuntu-latest-python }}"
-          UBUNTU_DEVEL_VERSION="${{ needs.prepare.outputs.ubuntu-devel }}"
-          UBUNTU_DEVEL_PYTHON="${{ needs.prepare.outputs.ubuntu-devel-python }}"
+          UBUNTU_ROLLING_VERSION="${{ needs.prepare.outputs.ubuntu-rolling }}"
+          UBUNTU_ROLLING_PYTHON="${{ needs.prepare.outputs.ubuntu-rolling-python }}"
 
           FEDORA_PREV_VERSION="${{ needs.prepare.outputs.fedora-previous }}"
           FEDORA_PREV_PYTHON="${{ needs.prepare.outputs.fedora-previous-python }}"
@@ -548,30 +548,24 @@ jobs:
 
           # Generate Ubuntu images table
           {
-            echo "| Ubuntu | Node.js | Python Versions Available |"
-            echo "|--------|---------|---------------------------|"
-            echo "| **[\`ubuntu-rolling\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu-rolling)** - Development | ${NODE_LATEST_DISPLAY} | [***${UBUNTU_DEVEL_PYTHON}***](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${UBUNTU_DEVEL_VERSION}-node${NODE_LATEST_TAG}-py${UBUNTU_DEVEL_PYTHON}) |"
-            echo "| **[\`ubuntu-latest\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu-latest)** - Current stable | ${NODE_LATEST_DISPLAY} | [${PYTHON_VERSIONS}](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${UBUNTU_LATEST_VERSION}-node${NODE_LATEST_TAG}-py${PYTHON_VERSIONS}), [***${UBUNTU_LATEST_PYTHON}***](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${UBUNTU_LATEST_VERSION}-node${NODE_LATEST_TAG}-py${UBUNTU_LATEST_PYTHON}) |"
-            echo "| **[\`ubuntu-previous\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu-previous)** - Previous LTS | ${NODE_LTS_DISPLAY} | [${PYTHON_VERSIONS}](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${UBUNTU_PREV_VERSION}-node${NODE_LTS_TAG}-py${PYTHON_VERSIONS}), [***${UBUNTU_PREV_PYTHON}***](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${UBUNTU_PREV_VERSION}-node${NODE_LTS_TAG}-py${UBUNTU_PREV_PYTHON}) |"
-            echo "|  |  |  |"
-            echo "| ${UBUNTU_DEVEL_VERSION} | ${NODE_LATEST_DISPLAY} | [***${UBUNTU_DEVEL_PYTHON}***](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${UBUNTU_DEVEL_VERSION}-node${NODE_LATEST_TAG}-py${UBUNTU_DEVEL_PYTHON}) |"
-            echo "| ${UBUNTU_LATEST_VERSION} LTS | ${NODE_LATEST_DISPLAY} | [${PYTHON_VERSIONS}](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${UBUNTU_LATEST_VERSION}-node${NODE_LATEST_TAG}-py${PYTHON_VERSIONS}), [***${UBUNTU_LATEST_PYTHON}***](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${UBUNTU_LATEST_VERSION}-node${NODE_LATEST_TAG}-py${UBUNTU_LATEST_PYTHON}) |"
-            echo "| ${UBUNTU_PREV_VERSION} LTS | ${NODE_LTS_DISPLAY} | [${PYTHON_VERSIONS}](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${UBUNTU_PREV_VERSION}-node${NODE_LTS_TAG}-py${PYTHON_VERSIONS}), [***${UBUNTU_PREV_PYTHON}***](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${UBUNTU_PREV_VERSION}-node${NODE_LTS_TAG}-py${UBUNTU_PREV_PYTHON}) |"
+            echo "| Ubuntu Version | Alias Tag | Node.js | Python Versions Available |"
+            echo "|----------------|-----------|---------|---------------------------|"
+            echo "| ${UBUNTU_ROLLING_VERSION} (Development) | **[\`ubuntu-rolling\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu-rolling)** | ${NODE_LATEST_DISPLAY} | [***${UBUNTU_ROLLING_PYTHON}***](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${UBUNTU_ROLLING_VERSION}-node${NODE_LATEST_TAG}-py${UBUNTU_ROLLING_PYTHON}) |"
+            echo "| ${UBUNTU_LATEST_VERSION} LTS (Current) | **[\`ubuntu-latest\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu-latest)** | ${NODE_LATEST_DISPLAY} | [***${UBUNTU_LATEST_PYTHON}***](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${UBUNTU_LATEST_VERSION}-node${NODE_LATEST_TAG}-py${UBUNTU_LATEST_PYTHON}), [${PYTHON_VERSIONS}](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${UBUNTU_LATEST_VERSION}-node${NODE_LATEST_TAG}-py${PYTHON_VERSIONS}) |"
+            echo "| ${UBUNTU_PREV_VERSION} LTS (Previous) | **[\`ubuntu-previous\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu-previous)** | ${NODE_LTS_DISPLAY} | [***${UBUNTU_PREV_PYTHON}***](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${UBUNTU_PREV_VERSION}-node${NODE_LTS_TAG}-py${UBUNTU_PREV_PYTHON}), [${PYTHON_VERSIONS}](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${UBUNTU_PREV_VERSION}-node${NODE_LTS_TAG}-py${PYTHON_VERSIONS}) |"
             echo ""
-            echo "**Note**: ***Italicised*** versions are the native Python for each Ubuntu release. Non-native versions use the latest stable Python (${PYTHON_VERSIONS}) from deadsnakes PPA."
+            echo "**Note**: ***Italicised*** versions are the native Python for each Ubuntu release. Non-native"
+            echo "versions use the latest stable Python (${PYTHON_VERSIONS}) from deadsnakes PPA."
+            echo ""
           } > /tmp/ubuntu-images.md
 
           # Generate Fedora images table
           {
-            echo "| Fedora | Node.js | Python Versions Available |"
-            echo "|--------|---------|---------------------------|"
-            echo "| **[\`fedora-rawhide\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora-rawhide)** - Development | ${NODE_LATEST_DISPLAY} | [**${FEDORA_RAWHIDE_PYTHON}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedorarawhide-node${NODE_LATEST_TAG}-py${FEDORA_RAWHIDE_PYTHON}) |"
-            echo "| **[\`fedora-latest\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora-latest)** - Current stable | ${NODE_LATEST_DISPLAY} | [**${FEDORA_LATEST_PYTHON}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora${FEDORA_LATEST_VERSION}-node${NODE_LATEST_TAG}-py${FEDORA_LATEST_PYTHON}) |"
-            echo "| **[\`fedora-previous\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora-previous)** - Previous release | ${NODE_LTS_DISPLAY} | [**${FEDORA_PREV_PYTHON}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora${FEDORA_PREV_VERSION}-node${NODE_LTS_TAG}-py${FEDORA_PREV_PYTHON}) |"
-            echo "|  |  |  |"
-            echo "| Rawhide | ${NODE_LATEST_DISPLAY} | [**${FEDORA_RAWHIDE_PYTHON}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedorarawhide-node${NODE_LATEST_TAG}-py${FEDORA_RAWHIDE_PYTHON}) |"
-            echo "| ${FEDORA_LATEST_VERSION} | ${NODE_LATEST_DISPLAY} | [**${FEDORA_LATEST_PYTHON}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora${FEDORA_LATEST_VERSION}-node${NODE_LATEST_TAG}-py${FEDORA_LATEST_PYTHON}) |"
-            echo "| ${FEDORA_PREV_VERSION} | ${NODE_LTS_DISPLAY} | [**${FEDORA_PREV_PYTHON}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora${FEDORA_PREV_VERSION}-node${NODE_LTS_TAG}-py${FEDORA_PREV_PYTHON}) |"
+            echo "| Fedora Version | Alias Tag | Node.js | Python Versions Available |"
+            echo "|----------------|-----------|---------|---------------------------|"
+            echo "| Rawhide (Development) | **[\`fedora-rawhide\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora-rawhide)** | ${NODE_LATEST_DISPLAY} | [**${FEDORA_RAWHIDE_PYTHON}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedorarawhide-node${NODE_LATEST_TAG}-py${FEDORA_RAWHIDE_PYTHON}) |"
+            echo "| ${FEDORA_LATEST_VERSION} (Current) | **[\`fedora-latest\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora-latest)** | ${NODE_LATEST_DISPLAY} | [**${FEDORA_LATEST_PYTHON}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora${FEDORA_LATEST_VERSION}-node${NODE_LATEST_TAG}-py${FEDORA_LATEST_PYTHON}) |"
+            echo "| ${FEDORA_PREV_VERSION} (Previous) | **[\`fedora-previous\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora-previous)** | ${NODE_LTS_DISPLAY} | [**${FEDORA_PREV_PYTHON}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora${FEDORA_PREV_VERSION}-node${NODE_LTS_TAG}-py${FEDORA_PREV_PYTHON}) |"
           } > /tmp/fedora-images.md
 
           echo "✅ Generated both images tables"
@@ -589,11 +583,8 @@ jobs:
           NEW_README=$(echo "$CURRENT_README" | awk -v table="$UBUNTU_CONTENT" '
             BEGIN { in_table = 0 }
             /^## Ubuntu images/ { print; getline; print; getline; print; getline; print; print table; in_table = 1; next }
-            in_table && /^\|/ { next }
-            in_table && /^\*\*Note\*\*:/ { next }
-            in_table && /^versions use the latest/ { next }
-            in_table && /^$/ && in_table { next }
-            in_table && !/^\|/ { in_table = 0 }
+            in_table && /^## / { in_table = 0; print ""; print; next }
+            in_table { next }
             { print }
           ')
 
@@ -645,7 +636,7 @@ jobs:
           Node.js Latest: ${{ needs.prepare.outputs.node-latest }}
           Ubuntu Previous: ${{ needs.prepare.outputs.ubuntu-previous }} (Python ${{ needs.prepare.outputs.ubuntu-previous-python }})
           Ubuntu Latest: ${{ needs.prepare.outputs.ubuntu-latest }} (Python ${{ needs.prepare.outputs.ubuntu-latest-python }})
-          Ubuntu Rolling: ${{ needs.prepare.outputs.ubuntu-devel }} (Python ${{ needs.prepare.outputs.ubuntu-devel-python }})
+          Ubuntu Rolling: ${{ needs.prepare.outputs.ubuntu-rolling }} (Python ${{ needs.prepare.outputs.ubuntu-rolling-python }})
           Fedora Previous: ${{ needs.prepare.outputs.fedora-previous }} (Python ${{ needs.prepare.outputs.fedora-previous-python }})
           Fedora Latest: ${{ needs.prepare.outputs.fedora-latest }} (Python ${{ needs.prepare.outputs.fedora-latest-python }})
           Fedora Rawhide: Python ${{ needs.prepare.outputs.fedora-rawhide-python }}"
@@ -667,7 +658,7 @@ jobs:
                 \"title\": \"chore: update Ubuntu and Fedora images in README\",
                 \"head\": \"$BRANCH_NAME\",
                 \"base\": \"main\",
-                \"body\": \"### Automated Images Update\\n\\nThis PR updates both Ubuntu and Fedora images tables to reflect the current runtime versions:\\n\\n**Node.js Versions:**\\n- LTS: ${{ needs.prepare.outputs.node-lts }}\\n- Latest: ${{ needs.prepare.outputs.node-latest }}\\n\\n**Ubuntu Releases:**\\n- Previous: ${{ needs.prepare.outputs.ubuntu-previous }} (Python ${{ needs.prepare.outputs.ubuntu-previous-python }})\\n- Latest: ${{ needs.prepare.outputs.ubuntu-latest }} (Python ${{ needs.prepare.outputs.ubuntu-latest-python }})\\n- Rolling: ${{ needs.prepare.outputs.ubuntu-devel }} (Python ${{ needs.prepare.outputs.ubuntu-devel-python }})\\n\\n**Fedora Releases:**\\n- Previous: ${{ needs.prepare.outputs.fedora-previous }} (Python ${{ needs.prepare.outputs.fedora-previous-python }})\\n- Latest: ${{ needs.prepare.outputs.fedora-latest }} (Python ${{ needs.prepare.outputs.fedora-latest-python }})\\n- Rawhide: Python ${{ needs.prepare.outputs.fedora-rawhide-python }}\\n\\nThe images tables are regenerated based on the actual images being built.\"
+                \"body\": \"### Automated Images Update\\n\\nThis PR updates both Ubuntu and Fedora images tables to reflect the current runtime versions:\\n\\n**Node.js Versions:**\\n- LTS: ${{ needs.prepare.outputs.node-lts }}\\n- Latest: ${{ needs.prepare.outputs.node-latest }}\\n\\n**Ubuntu Releases:**\\n- Previous: ${{ needs.prepare.outputs.ubuntu-previous }} (Python ${{ needs.prepare.outputs.ubuntu-previous-python }})\\n- Latest: ${{ needs.prepare.outputs.ubuntu-latest }} (Python ${{ needs.prepare.outputs.ubuntu-latest-python }})\\n- Rolling: ${{ needs.prepare.outputs.ubuntu-rolling }} (Python ${{ needs.prepare.outputs.ubuntu-rolling-python }})\\n\\n**Fedora Releases:**\\n- Previous: ${{ needs.prepare.outputs.fedora-previous }} (Python ${{ needs.prepare.outputs.fedora-previous-python }})\\n- Latest: ${{ needs.prepare.outputs.fedora-latest }} (Python ${{ needs.prepare.outputs.fedora-latest-python }})\\n- Rawhide: Python ${{ needs.prepare.outputs.fedora-rawhide-python }}\\n\\nThe images tables are regenerated based on the actual images being built.\"
               }"
             echo "✅ Created new PR for README updates"
           else
