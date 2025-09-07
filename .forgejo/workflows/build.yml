@@ -590,6 +590,9 @@ jobs:
             BEGIN { in_table = 0 }
             /^## Ubuntu images/ { print; getline; print; getline; print; getline; print; print table; in_table = 1; next }
             in_table && /^\|/ { next }
+            in_table && /^\*\*Note\*\*:/ { next }
+            in_table && /^versions use the latest/ { next }
+            in_table && /^$/ && in_table { next }
             in_table && !/^\|/ { in_table = 0 }
             { print }
           ')

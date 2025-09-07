@@ -44,8 +44,6 @@ act -P ubuntu-latest=ghcr.io/tcpipuk/act-runner:ubuntu-latest
 | 24.04 LTS | 24/22 | [3.13](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu24.04-node24-22-py3.13), [***3.12***](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu24.04-node24-22-py3.12) |
 | 22.04 LTS | 22/20 | [3.13](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu22.04-node22-20-py3.13), [***3.10***](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu22.04-node22-20-py3.10) |
 
-**Note**: ***Italicised*** versions are the native Python for each Ubuntu release. Non-native versions use the latest stable Python (3.13) from deadsnakes PPA.
-
 **Note**: ***Italicised*** versions are the native Python for each Ubuntu release. Non-native
 versions use the latest stable Python (3.13) from deadsnakes PPA.
 
