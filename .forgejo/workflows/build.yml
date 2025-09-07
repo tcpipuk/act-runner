@@ -1,0 +1,672 @@
+name: Build Runner Images
+
+on:
+  push:
+    paths:
+      - "docker/ubuntu.Dockerfile"
+      - "docker/fedora.Dockerfile"
+      - ".forgejo/workflows/build.yml"
+  schedule:
+    - cron: '0 4 * * *'  # Run daily at 4am UTC
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: git.tomfos.tr
+  IMAGE_NAME: tom/act-runner
+
+jobs:
+  prepare:
+    name: Prepare Build
+    runs-on: ubuntu-latest
+    outputs:
+      k8s-version: ${{ steps.k8s.outputs.version }}
+      # Node.js versions
+      node-lts: ${{ steps.node.outputs.lts }}
+      node-latest: ${{ steps.node.outputs.latest }}
+      # Ubuntu versions and Python
+      ubuntu-previous: ${{ steps.ubuntu-previous.outputs.ubuntu }}
+      ubuntu-previous-python: ${{ steps.ubuntu-previous.outputs.python }}
+      ubuntu-latest: ${{ steps.ubuntu-latest.outputs.ubuntu }}
+      ubuntu-latest-python: ${{ steps.ubuntu-latest.outputs.python }}
+      ubuntu-devel: ${{ steps.ubuntu-devel.outputs.ubuntu }}
+      ubuntu-devel-python: ${{ steps.ubuntu-devel.outputs.python }}
+      # Fedora versions and Python
+      fedora-previous: ${{ steps.fedora-previous.outputs.fedora }}
+      fedora-previous-python: ${{ steps.fedora-previous.outputs.python }}
+      fedora-latest: ${{ steps.fedora-latest.outputs.fedora }}
+      fedora-latest-python: ${{ steps.fedora-latest.outputs.python }}
+      fedora-rawhide: ${{ steps.fedora-rawhide.outputs.fedora }}
+      fedora-rawhide-python: ${{ steps.fedora-rawhide.outputs.python }}
+    steps:
+      - name: Get stable K8s version
+        id: k8s
+        run: |
+          K8S_VERSION=$(curl -L -s https://dl.k8s.io/release/stable.txt | cut -d. -f1-2 | sed 's/v//')
+          echo "version=${K8S_VERSION}" >> $GITHUB_OUTPUT
+          echo "🎯 Kubernetes stable version: ${K8S_VERSION}"
+
+      - name: Detect Node.js versions
+        id: node
+        run: |
+          # Get Node.js release schedule from nodejs.org
+          SCHEDULE_JSON=$(curl -sL https://nodejs.org/dist/index.json)
+
+          # Extract versions in Active or Maintenance LTS status
+          LTS_VERSIONS=$(echo "$SCHEDULE_JSON" | jq -r '
+            [.[] | select(.lts != false) | .version[1:] | split(".")[0] | tonumber]
+            | unique | sort | reverse | .[0:2] | join("+")
+          ')
+
+          # Get the two most recent stable versions
+          # Node.js follows odd=development, even=stable convention
+          LATEST_VERSIONS=$(echo "$SCHEDULE_JSON" | jq -r '
+            [.[] | .version[1:] | split(".")[0] | tonumber | select(. % 2 == 0)]
+            | unique | sort | reverse | .[0:2] | join("+")
+          ')
+
+          echo "lts=${LTS_VERSIONS}" >> $GITHUB_OUTPUT
+          echo "latest=${LATEST_VERSIONS}" >> $GITHUB_OUTPUT
+          echo "📦 Node.js LTS versions: ${LTS_VERSIONS}"
+          echo "📦 Node.js latest versions: ${LATEST_VERSIONS}"
+
+      - name: Detect Ubuntu previous version (22.04 LTS)
+        id: ubuntu-previous
+        run: |
+          # Use Ubuntu 22.04 LTS as our "previous" release
+          docker pull ubuntu:22.04
+          UBUNTU_VERSION=$(docker run --rm ubuntu:22.04 bash -c "grep VERSION_ID /etc/os-release | cut -d= -f2 | tr -d '\"'")
+          UBUNTU_CODENAME=$(docker run --rm ubuntu:22.04 bash -c "grep VERSION_CODENAME /etc/os-release | cut -d= -f2 | tr -d '\"'")
+          # Check what Python version is available in the repositories
+          PYTHON_VERSION=$(docker run --rm ubuntu:22.04 bash -c "
+            apt-get update >/dev/null 2>&1
+            apt-cache show python3 | grep '^Version:' | head -1 | cut -d' ' -f2 | cut -d. -f1-2
+          ")
+
+          echo "ubuntu=${UBUNTU_VERSION}" >> $GITHUB_OUTPUT
+          echo "codename=${UBUNTU_CODENAME}" >> $GITHUB_OUTPUT
+          echo "python=${PYTHON_VERSION}" >> $GITHUB_OUTPUT
+          echo "📦 Ubuntu previous is ${UBUNTU_VERSION} (${UBUNTU_CODENAME}) with Python ${PYTHON_VERSION}"
+
+      - name: Detect Ubuntu latest version (24.04 LTS)
+        id: ubuntu-latest
+        run: |
+          # Use Ubuntu 24.04 LTS as our "latest" stable release
+          docker pull ubuntu:24.04
+          UBUNTU_VERSION=$(docker run --rm ubuntu:24.04 bash -c "grep VERSION_ID /etc/os-release | cut -d= -f2 | tr -d '\"'")
+          UBUNTU_CODENAME=$(docker run --rm ubuntu:24.04 bash -c "grep VERSION_CODENAME /etc/os-release | cut -d= -f2 | tr -d '\"'")
+          # Check what Python version is available in the repositories
+          PYTHON_VERSION=$(docker run --rm ubuntu:24.04 bash -c "
+            apt-get update >/dev/null 2>&1
+            apt-cache show python3 | grep '^Version:' | head -1 | cut -d' ' -f2 | cut -d. -f1-2
+          ")
+
+          echo "ubuntu=${UBUNTU_VERSION}" >> $GITHUB_OUTPUT
+          echo "codename=${UBUNTU_CODENAME}" >> $GITHUB_OUTPUT
+          echo "python=${PYTHON_VERSION}" >> $GITHUB_OUTPUT
+          echo "📦 Ubuntu latest is ${UBUNTU_VERSION} (${UBUNTU_CODENAME}) with Python ${PYTHON_VERSION}"
+
+      - name: Detect Ubuntu devel version (rolling)
+        id: ubuntu-devel
+        run: |
+          # Pull rolling image and get version info
+          docker pull ubuntu:rolling
+          UBUNTU_VERSION=$(docker run --rm ubuntu:rolling bash -c "grep VERSION_ID /etc/os-release | cut -d= -f2 | tr -d '\"'")
+          UBUNTU_CODENAME=$(docker run --rm ubuntu:rolling bash -c "grep VERSION_CODENAME /etc/os-release | cut -d= -f2 | tr -d '\"'")
+          # Check what Python version is available in the repositories
+          PYTHON_VERSION=$(docker run --rm ubuntu:rolling bash -c "
+            apt-get update >/dev/null 2>&1
+            apt-cache show python3 | grep '^Version:' | head -1 | cut -d' ' -f2 | cut -d. -f1-2
+          ")
+
+          echo "ubuntu=${UBUNTU_VERSION}" >> $GITHUB_OUTPUT
+          echo "codename=${UBUNTU_CODENAME}" >> $GITHUB_OUTPUT
+          echo "python=${PYTHON_VERSION}" >> $GITHUB_OUTPUT
+          echo "🔄 Ubuntu devel is ${UBUNTU_VERSION} (${UBUNTU_CODENAME}) with Python ${PYTHON_VERSION}"
+
+      - name: Detect Fedora previous version (41)
+        id: fedora-previous
+        run: |
+          # Fedora 41 as our "previous" release
+          docker pull fedora:41
+          FEDORA_VERSION=$(docker run --rm fedora:41 bash -c "grep VERSION_ID /etc/os-release | cut -d= -f2 | tr -d '\"'")
+          # Check what Python version is available
+          PYTHON_VERSION=$(docker run --rm fedora:41 bash -c "
+            dnf info python3 2>/dev/null | grep '^Version' | head -1 | awk '{print \$3}' | cut -d. -f1-2
+          ")
+          echo "fedora=${FEDORA_VERSION}" >> $GITHUB_OUTPUT
+          echo "python=${PYTHON_VERSION}" >> $GITHUB_OUTPUT
+          echo "📦 Fedora previous is ${FEDORA_VERSION} with Python ${PYTHON_VERSION}"
+
+      - name: Detect Fedora latest version
+        id: fedora-latest
+        run: |
+          docker pull fedora:latest
+          FEDORA_VERSION=$(docker run --rm fedora:latest bash -c "grep VERSION_ID /etc/os-release | cut -d= -f2 | tr -d '\"'")
+          # Check what Python version is available
+          PYTHON_VERSION=$(docker run --rm fedora:latest bash -c "
+            dnf info python3 2>/dev/null | grep '^Version' | head -1 | awk '{print \$3}' | cut -d. -f1-2
+          ")
+          echo "fedora=${FEDORA_VERSION}" >> $GITHUB_OUTPUT
+          echo "python=${PYTHON_VERSION}" >> $GITHUB_OUTPUT
+          echo "📦 Fedora latest is ${FEDORA_VERSION} with Python ${PYTHON_VERSION}"
+
+      - name: Detect Fedora rawhide version
+        id: fedora-rawhide
+        run: |
+          docker pull fedora:rawhide
+          # Rawhide doesn't have a VERSION_ID, so we use "rawhide"
+          # Check what Python version is available
+          PYTHON_VERSION=$(docker run --rm fedora:rawhide bash -c "
+            dnf info python3 2>/dev/null | grep '^Version' | head -1 | awk '{print \$3}' | cut -d. -f1-2
+          ")
+          echo "fedora=rawhide" >> $GITHUB_OUTPUT
+          echo "python=${PYTHON_VERSION}" >> $GITHUB_OUTPUT
+          echo "📦 Fedora rawhide is development branch with Python ${PYTHON_VERSION}"
+
+  build-ubuntu:
+    name: Build Ubuntu ${{ matrix.variant == 'previous' && 'Previous' || matrix.variant == 'latest' && 'Latest' || matrix.variant == 'devel' && 'Devel' }} Python ${{ matrix.python == 'native' && 'Native' || matrix.python }}
+    runs-on: ubuntu-latest
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Ubuntu 22.04 (previous) + Node LTS + both Python versions
+          - variant: "previous"
+            python: "3.13"
+          - variant: "previous"
+            python: "native"
+          # Ubuntu 24.04 (latest) + Node Latest + both Python versions
+          - variant: "latest"
+            python: "3.13"
+          - variant: "latest"
+            python: "native"
+          # Ubuntu 25.04 (devel) + Node Latest + native Python only
+          - variant: "devel"
+            python: "native"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver: remote
+          endpoint: tcp://buildkit:8125
+
+      - name: Log in to Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.FORGEJO_TOKEN }}
+
+      - name: Generate Ubuntu tags
+        id: ubuntu-tags
+        env:
+          NODE_LTS: ${{ needs.prepare.outputs.node-lts }}
+          NODE_LATEST: ${{ needs.prepare.outputs.node-latest }}
+        run: |
+          # Resolve the actual Ubuntu version and Python version
+          if [ "${{ matrix.variant }}" = "previous" ]; then
+            UBUNTU_VERSION="${{ needs.prepare.outputs.ubuntu-previous }}"
+            NATIVE_PYTHON="${{ needs.prepare.outputs.ubuntu-previous-python }}"
+            NODE_VERSIONS="${NODE_LTS}"
+          elif [ "${{ matrix.variant }}" = "latest" ]; then
+            UBUNTU_VERSION="${{ needs.prepare.outputs.ubuntu-latest }}"
+            NATIVE_PYTHON="${{ needs.prepare.outputs.ubuntu-latest-python }}"
+            NODE_VERSIONS="${NODE_LATEST}"
+          elif [ "${{ matrix.variant }}" = "devel" ]; then
+            UBUNTU_VERSION="${{ needs.prepare.outputs.ubuntu-devel }}"
+            NATIVE_PYTHON="${{ needs.prepare.outputs.ubuntu-devel-python }}"
+            NODE_VERSIONS="${NODE_LATEST}"
+          fi
+          echo "ubuntu-version=${UBUNTU_VERSION}" >> $GITHUB_OUTPUT
+          echo "native-python=${NATIVE_PYTHON}" >> $GITHUB_OUTPUT
+
+          # Resolve the actual Python version
+          if [ "${{ matrix.python }}" = "native" ]; then
+            PYTHON_VERSION="${NATIVE_PYTHON}"
+            USE_NATIVE_PYTHON="true"
+          else
+            PYTHON_VERSION="${{ matrix.python }}"
+            USE_NATIVE_PYTHON=""
+          fi
+          echo "python-version=${PYTHON_VERSION}" >> $GITHUB_OUTPUT
+          echo "use-native-python=${USE_NATIVE_PYTHON}" >> $GITHUB_OUTPUT
+
+          NODE_TAG=$(echo "${NODE_VERSIONS}" | tr '+' '-')
+          NODE_VERSIONS_SPACED=$(echo "${NODE_VERSIONS}" | tr '+' ' ')
+          BASE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:ubuntu${UBUNTU_VERSION}-node${NODE_TAG}-py${PYTHON_VERSION}"
+
+          # Add branch suffix if not on main
+          if [ "${{ github.ref_name }}" != "main" ]; then
+            BASE_TAG="${BASE_TAG}-${{ github.ref_name }}"
+          fi
+
+          TAGS="${BASE_TAG}"
+
+          # Auto-generate alias tags based on combination
+          # ubuntu-previous: previous + native python
+          # ubuntu-latest: latest + native python
+          # ubuntu-devel: devel + native python
+          if [ "${{ matrix.variant }}" = "previous" ] && [ "${{ matrix.python }}" = "native" ]; then
+            ALIAS_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:ubuntu-previous"
+            if [ "${{ github.ref_name }}" != "main" ]; then
+              ALIAS_TAG="${ALIAS_TAG}-${{ github.ref_name }}"
+            fi
+            TAGS="${TAGS},${ALIAS_TAG}"
+          elif [ "${{ matrix.variant }}" = "latest" ] && [ "${{ matrix.python }}" = "native" ]; then
+            ALIAS_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:ubuntu-latest"
+            if [ "${{ github.ref_name }}" != "main" ]; then
+              ALIAS_TAG="${ALIAS_TAG}-${{ github.ref_name }}"
+            fi
+            TAGS="${TAGS},${ALIAS_TAG}"
+          elif [ "${{ matrix.variant }}" = "devel" ] && [ "${{ matrix.python }}" = "native" ]; then
+            ALIAS_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:ubuntu-devel"
+            if [ "${{ github.ref_name }}" != "main" ]; then
+              ALIAS_TAG="${ALIAS_TAG}-${{ github.ref_name }}"
+            fi
+            TAGS="${TAGS},${ALIAS_TAG}"
+          fi
+
+          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
+          echo "node_versions_spaced=${NODE_VERSIONS_SPACED}" >> $GITHUB_OUTPUT
+
+          echo "📦 Ubuntu image tags: ${TAGS}"
+          echo "🐍 Python version: ${PYTHON_VERSION}"
+          echo "🔧 Node versions: ${NODE_VERSIONS_SPACED}"
+
+      - name: Build and push Ubuntu image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./docker
+          file: ./docker/ubuntu.Dockerfile
+          push: true
+          tags: ${{ steps.ubuntu-tags.outputs.tags }}
+          build-args: |
+            UBUNTU_VERSION=${{ steps.ubuntu-tags.outputs.ubuntu-version }}
+            NODE_VERSIONS=${{ steps.ubuntu-tags.outputs.node_versions_spaced }}
+            PYTHON_VERSION=${{ steps.ubuntu-tags.outputs.python-version }}
+            USE_NATIVE_PYTHON=${{ steps.ubuntu-tags.outputs.use-native-python }}
+            K8S_VERSION=${{ needs.prepare.outputs.k8s-version }}
+          platforms: linux/amd64,linux/arm64/v8,linux/ppc64le,linux/s390x
+
+  build-fedora:
+    name: Build Fedora ${{ matrix.variant == 'previous' && 'Previous' || matrix.variant == 'latest' && 'Latest' || matrix.variant == 'rawhide' && 'Rawhide' }}
+    runs-on: ubuntu-latest
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: ["previous", "latest", "rawhide"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver: remote
+          endpoint: tcp://buildkit:8125
+
+      - name: Log in to Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.FORGEJO_TOKEN }}
+
+      - name: Generate Fedora tags
+        id: fedora-tags
+        env:
+          NODE_LTS: ${{ needs.prepare.outputs.node-lts }}
+          NODE_LATEST: ${{ needs.prepare.outputs.node-latest }}
+        run: |
+          # Resolve the actual Fedora version and Python version
+          if [ "${{ matrix.variant }}" = "previous" ]; then
+            FEDORA_VERSION="${{ needs.prepare.outputs.fedora-previous }}"
+            PYTHON_VERSION="${{ needs.prepare.outputs.fedora-previous-python }}"
+            NODE_VERSIONS="${NODE_LTS}"
+          elif [ "${{ matrix.variant }}" = "latest" ]; then
+            FEDORA_VERSION="${{ needs.prepare.outputs.fedora-latest }}"
+            PYTHON_VERSION="${{ needs.prepare.outputs.fedora-latest-python }}"
+            NODE_VERSIONS="${NODE_LATEST}"
+          elif [ "${{ matrix.variant }}" = "rawhide" ]; then
+            FEDORA_VERSION="${{ needs.prepare.outputs.fedora-rawhide }}"
+            PYTHON_VERSION="${{ needs.prepare.outputs.fedora-rawhide-python }}"
+            NODE_VERSIONS="${NODE_LATEST}"
+          fi
+          echo "fedora-version=${FEDORA_VERSION}" >> $GITHUB_OUTPUT
+          echo "python-version=${PYTHON_VERSION}" >> $GITHUB_OUTPUT
+
+          NODE_TAG=$(echo "${NODE_VERSIONS}" | tr '+' '-')
+          NODE_VERSIONS_SPACED=$(echo "${NODE_VERSIONS}" | tr '+' ' ')
+
+          # Include Python version in tags for consistency with Ubuntu
+          if [ "${FEDORA_VERSION}" = "rawhide" ]; then
+            BASE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:fedorarawhide-node${NODE_TAG}-py${PYTHON_VERSION}"
+          else
+            BASE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:fedora${FEDORA_VERSION}-node${NODE_TAG}-py${PYTHON_VERSION}"
+          fi
+
+          # Add branch suffix if not on main
+          if [ "${{ github.ref_name }}" != "main" ]; then
+            BASE_TAG="${BASE_TAG}-${{ github.ref_name }}"
+          fi
+
+          TAGS="${BASE_TAG}"
+
+          # Auto-generate alias tags based on variant
+          ALIAS_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:fedora-${{ matrix.variant }}"
+          if [ "${{ github.ref_name }}" != "main" ]; then
+            ALIAS_TAG="${ALIAS_TAG}-${{ github.ref_name }}"
+          fi
+          TAGS="${TAGS},${ALIAS_TAG}"
+
+          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
+          echo "node_versions_spaced=${NODE_VERSIONS_SPACED}" >> $GITHUB_OUTPUT
+          echo "📦 Fedora image tags: ${TAGS}"
+          echo "🔧 Node.js versions: ${NODE_VERSIONS_SPACED}"
+          echo "🐍 Python version: ${PYTHON_VERSION}"
+
+      - name: Build and push Fedora image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./docker
+          file: ./docker/fedora.Dockerfile
+          push: true
+          tags: ${{ steps.fedora-tags.outputs.tags }}
+          build-args: |
+            FEDORA_VERSION=${{ steps.fedora-tags.outputs.fedora-version }}
+            NODE_VERSIONS=${{ steps.fedora-tags.outputs.node_versions_spaced }}
+            K8S_VERSION=${{ needs.prepare.outputs.k8s-version }}
+          platforms: linux/amd64,linux/arm64/v8,linux/ppc64le,linux/s390x
+
+  mirror-to-github:
+    name: Mirror Images to GHCR
+    runs-on: ubuntu-latest
+    needs: [build-ubuntu, build-fedora]
+    if: github.ref_name == 'main'
+    steps:
+      - name: Install skopeo and jq
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y skopeo jq
+
+      - name: Discover and mirror image tags
+        env:
+          SOURCE_REGISTRY: git.tomfos.tr
+          SOURCE_IMAGE: tom/act-runner
+          DEST_REGISTRY: ghcr.io
+          DEST_IMAGE: tcpipuk/act-runner
+        run: |
+          echo "🔍 Discovering tags from source registry..."
+
+          # Get all tags from source registry
+          ALL_TAGS=$(skopeo list-tags docker://${SOURCE_REGISTRY}/${SOURCE_IMAGE} | jq -r '.Tags[]' | sort)
+
+          # Filter tags: exclude branch builds and other unwanted patterns
+          TAGS_TO_MIRROR=()
+
+          for TAG in $ALL_TAGS; do
+            # Skip tags with branch suffixes (anything after a dash that isn't our standard pattern)
+            if [[ "$TAG" =~ -(dev|main|update-.*|test.*|feature.*|fix.*)$ ]]; then
+              echo "⏭️  Skipping branch tag: $TAG"
+              continue
+            fi
+
+            # Include our patterns:
+            # - Ubuntu: ubuntu{version}-node{versions}-py{python}, ubuntu-{previous,latest,devel}
+            # - Fedora: fedora{version}-node{versions}-py{python}, fedora-{previous,latest,rawhide}
+            if [[ "$TAG" =~ ^ubuntu[0-9]+\.[0-9]+-node[0-9]+-[0-9]+-py[0-9]+\.[0-9]+$ ]] || \
+               [[ "$TAG" =~ ^fedora[0-9]+-node[0-9]+-[0-9]+-py[0-9]+\.[0-9]+$ ]] || \
+               [[ "$TAG" =~ ^fedorarawhide-node[0-9]+-[0-9]+-py[0-9]+\.[0-9]+$ ]] || \
+               [[ "$TAG" =~ ^(ubuntu|fedora)-(previous|latest|devel|rawhide)$ ]]; then
+              TAGS_TO_MIRROR+=("$TAG")
+              echo "✅ Will mirror: $TAG"
+            else
+              echo "⏭️  Skipping unknown pattern: $TAG"
+            fi
+          done
+
+          # Mirror the filtered tags
+          echo ""
+          echo "🔄 Starting mirror of ${#TAGS_TO_MIRROR[@]} multi-architecture images to GHCR..."
+          FAILED=0
+          SUCCEEDED=0
+
+          for TAG in "${TAGS_TO_MIRROR[@]}"; do
+            echo ""
+            echo "📦 Mirroring: ${TAG}"
+
+            if skopeo copy \
+              --quiet \
+              --all \
+              --retry-times 3 \
+              --dest-precompute-digests \
+              --src-no-creds \
+              --dest-creds "tcpipuk:${{ secrets.GHCR_SYNC }}" \
+              "docker://${SOURCE_REGISTRY}/${SOURCE_IMAGE}:${TAG}" \
+              "docker://${DEST_REGISTRY}/${DEST_IMAGE}:${TAG}"; then
+              echo "✅ Successfully mirrored: ${TAG}"
+              SUCCEEDED=$((SUCCEEDED + 1))
+            else
+              echo "❌ Failed to mirror: ${TAG}"
+              FAILED=$((FAILED + 1))
+            fi
+          done
+
+          # Summary report
+          echo ""
+          echo "================================================"
+          echo "📊 Mirror Summary:"
+          echo "   Total discovered: $(echo "$ALL_TAGS" | wc -w) tags"
+          echo "   Filtered for mirroring: ${#TAGS_TO_MIRROR[@]} tags"
+          echo "   Successfully mirrored: ${SUCCEEDED}"
+          echo "   Failed: ${FAILED}"
+          echo "================================================"
+
+          if [ $FAILED -gt 0 ]; then
+            echo "⚠️ Warning: Some images failed to mirror"
+            exit 1
+          else
+            echo "✅ All images mirrored successfully!"
+          fi
+
+      - name: Verify critical tags
+        run: |
+          echo "🔍 Verifying critical tags on GHCR..."
+
+          # Check that our main alias tags exist
+          CRITICAL_TAGS="ubuntu-previous ubuntu-latest ubuntu-devel fedora-previous fedora-latest fedora-rawhide"
+          MISSING=0
+
+          for TAG in $CRITICAL_TAGS; do
+            if skopeo inspect --no-creds "docker://ghcr.io/tcpipuk/act-runner:${TAG}" > /dev/null 2>&1; then
+              echo "✅ Verified: ${TAG}"
+            else
+              echo "❌ Missing critical tag: ${TAG}"
+              MISSING=$((MISSING + 1))
+            fi
+          done
+
+          if [ $MISSING -gt 0 ]; then
+            echo "❌ Critical tags missing!"
+            exit 1
+          else
+            echo "✅ All critical tags verified!"
+          fi
+
+  update-readme:
+    name: Update README if needed
+    runs-on: ubuntu-latest
+    needs: [build-ubuntu, build-fedora, prepare]
+    if: github.ref_name == 'main'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.FORGEJO_TOKEN }}
+          fetch-depth: 0
+
+      - name: Generate images tables
+        id: tables
+        run: |
+          echo "📝 Generating Ubuntu and Fedora images tables..."
+
+          # Define all Python versions we support (matches the matrix in build-ubuntu)
+          PYTHON_VERSIONS="3.13"
+
+          # Get versions from prepare outputs
+          UBUNTU_PREV_VERSION="${{ needs.prepare.outputs.ubuntu-previous }}"
+          UBUNTU_PREV_PYTHON="${{ needs.prepare.outputs.ubuntu-previous-python }}"
+          UBUNTU_LATEST_VERSION="${{ needs.prepare.outputs.ubuntu-latest }}"
+          UBUNTU_LATEST_PYTHON="${{ needs.prepare.outputs.ubuntu-latest-python }}"
+          UBUNTU_DEVEL_VERSION="${{ needs.prepare.outputs.ubuntu-devel }}"
+          UBUNTU_DEVEL_PYTHON="${{ needs.prepare.outputs.ubuntu-devel-python }}"
+
+          FEDORA_PREV_VERSION="${{ needs.prepare.outputs.fedora-previous }}"
+          FEDORA_PREV_PYTHON="${{ needs.prepare.outputs.fedora-previous-python }}"
+          FEDORA_LATEST_VERSION="${{ needs.prepare.outputs.fedora-latest }}"
+          FEDORA_LATEST_PYTHON="${{ needs.prepare.outputs.fedora-latest-python }}"
+          FEDORA_RAWHIDE_VERSION="${{ needs.prepare.outputs.fedora-rawhide }}"
+          FEDORA_RAWHIDE_PYTHON="${{ needs.prepare.outputs.fedora-rawhide-python }}"
+
+          NODE_LTS="${{ needs.prepare.outputs.node-lts }}"
+          NODE_LATEST="${{ needs.prepare.outputs.node-latest }}"
+
+          # Convert Node versions from + to slash for display
+          NODE_LTS_DISPLAY=$(echo "${NODE_LTS}" | tr '+' '/')
+          NODE_LATEST_DISPLAY=$(echo "${NODE_LATEST}" | tr '+' '/')
+          NODE_LTS_TAG=$(echo "${NODE_LTS}" | tr '+' '-')
+          NODE_LATEST_TAG=$(echo "${NODE_LATEST}" | tr '+' '-')
+
+          # Generate Ubuntu images table
+          {
+            echo "| Ubuntu | Node.js | Python Versions Available |"
+            echo "|--------|---------|---------------------------|"
+            echo "| **[\`ubuntu-devel\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu-devel)** - Development | ${NODE_LATEST_DISPLAY} | [***${UBUNTU_DEVEL_PYTHON}***](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${UBUNTU_DEVEL_VERSION}-node${NODE_LATEST_TAG}-py${UBUNTU_DEVEL_PYTHON}) |"
+            echo "| **[\`ubuntu-latest\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu-latest)** - Current stable | ${NODE_LATEST_DISPLAY} | [${PYTHON_VERSIONS}](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${UBUNTU_LATEST_VERSION}-node${NODE_LATEST_TAG}-py${PYTHON_VERSIONS}), [***${UBUNTU_LATEST_PYTHON}***](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${UBUNTU_LATEST_VERSION}-node${NODE_LATEST_TAG}-py${UBUNTU_LATEST_PYTHON}) |"
+            echo "| **[\`ubuntu-previous\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu-previous)** - Previous LTS | ${NODE_LTS_DISPLAY} | [${PYTHON_VERSIONS}](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${UBUNTU_PREV_VERSION}-node${NODE_LTS_TAG}-py${PYTHON_VERSIONS}), [***${UBUNTU_PREV_PYTHON}***](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${UBUNTU_PREV_VERSION}-node${NODE_LTS_TAG}-py${UBUNTU_PREV_PYTHON}) |"
+            echo "|  |  |  |"
+            echo "| ${UBUNTU_DEVEL_VERSION} | ${NODE_LATEST_DISPLAY} | [***${UBUNTU_DEVEL_PYTHON}***](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${UBUNTU_DEVEL_VERSION}-node${NODE_LATEST_TAG}-py${UBUNTU_DEVEL_PYTHON}) |"
+            echo "| ${UBUNTU_LATEST_VERSION} LTS | ${NODE_LATEST_DISPLAY} | [${PYTHON_VERSIONS}](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${UBUNTU_LATEST_VERSION}-node${NODE_LATEST_TAG}-py${PYTHON_VERSIONS}), [***${UBUNTU_LATEST_PYTHON}***](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${UBUNTU_LATEST_VERSION}-node${NODE_LATEST_TAG}-py${UBUNTU_LATEST_PYTHON}) |"
+            echo "| ${UBUNTU_PREV_VERSION} LTS | ${NODE_LTS_DISPLAY} | [${PYTHON_VERSIONS}](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${UBUNTU_PREV_VERSION}-node${NODE_LTS_TAG}-py${PYTHON_VERSIONS}), [***${UBUNTU_PREV_PYTHON}***](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${UBUNTU_PREV_VERSION}-node${NODE_LTS_TAG}-py${UBUNTU_PREV_PYTHON}) |"
+            echo ""
+            echo "**Note**: ***Italicised*** versions are the native Python for each Ubuntu release. Non-native versions use the latest stable Python (${PYTHON_VERSIONS}) from deadsnakes PPA."
+          } > /tmp/ubuntu-images.md
+
+          # Generate Fedora images table
+          {
+            echo "| Fedora | Node.js | Python Versions Available |"
+            echo "|--------|---------|---------------------------|"
+            echo "| **[\`fedora-rawhide\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora-rawhide)** - Development | ${NODE_LATEST_DISPLAY} | [**${FEDORA_RAWHIDE_PYTHON}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedorarawhide-node${NODE_LATEST_TAG}-py${FEDORA_RAWHIDE_PYTHON}) |"
+            echo "| **[\`fedora-latest\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora-latest)** - Current stable | ${NODE_LATEST_DISPLAY} | [**${FEDORA_LATEST_PYTHON}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora${FEDORA_LATEST_VERSION}-node${NODE_LATEST_TAG}-py${FEDORA_LATEST_PYTHON}) |"
+            echo "| **[\`fedora-previous\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora-previous)** - Previous release | ${NODE_LTS_DISPLAY} | [**${FEDORA_PREV_PYTHON}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora${FEDORA_PREV_VERSION}-node${NODE_LTS_TAG}-py${FEDORA_PREV_PYTHON}) |"
+            echo "|  |  |  |"
+            echo "| Rawhide | ${NODE_LATEST_DISPLAY} | [**${FEDORA_RAWHIDE_PYTHON}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedorarawhide-node${NODE_LATEST_TAG}-py${FEDORA_RAWHIDE_PYTHON}) |"
+            echo "| ${FEDORA_LATEST_VERSION} | ${NODE_LATEST_DISPLAY} | [**${FEDORA_LATEST_PYTHON}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora${FEDORA_LATEST_VERSION}-node${NODE_LATEST_TAG}-py${FEDORA_LATEST_PYTHON}) |"
+            echo "| ${FEDORA_PREV_VERSION} | ${NODE_LTS_DISPLAY} | [**${FEDORA_PREV_PYTHON}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora${FEDORA_PREV_VERSION}-node${NODE_LTS_TAG}-py${FEDORA_PREV_PYTHON}) |"
+          } > /tmp/fedora-images.md
+
+          echo "✅ Generated both images tables"
+
+      - name: Update README
+        id: update
+        run: |
+          echo "📝 Updating README with both images tables..."
+
+          # Read current README
+          CURRENT_README=$(cat README.md)
+
+          # Extract and update Ubuntu images table
+          UBUNTU_CONTENT=$(cat /tmp/ubuntu-images.md)
+          NEW_README=$(echo "$CURRENT_README" | awk -v table="$UBUNTU_CONTENT" '
+            BEGIN { in_table = 0 }
+            /^## Ubuntu images/ { print; getline; print; getline; print; getline; print; print table; in_table = 1; next }
+            in_table && /^\|/ { next }
+            in_table && !/^\|/ { in_table = 0 }
+            { print }
+          ')
+
+          # Extract and update Fedora images table
+          FEDORA_CONTENT=$(cat /tmp/fedora-images.md)
+          NEW_README=$(echo "$NEW_README" | awk -v table="$FEDORA_CONTENT" '
+            BEGIN { in_table = 0 }
+            /^## Fedora images/ { print; getline; print; getline; print; getline; print; print table; in_table = 1; next }
+            in_table && /^\|/ { next }
+            in_table && !/^\|/ { in_table = 0 }
+            { print }
+          ')
+
+          # Write updated README
+          echo "$NEW_README" > README.md
+
+          # Check if there are changes
+          if git diff --quiet README.md; then
+            echo "❌ No changes to README.md"
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "✅ README.md has been updated"
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo ""
+            echo "📝 Changes to README.md:"
+            echo "================================================"
+            git diff --color=always README.md | head -100
+            echo "================================================"
+          fi
+
+      - name: Create Pull Request
+        if: steps.update.outputs.changed == 'true'
+        env:
+          FORGEJO_TOKEN: ${{ secrets.FORGEJO_TOKEN }}
+        run: |
+          # Configure git
+          git config user.name "forgejo-actions[bot]"
+          git config user.email "actions@noreply.git.tomfos.tr"
+
+          # Create or update branch
+          BRANCH_NAME="update-image-versions"
+          git checkout -B $BRANCH_NAME
+
+          # Commit changes
+          git add README.md
+          git commit -m "chore: update Ubuntu and Fedora images in README
+
+          Node.js LTS: ${{ needs.prepare.outputs.node-lts }}
+          Node.js Latest: ${{ needs.prepare.outputs.node-latest }}
+          Ubuntu Previous: ${{ needs.prepare.outputs.ubuntu-previous }} (Python ${{ needs.prepare.outputs.ubuntu-previous-python }})
+          Ubuntu Latest: ${{ needs.prepare.outputs.ubuntu-latest }} (Python ${{ needs.prepare.outputs.ubuntu-latest-python }})
+          Ubuntu Devel: ${{ needs.prepare.outputs.ubuntu-devel }} (Python ${{ needs.prepare.outputs.ubuntu-devel-python }})
+          Fedora Previous: ${{ needs.prepare.outputs.fedora-previous }} (Python ${{ needs.prepare.outputs.fedora-previous-python }})
+          Fedora Latest: ${{ needs.prepare.outputs.fedora-latest }} (Python ${{ needs.prepare.outputs.fedora-latest-python }})
+          Fedora Rawhide: Python ${{ needs.prepare.outputs.fedora-rawhide-python }}"
+
+          # Push changes
+          git push -f origin $BRANCH_NAME
+
+          # Check if PR already exists
+          PR_EXISTS=$(curl -s -H "Authorization: token $FORGEJO_TOKEN" \
+            "https://git.tomfos.tr/api/v1/repos/tom/act-runner/pulls?state=open&head=tom:$BRANCH_NAME" | \
+            jq '. | length')
+
+          if [ "$PR_EXISTS" -eq "0" ]; then
+            # Create new PR
+            curl -X POST -H "Authorization: token $FORGEJO_TOKEN" \
+              -H "Content-Type: application/json" \
+              "https://git.tomfos.tr/api/v1/repos/tom/act-runner/pulls" \
+              -d "{
+                \"title\": \"chore: update Ubuntu and Fedora images in README\",
+                \"head\": \"$BRANCH_NAME\",
+                \"base\": \"main\",
+                \"body\": \"### Automated Images Update\\n\\nThis PR updates both Ubuntu and Fedora images tables to reflect the current runtime versions:\\n\\n**Node.js Versions:**\\n- LTS: ${{ needs.prepare.outputs.node-lts }}\\n- Latest: ${{ needs.prepare.outputs.node-latest }}\\n\\n**Ubuntu Releases:**\\n- Previous: ${{ needs.prepare.outputs.ubuntu-previous }} (Python ${{ needs.prepare.outputs.ubuntu-previous-python }})\\n- Latest: ${{ needs.prepare.outputs.ubuntu-latest }} (Python ${{ needs.prepare.outputs.ubuntu-latest-python }})\\n- Devel: ${{ needs.prepare.outputs.ubuntu-devel }} (Python ${{ needs.prepare.outputs.ubuntu-devel-python }})\\n\\n**Fedora Releases:**\\n- Previous: ${{ needs.prepare.outputs.fedora-previous }} (Python ${{ needs.prepare.outputs.fedora-previous-python }})\\n- Latest: ${{ needs.prepare.outputs.fedora-latest }} (Python ${{ needs.prepare.outputs.fedora-latest-python }})\\n- Rawhide: Python ${{ needs.prepare.outputs.fedora-rawhide-python }}\\n\\nThe images tables are regenerated based on the actual images being built.\"
+              }"
+            echo "✅ Created new PR for README updates"
+          else
+            echo "✅ PR already exists, changes have been pushed"
+          fi

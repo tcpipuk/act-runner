@@ -44,7 +44,8 @@ act -P ubuntu-latest=ghcr.io/tcpipuk/act-runner:ubuntu-latest
 | 24.04 LTS | 24/22 | [`None`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu24.04-node24-22), [3.13](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu24.04-node24-22-py3.13), [***3.12***](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu24.04-node24-22-py3.12) |
 | 22.04 LTS | 22/20 | [`None`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu22.04-node22-20), [3.13](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu22.04-node22-20-py3.13), [***3.10***](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu22.04-node22-20-py3.10) |
 
-**Note**: ***Italicised*** versions are the native Python for each Ubuntu release. `None` provides Node.js without Python, whilst non-native versions use the latest stable Python (3.13) from deadsnakes PPA.
+**Note**: ***Italicised*** versions are the native Python for each Ubuntu release. Non-native
+versions use the latest stable Python (3.13) from deadsnakes PPA.
 
 ## Fedora images
 
@@ -83,16 +84,14 @@ act -P ubuntu-latest=ghcr.io/tcpipuk/act-runner:ubuntu-latest
 - Common utilities (curl, wget, jq, tar, zip)
 - Pre-configured package repositories (LLVM, Kubernetes, HashiCorp, Microsoft)
 
-**Node.js images add:**
+**Runtime languages:**
 
-- Multiple [Node.js](https://nodejs.org/) versions with npm/npx
-- Compatible with [actions/setup-node](https://github.com/actions/setup-node)
-
-**Python images add:**
-
-- Python (native Ubuntu version or from deadsnakes PPA)
+- [Node.js](https://nodejs.org/) with npm/npx (LTS versions for "previous" releases, latest
+  stable for others)
+- Python (native OS version or latest stable from deadsnakes PPA for Ubuntu)
 - [uv](https://docs.astral.sh/uv/) package manager
-- Pre-installed development tools (ruff, mypy, pytest, black, isort, prek)
+- Pre-installed Python development tools (ruff, mypy, pytest, black, isort, prek)
+- Compatible with [actions/setup-node](https://github.com/actions/setup-node)
 - See [docs/python.md](docs/python.md) for full details
 
 ## Building your own
