@@ -66,32 +66,7 @@ RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=dnf-cache-${FEDOR
     sudo \
     && dnf clean all
 
-# Layer 3: Configure stable package repositories (rarely change)
-# This enables users to easily install: docker-ce, gh, dotnet, kubectl, terraform, etc.
-ARG K8S_VERSION=1.31
-RUN mkdir -p /etc/yum.repos.d && \
-    \
-    # GitHub CLI
-    dnf config-manager addrepo --from-repofile=https://cli.github.com/packages/rpm/gh-cli.repo && \
-    \
-    # Kubernetes
-    echo '[kubernetes]' > /etc/yum.repos.d/kubernetes.repo && \
-    echo 'name=Kubernetes' >> /etc/yum.repos.d/kubernetes.repo && \
-    echo "baseurl=https://pkgs.k8s.io/core:/stable:/v${K8S_VERSION}/rpm/" >> /etc/yum.repos.d/kubernetes.repo && \
-    echo 'enabled=1' >> /etc/yum.repos.d/kubernetes.repo && \
-    echo 'gpgcheck=1' >> /etc/yum.repos.d/kubernetes.repo && \
-    echo "gpgkey=https://pkgs.k8s.io/core:/stable:/v${K8S_VERSION}/rpm/repodata/repomd.xml.key" >> /etc/yum.repos.d/kubernetes.repo && \
-    \
-    # HashiCorp (Terraform, Vault, Consul, etc.)
-    dnf config-manager addrepo --from-repofile=https://rpm.releases.hashicorp.com/fedora/hashicorp.repo && \
-    \
-    # Docker CE
-    dnf config-manager addrepo --from-repofile=https://download.docker.com/linux/fedora/docker-ce.repo && \
-    \
-    # Update repository metadata (without Microsoft for now)
-    dnf makecache
-
-# Layer 4: Docker (using moby-engine for consistent multi-arch support)
+# Layer 3: Docker (using moby-engine for consistent multi-arch support)
 RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=dnf-cache-${FEDORA_VERSION}-${TARGETARCH} \
     --mount=type=cache,target=/var/lib/dnf,sharing=locked,id=dnf-lib-${FEDORA_VERSION}-${TARGETARCH} \
     dnf install -y \
@@ -100,34 +75,7 @@ RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=dnf-cache-${FEDOR
     && dnf clean all \
     && systemctl disable docker.service docker.socket || true
 
-# Layer 5: Frequently updated tools - GitHub CLI, uv, Rust, Python tools
-RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=dnf-cache-${FEDORA_VERSION}-${TARGETARCH} \
-    --mount=type=cache,target=/var/lib/dnf,sharing=locked,id=dnf-lib-${FEDORA_VERSION}-${TARGETARCH} \
-    --mount=type=cache,target=/root/.cache/uv,sharing=locked,id=uv-cache-fedora${FEDORA_VERSION}-${TARGETARCH} \
-    dnf install -y gh && dnf clean all \
-    && curl -LsSf https://astral.sh/uv/install.sh | sh \
-    && echo 'export PATH="/root/.local/bin:$PATH"' >> /etc/bashrc \
-    && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
-        sh -s -- -y --no-modify-path --profile minimal --default-toolchain none \
-    && echo 'source $HOME/.cargo/env' >> /etc/bashrc \
-    && /root/.local/bin/uv tool install prek \
-    && /root/.local/bin/uv tool install ruff \
-    && /root/.local/bin/uv tool install mypy \
-    && /root/.local/bin/uv tool install pytest \
-    && /root/.local/bin/uv tool install black \
-    && /root/.local/bin/uv tool install isort
-
-# Layer 6: Microsoft repository configuration (changes frequently)
-RUN rpm --import https://packages.microsoft.com/keys/microsoft.asc && \
-    echo '[packages-microsoft-prod]' > /etc/yum.repos.d/microsoft.repo && \
-    echo 'name=Microsoft packages' >> /etc/yum.repos.d/microsoft.repo && \
-    echo 'baseurl=https://packages.microsoft.com/fedora/$releasever/prod/' >> /etc/yum.repos.d/microsoft.repo && \
-    echo 'enabled=1' >> /etc/yum.repos.d/microsoft.repo && \
-    echo 'gpgcheck=1' >> /etc/yum.repos.d/microsoft.repo && \
-    echo 'gpgkey=https://packages.microsoft.com/keys/microsoft.asc' >> /etc/yum.repos.d/microsoft.repo && \
-    dnf makecache
-
-# Layer 7: Node.js installation (when NODE_VERSIONS is provided)
+# Layer 4: Node.js installation (when NODE_VERSIONS is provided)
 ARG NODE_VERSIONS=""
 RUN --mount=type=cache,target=/tmp/downloads,sharing=locked,id=downloads-fedora${FEDORA_VERSION}-${TARGETARCH} \
     if [ -n "${NODE_VERSIONS}" ]; then \
@@ -158,6 +106,53 @@ RUN --mount=type=cache,target=/tmp/downloads,sharing=locked,id=downloads-fedora$
         ln -sf /opt/hostedtoolcache/node/${NODE_VERSION}/${ARCH}/bin/npx /usr/local/bin/npx; \
     fi
 
+# Layer 5: uv, Python tools, and Rust installation
+RUN --mount=type=cache,target=/root/.cache/uv,sharing=locked,id=uv-cache-fedora${FEDORA_VERSION}-${TARGETARCH} \
+    curl -LsSf https://astral.sh/uv/install.sh | sh \
+    && /root/.local/bin/uv tool install prek \
+    && /root/.local/bin/uv tool install ruff \
+    && /root/.local/bin/uv tool install mypy \
+    && /root/.local/bin/uv tool install pytest \
+    && /root/.local/bin/uv tool install black \
+    && /root/.local/bin/uv tool install isort \
+    && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
+        sh -s -- -y --no-modify-path --profile minimal --default-toolchain none \
+    && echo 'source $HOME/.cargo/env' >> /etc/bashrc
+
+# Layer 6: GitHub CLI installation
+RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=dnf-cache-${FEDORA_VERSION}-${TARGETARCH} \
+    --mount=type=cache,target=/var/lib/dnf,sharing=locked,id=dnf-lib-${FEDORA_VERSION}-${TARGETARCH} \
+    dnf config-manager addrepo --from-repofile=https://cli.github.com/packages/rpm/gh-cli.repo && \
+    dnf install -y gh && dnf clean all
+
+# Layer 7: Optional repositories for user convenience
+# Users can install: kubectl, terraform, docker-ce, dotnet, powershell, azure-cli, etc.
+ARG K8S_VERSION=1.31
+RUN mkdir -p /etc/yum.repos.d && \
+    \
+    # Kubernetes
+    echo '[kubernetes]' > /etc/yum.repos.d/kubernetes.repo && \
+    echo 'name=Kubernetes' >> /etc/yum.repos.d/kubernetes.repo && \
+    echo "baseurl=https://pkgs.k8s.io/core:/stable:/v${K8S_VERSION}/rpm/" >> /etc/yum.repos.d/kubernetes.repo && \
+    echo 'enabled=1' >> /etc/yum.repos.d/kubernetes.repo && \
+    echo 'gpgcheck=1' >> /etc/yum.repos.d/kubernetes.repo && \
+    echo "gpgkey=https://pkgs.k8s.io/core:/stable:/v${K8S_VERSION}/rpm/repodata/repomd.xml.key" >> /etc/yum.repos.d/kubernetes.repo && \
+    \
+    # HashiCorp (Terraform, Vault, Consul, etc.)
+    dnf config-manager addrepo --from-repofile=https://rpm.releases.hashicorp.com/fedora/hashicorp.repo && \
+    \
+    # Docker CE
+    dnf config-manager addrepo --from-repofile=https://download.docker.com/linux/fedora/docker-ce.repo && \
+    \
+    # Microsoft ecosystem (PowerShell, .NET, Azure CLI)
+    rpm --import https://packages.microsoft.com/keys/microsoft.asc && \
+    echo '[packages-microsoft-prod]' > /etc/yum.repos.d/microsoft.repo && \
+    echo 'name=Microsoft packages' >> /etc/yum.repos.d/microsoft.repo && \
+    echo 'baseurl=https://packages.microsoft.com/fedora/$releasever/prod/' >> /etc/yum.repos.d/microsoft.repo && \
+    echo 'enabled=1' >> /etc/yum.repos.d/microsoft.repo && \
+    echo 'gpgcheck=1' >> /etc/yum.repos.d/microsoft.repo && \
+    echo 'gpgkey=https://packages.microsoft.com/keys/microsoft.asc' >> /etc/yum.repos.d/microsoft.repo
+
 # Set up environment
 ENV AGENT_TOOLSDIRECTORY=/opt/hostedtoolcache \
     FEDORA_VERSION=${FEDORA_VERSION} \
@@ -173,4 +168,6 @@ RUN git --version && \
     rustup --version && \
     uv --version && \
     (command -v node >/dev/null 2>&1 && node --version || echo "Node.js not installed") && \
-    (command -v npm >/dev/null 2>&1 && npm --version || echo "npm not installed")
+    (command -v npm >/dev/null 2>&1 && npm --version || echo "npm not installed") && \
+    # Preload package lists and validate repositories
+    dnf makecache

@@ -5,9 +5,6 @@ FROM ubuntu:${UBUNTU_VERSION} AS base
 # Re-declare ARG after FROM
 ARG UBUNTU_VERSION
 ARG TARGETARCH
-ARG RUNNER_UID=1001
-ARG RUNNER_GID=1001
-ARG RUNNER_USER=runner
 
 # Set shell options for better error detection
 SHELL ["/bin/bash", "-e", "-c"]
@@ -147,7 +144,7 @@ RUN if [ -z "${USE_NATIVE_PYTHON}" ]; then \
         update-alternatives --install /usr/bin/python python /usr/bin/python${PYTHON_VERSION} 100; \
     fi
 
-# Layer 6: uv and Python tools installation
+# Layer 6: uv, Python tools, and Rust installation
 ENV UV_LINK_MODE=copy
 ENV PATH="/root/.local/bin:${PATH}"
 
@@ -158,9 +155,12 @@ RUN --mount=type=cache,target=/root/.cache/uv,sharing=locked,id=uv-cache-${UBUNT
     && /root/.local/bin/uv tool install mypy \
     && /root/.local/bin/uv tool install pytest \
     && /root/.local/bin/uv tool install black \
-    && /root/.local/bin/uv tool install isort
+    && /root/.local/bin/uv tool install isort \
+    && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
+        sh -s -- -y --no-modify-path --profile minimal --default-toolchain none \
+    && echo 'source $HOME/.cargo/env' >> /etc/bash.bashrc
 
-# Layer 7: GitHub CLI and Rust installation
+# Layer 7: GitHub CLI installation
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache-${UBUNTU_VERSION}-${TARGETARCH} \
     --mount=type=cache,target=/var/lib/apt,sharing=locked,id=apt-lib-${UBUNTU_VERSION}-${TARGETARCH} \
     mkdir -p -m 755 /etc/apt/keyrings /etc/apt/sources.list.d && \
@@ -174,12 +174,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache-${UBUNT
     \
     # Install GitHub CLI
     apt-get update && apt-get install -y --no-install-recommends gh && \
-    rm -rf /var/lib/apt/lists/* && \
-    \
-    # Install Rust via official installer (rustup only, no default toolchain)
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
-        sh -s -- -y --no-modify-path --profile minimal --default-toolchain none && \
-    echo 'source $HOME/.cargo/env' >> /etc/bash.bashrc
+    rm -rf /var/lib/apt/lists/*
 
 # Layer 8: Configure additional APT repositories for user convenience
 # Users can install: clang, kubectl, psql, terraform, etc.
@@ -237,4 +232,6 @@ RUN git --version && \
     (command -v rustup >/dev/null 2>&1 && rustup --version || echo "Rust not installed") && \
     uv --version && \
     (command -v node >/dev/null 2>&1 && node --version || echo "Node.js not installed") && \
-    (command -v npm >/dev/null 2>&1 && npm --version || echo "npm not installed")
+    (command -v npm >/dev/null 2>&1 && npm --version || echo "npm not installed") && \
+    # Preload package lists and validate repositories
+    apt-get update
