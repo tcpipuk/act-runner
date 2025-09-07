@@ -17,86 +17,66 @@ cd act-runner
 
 ## Building images
 
-The images use a layered architecture where each image builds upon the previous:
+The images are now built in a single step with all components (Ubuntu/Fedora + Node.js + Python) included:
 
-1. **Base image** - Ubuntu with essential tools and package repositories
-2. **Node image** - Adds Node.js versions to the base image
-3. **Python image** - Adds Python and development tools to the Node image
-
-### Build a base image
+### Build Ubuntu images
 
 ```bash
-docker build -f linux/ubuntu/Dockerfile.base \
+docker build -f docker/ubuntu.Dockerfile \
   --build-arg UBUNTU_VERSION=24.04 \
-  -t act-runner:ubuntu24.04-base \
-  ./linux/ubuntu
-```
-
-Available Ubuntu versions typically include current LTS releases and the rolling release. Check the
-workflow files for the current matrix of supported versions.
-
-### Build a Node.js image
-
-First build the base image, then:
-
-```bash
-docker build -f linux/ubuntu/Dockerfile.node \
-  --build-arg UBUNTU_VERSION=24.04 \
-  --build-arg NODE_VERSIONS="20 22" \
-  --build-arg BASE_IMAGE=act-runner:ubuntu24.04-base \
-  -t act-runner:ubuntu24.04-node20-22 \
-  ./linux/ubuntu
-```
-
-Node.js versions follow the LTS and current releases from nodejs.org. Multiple versions can be
-installed by providing space-separated version numbers.
-
-### Build a Python image
-
-First build the base and Node images, then:
-
-```bash
-docker build -f linux/ubuntu/Dockerfile.python \
-  --build-arg UBUNTU_VERSION=24.04 \
-  --build-arg NODE_VERSIONS="20 22" \
+  --build-arg NODE_VERSIONS="22 24" \
   --build-arg PYTHON_VERSION=3.13 \
-  --build-arg NODE_IMAGE=act-runner:ubuntu24.04-node20-22 \
-  -t act-runner:ubuntu24.04-node20-22-py3.13 \
-  ./linux/ubuntu
+  -t act-runner:ubuntu24.04-node22-24-py3.13 \
+  ./docker
 ```
 
-Python versions include the Ubuntu native version and additional versions from the deadsnakes PPA.
-Check the workflow files for currently supported versions.
+For native Python instead of deadsnakes:
+
+```bash
+docker build -f docker/ubuntu.Dockerfile \
+  --build-arg UBUNTU_VERSION=24.04 \
+  --build-arg NODE_VERSIONS="22 24" \
+  --build-arg PYTHON_VERSION=3.12 \
+  --build-arg USE_NATIVE_PYTHON=true \
+  -t act-runner:ubuntu24.04-node22-24-py3.12 \
+  ./docker
+```
+
+### Build Fedora images
+
+```bash
+docker build -f docker/fedora.Dockerfile \
+  --build-arg FEDORA_VERSION=42 \
+  --build-arg NODE_VERSIONS="22 24" \
+  -t act-runner:fedora42-node22-24-py3.13 \
+  ./docker
+```
+
+Available versions typically include current LTS releases and the rolling/rawhide release. Check the
+workflow files for the current matrix of supported versions.
 
 ## Build arguments
 
-All Dockerfiles accept these common build arguments:
+**Ubuntu Dockerfile (`docker/ubuntu.Dockerfile`):**
 
-- `UBUNTU_VERSION` - Ubuntu version to use
-- `BUILD_DATE` - Build timestamp (optional)
-- `BUILD_VERSION` - Version tag (optional)
-- `BUILD_REVISION` - Git commit hash (optional)
+- `UBUNTU_VERSION` - Ubuntu version to use (e.g. "24.04")
+- `NODE_VERSIONS` - Space-separated Node.js versions (e.g. "22 24")
+- `PYTHON_VERSION` - Python version (e.g. "3.13")
+- `USE_NATIVE_PYTHON` - Set to "true" to use native Ubuntu Python instead of deadsnakes
+- `K8S_VERSION` - Kubernetes version for repository setup (e.g. "1.31")
 
-Image-specific arguments:
+**Fedora Dockerfile (`docker/fedora.Dockerfile`):**
 
-**Dockerfile.base:** No additional required arguments
-
-**Dockerfile.node:**
-
-- `BASE_IMAGE` - The base image to build from
-- `NODE_VERSIONS` - Space-separated Node.js versions (e.g. "20 22")
-
-**Dockerfile.python:**
-
-- `NODE_IMAGE` - The Node image to build from
-- `NODE_VERSIONS` - Must match the Node image's versions
-- `PYTHON_VERSION` - Python version (e.g. 3.13)
+- `FEDORA_VERSION` - Fedora version to use (e.g. "42" or "rawhide")
+- `NODE_VERSIONS` - Space-separated Node.js versions (e.g. "22 24")
+- `K8S_VERSION` - Kubernetes version for repository setup (e.g. "1.31")
 
 ## BuildKit features
 
 The Dockerfiles use BuildKit cache mounts for optimal caching:
 
-- APT package cache (`/var/cache/apt`, `/var/lib/apt`)
+- APT/DNF package cache (`/var/cache/apt`, `/var/lib/apt` for Ubuntu; `/var/cache/dnf`,
+  `/var/lib/dnf` for Fedora)
 - Download cache (`/tmp/downloads`)
 - Python package cache (`/root/.cache/uv`)
 
@@ -109,10 +89,12 @@ export DOCKER_BUILDKIT=1
 Or use Docker Buildx:
 
 ```bash
-docker buildx build -f linux/ubuntu/Dockerfile.base \
+docker buildx build -f docker/ubuntu.Dockerfile \
   --build-arg UBUNTU_VERSION=24.04 \
-  -t act-runner:ubuntu24.04-base \
-  ./linux/ubuntu
+  --build-arg NODE_VERSIONS="22 24" \
+  --build-arg PYTHON_VERSION=3.13 \
+  -t act-runner:ubuntu24.04-node22-24-py3.13 \
+  ./docker
 ```
 
 ## Multi-architecture builds
@@ -124,12 +106,14 @@ To build for multiple architectures (requires Docker Buildx):
 docker buildx create --use
 
 # Build for multiple platforms
-docker buildx build -f linux/ubuntu/Dockerfile.base \
-  --platform linux/amd64,linux/arm64 \
+docker buildx build -f docker/ubuntu.Dockerfile \
+  --platform linux/amd64,linux/arm64,linux/ppc64le,linux/s390x \
   --build-arg UBUNTU_VERSION=24.04 \
-  -t act-runner:ubuntu24.04-base \
+  --build-arg NODE_VERSIONS="22 24" \
+  --build-arg PYTHON_VERSION=3.13 \
+  -t act-runner:ubuntu24.04-node22-24-py3.13 \
   --push \
-  ./linux/ubuntu
+  ./docker
 ```
 
 ## Testing your images
@@ -137,13 +121,13 @@ docker buildx build -f linux/ubuntu/Dockerfile.base \
 With Docker:
 
 ```bash
-docker run --rm -it act-runner:ubuntu24.04-node20-22-py3.13 bash
+docker run --rm -it act-runner:ubuntu24.04-node22-24-py3.13 bash
 ```
 
 With ACT:
 
 ```bash
-act -P ubuntu-latest=act-runner:ubuntu24.04-node20-22-py3.13
+act -P ubuntu-latest=act-runner:ubuntu24.04-node22-24-py3.13
 ```
 
 In GitHub/Forgejo Actions:
@@ -152,7 +136,7 @@ In GitHub/Forgejo Actions:
 jobs:
   test:
     runs-on: ubuntu-latest
-    container: act-runner:ubuntu24.04-node20-22-py3.13
+    container: act-runner:ubuntu24.04-node22-24-py3.13
     steps:
       - uses: actions/checkout@v4
       - run: python --version
@@ -181,9 +165,9 @@ language-specific tools, add them to the appropriate Dockerfile.
 
 ### Build failures
 
-1. **Missing base image**: Ensure you build images in order (base → node → python)
-2. **Network issues**: Check your internet connection and Docker's DNS settings
-3. **Space issues**: Ensure you have enough disk space for Docker images
+1. **Network issues**: Check your internet connection and Docker's DNS settings
+2. **Space issues**: Ensure you have enough disk space for Docker images
+3. **BuildKit not enabled**: Ensure Docker BuildKit is enabled (`export DOCKER_BUILDKIT=1`)
 
 ### Cache issues
 
@@ -194,10 +178,12 @@ If builds aren't using cache as expected:
 docker builder prune
 
 # Force rebuild without cache
-docker build --no-cache -f linux/ubuntu/Dockerfile.base \
+docker build --no-cache -f docker/ubuntu.Dockerfile \
   --build-arg UBUNTU_VERSION=24.04 \
-  -t act-runner:ubuntu24.04-base \
-  ./linux/ubuntu
+  --build-arg NODE_VERSIONS="22 24" \
+  --build-arg PYTHON_VERSION=3.13 \
+  -t act-runner:ubuntu24.04-node22-24-py3.13 \
+  ./docker
 ```
 
 ## Contributing

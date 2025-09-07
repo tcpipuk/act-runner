@@ -40,9 +40,7 @@ RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=dnf-cache-${FEDOR
     pkg-config \
     procps-ng \
     rpkg \
-    rpm-build \
     rpm-sign \
-    rpmdevtools \
     rsync \
     tar \
     unzip \
