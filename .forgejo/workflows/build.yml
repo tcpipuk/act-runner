@@ -6,7 +6,7 @@ on:
       - "docker/ubuntu.Dockerfile"
       - "docker/fedora.Dockerfile"
       - "docker/debian.Dockerfile"
-      - "linux/ubuntu/ubuntuPython.Dockerfile"
+      - "docker/ubuntuPython.Dockerfile"
       - ".forgejo/workflows/build.yml"
   schedule:
     - cron: '0 4 * * *'  # Run daily at 4am UTC
@@ -418,8 +418,8 @@ jobs:
       - name: Build and push Ubuntu Python image
         uses: docker/build-push-action@v6
         with:
-          context: ./linux/ubuntu
-          file: ./linux/ubuntu/ubuntuPython.Dockerfile
+          context: .
+          file: ./docker/ubuntuPython.Dockerfile
           push: true
           tags: ${{ steps.ubuntu-python-tags.outputs.tags }}
           build-args: |
