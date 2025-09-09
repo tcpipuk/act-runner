@@ -157,9 +157,13 @@ RUN --mount=type=cache,target=/tmp/downloads,sharing=locked,id=downloads-${DEBIA
     # LLVM/Clang - for C/C++ development
     wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | \
     gpg --dearmor -o /etc/apt/keyrings/llvm-archive-keyring.gpg && \
-    echo "deb [signed-by=/etc/apt/keyrings/llvm-archive-keyring.gpg] \
-    http://apt.llvm.org/$(lsb_release -cs)/ llvm-toolchain-$(lsb_release -cs) main" \
-    > /etc/apt/sources.list.d/llvm.list && \
+    if [ "${DEBIAN_VERSION}" = "sid" ] || [ "${DEBIAN_VERSION}" = "unstable" ]; then \
+      echo "deb [signed-by=/etc/apt/keyrings/llvm-archive-keyring.gpg] \
+      http://apt.llvm.org/unstable/ llvm-toolchain-unstable main"; \
+    else \
+      echo "deb [signed-by=/etc/apt/keyrings/llvm-archive-keyring.gpg] \
+      http://apt.llvm.org/$(lsb_release -cs)/ llvm-toolchain-$(lsb_release -cs) main"; \
+    fi > /etc/apt/sources.list.d/llvm.list && \
     \
     # Kubernetes - for k8s operations
     curl -fsSL https://pkgs.k8s.io/core:/stable:/v${K8S_VERSION}/deb/Release.key | \
@@ -168,12 +172,14 @@ RUN --mount=type=cache,target=/tmp/downloads,sharing=locked,id=downloads-${DEBIA
     https://pkgs.k8s.io/core:/stable:/v${K8S_VERSION}/deb/ /" \
     > /etc/apt/sources.list.d/kubernetes.list && \
     \
-    # HashiCorp - for Terraform, Vault, Consul, etc.
-    wget -q -O- https://apt.releases.hashicorp.com/gpg | \
-    gpg --dearmor -o /etc/apt/keyrings/hashicorp-archive-keyring.gpg && \
-    echo "deb [signed-by=/etc/apt/keyrings/hashicorp-archive-keyring.gpg] \
-    https://apt.releases.hashicorp.com $(lsb_release -cs) main" \
-    > /etc/apt/sources.list.d/hashicorp.list && \
+    # HashiCorp - for Terraform, Vault, Consul, etc. (skip for sid/unstable)
+    if [ "${DEBIAN_VERSION}" != "sid" ] && [ "${DEBIAN_VERSION}" != "unstable" ]; then \
+      wget -q -O- https://apt.releases.hashicorp.com/gpg | \
+      gpg --dearmor -o /etc/apt/keyrings/hashicorp-archive-keyring.gpg && \
+      echo "deb [signed-by=/etc/apt/keyrings/hashicorp-archive-keyring.gpg] \
+      https://apt.releases.hashicorp.com $(lsb_release -cs) main" \
+      > /etc/apt/sources.list.d/hashicorp.list; \
+    fi && \
     \
     # Microsoft ecosystem (PowerShell, .NET, Azure CLI)
     DEBIAN_VERSION_ID=$(lsb_release -rs | cut -d. -f1) && \

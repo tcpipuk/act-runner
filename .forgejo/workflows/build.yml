@@ -50,9 +50,9 @@ jobs:
       debian-stable: ${{ steps.debian-stable.outputs.debian }}
       debian-stable-python: ${{ steps.debian-stable.outputs.python }}
       debian-stable-codename: ${{ steps.debian-stable.outputs.codename }}
-      debian-testing: ${{ steps.debian-testing.outputs.debian }}
-      debian-testing-python: ${{ steps.debian-testing.outputs.python }}
-      debian-testing-codename: ${{ steps.debian-testing.outputs.codename }}
+      debian-sid: ${{ steps.debian-sid.outputs.debian }}
+      debian-sid-python: ${{ steps.debian-sid.outputs.python }}
+      debian-sid-codename: ${{ steps.debian-sid.outputs.codename }}
     steps:
       - name: Get stable K8s version
         id: k8s
@@ -213,22 +213,22 @@ jobs:
           echo "python=${PYTHON_VERSION}" >> $GITHUB_OUTPUT
           echo "📦 Debian stable is ${DEBIAN_VERSION} (${DEBIAN_CODENAME}) with Python ${PYTHON_VERSION}"
 
-      - name: Detect Debian testing version
-        id: debian-testing
+      - name: Detect Debian sid version
+        id: debian-sid
         run: |
-          # Use Debian testing as our "testing" release
-          docker pull debian:testing
-          DEBIAN_VERSION=$(docker run --rm debian:testing bash -c "grep VERSION_ID /etc/os-release | cut -d= -f2 | tr -d '\"' || echo 'testing'")
-          DEBIAN_CODENAME=$(docker run --rm debian:testing bash -c "grep VERSION_CODENAME /etc/os-release | cut -d= -f2 | tr -d '\"' || echo 'unknown'")
+          # Use Debian sid as our "unstable" release (equivalent to Fedora Rawhide)
+          docker pull debian:sid
+          DEBIAN_VERSION=$(docker run --rm debian:sid bash -c "grep VERSION_ID /etc/os-release | cut -d= -f2 | tr -d '\"' || echo 'sid'")
+          DEBIAN_CODENAME=$(docker run --rm debian:sid bash -c "grep VERSION_CODENAME /etc/os-release | cut -d= -f2 | tr -d '\"' || echo 'unknown'")
           # Check what Python version is available
-          PYTHON_VERSION=$(docker run --rm debian:testing bash -c "
+          PYTHON_VERSION=$(docker run --rm debian:sid bash -c "
             apt-get update >/dev/null 2>&1
             apt-cache show python3 | grep '^Version:' | head -1 | cut -d' ' -f2 | cut -d. -f1-2
           ")
           echo "debian=${DEBIAN_VERSION}" >> $GITHUB_OUTPUT
           echo "codename=${DEBIAN_CODENAME}" >> $GITHUB_OUTPUT
           echo "python=${PYTHON_VERSION}" >> $GITHUB_OUTPUT
-          echo "📦 Debian testing is ${DEBIAN_VERSION} (${DEBIAN_CODENAME}) with Python ${PYTHON_VERSION}"
+          echo "📦 Debian sid is ${DEBIAN_VERSION} (${DEBIAN_CODENAME}) with Python ${PYTHON_VERSION}"
 
   build-ubuntu:
     name: Build Ubuntu ${{ matrix.variant == 'previous' && 'Previous' || matrix.variant == 'latest' && 'Latest' || matrix.variant == 'rolling' && 'Rolling' }}
@@ -519,13 +519,13 @@ jobs:
           platforms: linux/amd64,linux/arm64/v8,linux/ppc64le,linux/s390x
 
   build-debian:
-    name: Build Debian ${{ matrix.variant == 'oldstable' && 'Oldstable' || matrix.variant == 'stable' && 'Stable' || matrix.variant == 'testing' && 'Testing' }}
+    name: Build Debian ${{ matrix.variant == 'oldstable' && 'Oldstable' || matrix.variant == 'stable' && 'Stable' || matrix.variant == 'sid' && 'Sid/Unstable' }}
     runs-on: ubuntu-latest
     needs: prepare
     strategy:
       fail-fast: false
       matrix:
-        variant: ["oldstable", "stable", "testing"]
+        variant: ["oldstable", "stable", "sid"]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -560,10 +560,10 @@ jobs:
             DEBIAN_CODENAME="${{ needs.prepare.outputs.debian-stable-codename }}"
             PYTHON_VERSION="${{ needs.prepare.outputs.debian-stable-python }}"
             NODE_VERSIONS="${NODE_LATEST}"
-          elif [ "${{ matrix.variant }}" = "testing" ]; then
-            DEBIAN_VERSION="${{ needs.prepare.outputs.debian-testing }}"
-            DEBIAN_CODENAME="${{ needs.prepare.outputs.debian-testing-codename }}"
-            PYTHON_VERSION="${{ needs.prepare.outputs.debian-testing-python }}"
+          elif [ "${{ matrix.variant }}" = "sid" ]; then
+            DEBIAN_VERSION="${{ needs.prepare.outputs.debian-sid }}"
+            DEBIAN_CODENAME="${{ needs.prepare.outputs.debian-sid-codename }}"
+            PYTHON_VERSION="${{ needs.prepare.outputs.debian-sid-python }}"
             NODE_VERSIONS="${NODE_LATEST}"
           fi
           echo "debian-version=${DEBIAN_VERSION}" >> $GITHUB_OUTPUT
@@ -589,8 +589,8 @@ jobs:
             ALIAS_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:debian-oldstable"
           elif [ "${{ matrix.variant }}" = "stable" ]; then
             ALIAS_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:debian-latest"
-          elif [ "${{ matrix.variant }}" = "testing" ]; then
-            ALIAS_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:debian-testing"
+          elif [ "${{ matrix.variant }}" = "sid" ]; then
+            ALIAS_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:debian-sid"
           fi
           if [ "${{ github.ref_name }}" != "main" ]; then
             ALIAS_TAG="${ALIAS_TAG}-${{ github.ref_name }}"
@@ -648,13 +648,13 @@ jobs:
             # Include our patterns:
             # - Ubuntu: ubuntu{version}-node{versions}-py{python}, ubuntu-{previous,latest,rolling}
             # - Fedora: fedora{version}-node{versions}-py{python}, fedora-{previous,latest,rawhide}
-            # - Debian: debian{version}-node{versions}-py{python}, debian-{oldstable,latest,testing}
+            # - Debian: debian{version}-node{versions}-py{python}, debian-{oldstable,latest,sid}
             if [[ "$TAG" =~ ^ubuntu[0-9]+\.[0-9]+-node[0-9]+-[0-9]+-py[0-9]+\.[0-9]+$ ]] || \
                [[ "$TAG" =~ ^fedora[0-9]+-node[0-9]+-[0-9]+-py[0-9]+\.[0-9]+$ ]] || \
                [[ "$TAG" =~ ^fedorarawhide-node[0-9]+-[0-9]+-py[0-9]+\.[0-9]+$ ]] || \
                [[ "$TAG" =~ ^debian[0-9]+-node[0-9]+-[0-9]+-py[0-9]+\.[0-9]+$ ]] || \
                [[ "$TAG" =~ ^(ubuntu|fedora)-(previous|latest|rolling|rawhide)$ ]] || \
-               [[ "$TAG" =~ ^debian-(oldstable|latest|testing)$ ]]; then
+               [[ "$TAG" =~ ^debian-(oldstable|latest|sid)$ ]]; then
               TAGS_TO_MIRROR+=("$TAG")
               echo "✅ Will mirror: $TAG"
             else
@@ -771,9 +771,9 @@ jobs:
           DEBIAN_STABLE_VERSION="${{ needs.prepare.outputs.debian-stable }}"
           DEBIAN_STABLE_CODENAME="${{ needs.prepare.outputs.debian-stable-codename }}"
           DEBIAN_STABLE_PYTHON="${{ needs.prepare.outputs.debian-stable-python }}"
-          DEBIAN_TESTING_VERSION="${{ needs.prepare.outputs.debian-testing }}"
-          DEBIAN_TESTING_CODENAME="${{ needs.prepare.outputs.debian-testing-codename }}"
-          DEBIAN_TESTING_PYTHON="${{ needs.prepare.outputs.debian-testing-python }}"
+          DEBIAN_SID_VERSION="${{ needs.prepare.outputs.debian-sid }}"
+          DEBIAN_SID_CODENAME="${{ needs.prepare.outputs.debian-sid-codename }}"
+          DEBIAN_SID_PYTHON="${{ needs.prepare.outputs.debian-sid-python }}"
 
           NODE_LTS="${{ needs.prepare.outputs.node-lts }}"
           NODE_LATEST="${{ needs.prepare.outputs.node-latest }}"
@@ -810,7 +810,7 @@ jobs:
           {
             echo "| Debian Version | Alias Tag | Node.js | Python Versions Available |"
             echo "|----------------|-----------|---------|---------------------------|"
-            echo "| ${DEBIAN_TESTING_VERSION} (${DEBIAN_TESTING_CODENAME^} - Testing) | **[\`debian-testing\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/debian-testing)** | ${NODE_LATEST_DISPLAY} | [**${DEBIAN_TESTING_PYTHON}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/debian${DEBIAN_TESTING_VERSION}-node${NODE_LATEST_TAG}-py${DEBIAN_TESTING_PYTHON}) |"
+            echo "| ${DEBIAN_SID_VERSION} (${DEBIAN_SID_CODENAME^} - Sid/Unstable) | **[\`debian-sid\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/debian-sid)** | ${NODE_LATEST_DISPLAY} | [**${DEBIAN_SID_PYTHON}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/debian${DEBIAN_SID_VERSION}-node${NODE_LATEST_TAG}-py${DEBIAN_SID_PYTHON}) |"
             echo "| ${DEBIAN_STABLE_VERSION} (${DEBIAN_STABLE_CODENAME^} - Stable) | **[\`debian-latest\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/debian-latest)** | ${NODE_LATEST_DISPLAY} | [**${DEBIAN_STABLE_PYTHON}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/debian${DEBIAN_STABLE_VERSION}-node${NODE_LATEST_TAG}-py${DEBIAN_STABLE_PYTHON}) |"
             echo "| ${DEBIAN_OLDSTABLE_VERSION} (${DEBIAN_OLDSTABLE_CODENAME^} - Oldstable) | **[\`debian-oldstable\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/debian-oldstable)** | ${NODE_LTS_DISPLAY} | [**${DEBIAN_OLDSTABLE_PYTHON}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/debian${DEBIAN_OLDSTABLE_VERSION}-node${NODE_LTS_TAG}-py${DEBIAN_OLDSTABLE_PYTHON}) |"
             echo ""
