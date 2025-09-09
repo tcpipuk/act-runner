@@ -159,7 +159,7 @@ RUN --mount=type=cache,target=/tmp/downloads,sharing=locked,id=downloads-${DEBIA
     gpg --dearmor -o /etc/apt/keyrings/llvm-archive-keyring.gpg && \
     if [ "${DEBIAN_VERSION}" = "sid" ] || [ "${DEBIAN_VERSION}" = "unstable" ]; then \
       echo "deb [signed-by=/etc/apt/keyrings/llvm-archive-keyring.gpg] \
-      http://apt.llvm.org/unstable/ llvm-toolchain-unstable main"; \
+      http://apt.llvm.org/unstable/ llvm-toolchain main"; \
     else \
       echo "deb [signed-by=/etc/apt/keyrings/llvm-archive-keyring.gpg] \
       http://apt.llvm.org/$(lsb_release -cs)/ llvm-toolchain-$(lsb_release -cs) main"; \
