@@ -6,6 +6,7 @@ on:
       - "docker/ubuntu.Dockerfile"
       - "docker/fedora.Dockerfile"
       - "docker/debian.Dockerfile"
+      - "linux/ubuntu/ubuntuPython.Dockerfile"
       - ".forgejo/workflows/build.yml"
   schedule:
     - cron: '0 4 * * *'  # Run daily at 4am UTC
@@ -230,26 +231,19 @@ jobs:
           echo "📦 Debian testing is ${DEBIAN_VERSION} (${DEBIAN_CODENAME}) with Python ${PYTHON_VERSION}"
 
   build-ubuntu:
-    name: Build Ubuntu ${{ matrix.variant == 'previous' && 'Previous' || matrix.variant == 'latest' && 'Latest' || matrix.variant == 'rolling' && 'Rolling' }} Python ${{ matrix.python == 'native' && 'Native' || matrix.python }}
+    name: Build Ubuntu ${{ matrix.variant == 'previous' && 'Previous' || matrix.variant == 'latest' && 'Latest' || matrix.variant == 'rolling' && 'Rolling' }}
     runs-on: ubuntu-latest
     needs: prepare
     strategy:
       fail-fast: false
       matrix:
         include:
-          # Ubuntu 22.04 (previous) + Node LTS + both Python versions
+          # Ubuntu 22.04 (previous) + Node LTS + native Python
           - variant: "previous"
-            python: "3.13"
-          - variant: "previous"
-            python: "native"
-          # Ubuntu 24.04 (latest) + Node Latest + both Python versions
+          # Ubuntu 24.04 (latest) + Node Latest + native Python
           - variant: "latest"
-            python: "3.13"
-          - variant: "latest"
-            python: "native"
-          # Ubuntu 25.04 (rolling) + Node Latest + native Python only
+          # Ubuntu 25.04 (rolling) + Node Latest + native Python
           - variant: "rolling"
-            python: "native"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -290,16 +284,9 @@ jobs:
           echo "ubuntu-version=${UBUNTU_VERSION}" >> $GITHUB_OUTPUT
           echo "native-python=${NATIVE_PYTHON}" >> $GITHUB_OUTPUT
 
-          # Resolve the actual Python version
-          if [ "${{ matrix.python }}" = "native" ]; then
-            PYTHON_VERSION="${NATIVE_PYTHON}"
-            USE_NATIVE_PYTHON="true"
-          else
-            PYTHON_VERSION="${{ matrix.python }}"
-            USE_NATIVE_PYTHON=""
-          fi
-          echo "python-version=${PYTHON_VERSION}" >> $GITHUB_OUTPUT
-          echo "use-native-python=${USE_NATIVE_PYTHON}" >> $GITHUB_OUTPUT
+          # Ubuntu always uses native Python
+          echo "python-version=${NATIVE_PYTHON}" >> $GITHUB_OUTPUT
+          echo "use-native-python=true" >> $GITHUB_OUTPUT
 
           NODE_TAG=$(echo "${NODE_VERSIONS}" | tr '+' '-')
           NODE_VERSIONS_SPACED=$(echo "${NODE_VERSIONS}" | tr '+' ' ')
@@ -316,19 +303,19 @@ jobs:
           # ubuntu-previous: previous + native python
           # ubuntu-latest: latest + native python
           # ubuntu-rolling: rolling + native python
-          if [ "${{ matrix.variant }}" = "previous" ] && [ "${{ matrix.python }}" = "native" ]; then
+          if [ "${{ matrix.variant }}" = "previous" ]; then
             ALIAS_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:ubuntu-previous"
             if [ "${{ github.ref_name }}" != "main" ]; then
               ALIAS_TAG="${ALIAS_TAG}-${{ github.ref_name }}"
             fi
             TAGS="${TAGS},${ALIAS_TAG}"
-          elif [ "${{ matrix.variant }}" = "latest" ] && [ "${{ matrix.python }}" = "native" ]; then
+          elif [ "${{ matrix.variant }}" = "latest" ]; then
             ALIAS_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:ubuntu-latest"
             if [ "${{ github.ref_name }}" != "main" ]; then
               ALIAS_TAG="${ALIAS_TAG}-${{ github.ref_name }}"
             fi
             TAGS="${TAGS},${ALIAS_TAG}"
-          elif [ "${{ matrix.variant }}" = "rolling" ] && [ "${{ matrix.python }}" = "native" ]; then
+          elif [ "${{ matrix.variant }}" = "rolling" ]; then
             ALIAS_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:ubuntu-rolling"
             if [ "${{ github.ref_name }}" != "main" ]; then
               ALIAS_TAG="${ALIAS_TAG}-${{ github.ref_name }}"
@@ -338,6 +325,7 @@ jobs:
 
           echo "tags=${TAGS}" >> $GITHUB_OUTPUT
           echo "node_versions_spaced=${NODE_VERSIONS_SPACED}" >> $GITHUB_OUTPUT
+          echo "node_tag=${NODE_TAG}" >> $GITHUB_OUTPUT
 
           echo "📦 Ubuntu image tags: ${TAGS}"
           echo "🐍 Python version: ${PYTHON_VERSION}"
@@ -356,6 +344,87 @@ jobs:
             PYTHON_VERSION=${{ steps.ubuntu-tags.outputs.python-version }}
             USE_NATIVE_PYTHON=${{ steps.ubuntu-tags.outputs.use-native-python }}
             K8S_VERSION=${{ needs.prepare.outputs.k8s-version }}
+          platforms: linux/amd64,linux/arm64/v8,linux/ppc64le,linux/s390x
+
+  build-ubuntu-python:
+    name: Build Ubuntu ${{ matrix.variant == 'previous' && 'Previous' || matrix.variant == 'latest' && 'Latest' }} Python 3.13
+    runs-on: ubuntu-latest
+    needs: [prepare, build-ubuntu]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Ubuntu 22.04 (previous) + Python 3.13
+          - variant: "previous"
+          # Ubuntu 24.04 (latest) + Python 3.13
+          - variant: "latest"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver: remote
+          endpoint: tcp://buildkit:8125
+
+      - name: Log in to Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.FORGEJO_TOKEN }}
+
+      - name: Generate Ubuntu Python tags
+        id: ubuntu-python-tags
+        env:
+          NODE_LTS: ${{ needs.prepare.outputs.node-lts }}
+          NODE_LATEST: ${{ needs.prepare.outputs.node-latest }}
+        run: |
+          # Resolve the actual Ubuntu version and Python version
+          if [ "${{ matrix.variant }}" = "previous" ]; then
+            UBUNTU_VERSION="${{ needs.prepare.outputs.ubuntu-previous }}"
+            NATIVE_PYTHON="${{ needs.prepare.outputs.ubuntu-previous-python }}"
+            NODE_VERSIONS="${NODE_LTS}"
+          elif [ "${{ matrix.variant }}" = "latest" ]; then
+            UBUNTU_VERSION="${{ needs.prepare.outputs.ubuntu-latest }}"
+            NATIVE_PYTHON="${{ needs.prepare.outputs.ubuntu-latest-python }}"
+            NODE_VERSIONS="${NODE_LATEST}"
+          fi
+
+          PYTHON_VERSION="3.13"
+          NODE_TAG=$(echo "${NODE_VERSIONS}" | tr '+' '-')
+
+          # Base image is the native Python image built in previous job
+          BASE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:ubuntu${UBUNTU_VERSION}-node${NODE_TAG}-py${NATIVE_PYTHON}"
+          if [ "${{ github.ref_name }}" != "main" ]; then
+            BASE_TAG="${BASE_TAG}-${{ github.ref_name }}"
+          fi
+
+          # Target tag for Python 3.13 image
+          TARGET_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:ubuntu${UBUNTU_VERSION}-node${NODE_TAG}-py${PYTHON_VERSION}"
+          if [ "${{ github.ref_name }}" != "main" ]; then
+            TARGET_TAG="${TARGET_TAG}-${{ github.ref_name }}"
+          fi
+
+          echo "base-image=${BASE_TAG}" >> $GITHUB_OUTPUT
+          echo "tags=${TARGET_TAG}" >> $GITHUB_OUTPUT
+          echo "python-version=${PYTHON_VERSION}" >> $GITHUB_OUTPUT
+
+          echo "📦 Base image: ${BASE_TAG}"
+          echo "📦 Target tags: ${TARGET_TAG}"
+          echo "🐍 Python version: ${PYTHON_VERSION}"
+
+      - name: Build and push Ubuntu Python image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./linux/ubuntu
+          file: ./linux/ubuntu/ubuntuPython.Dockerfile
+          push: true
+          tags: ${{ steps.ubuntu-python-tags.outputs.tags }}
+          build-args: |
+            BASE_IMAGE=${{ steps.ubuntu-python-tags.outputs.base-image }}
+            PYTHON_VERSION=${{ steps.ubuntu-python-tags.outputs.python-version }}
           platforms: linux/amd64,linux/arm64/v8,linux/ppc64le,linux/s390x
 
   build-fedora:
