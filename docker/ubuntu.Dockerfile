@@ -154,9 +154,11 @@ ARG K8S_VERSION=1.31
 RUN --mount=type=cache,target=/tmp/downloads,sharing=locked,id=downloads-${UBUNTU_VERSION}-${TARGETARCH} \
     mkdir -p -m 755 /etc/apt/keyrings /etc/apt/sources.list.d && \
     \
-    # Deadsnakes PPA - for newer Python versions
+    # Deadsnakes PPA - for newer Python versions (skip for rolling release)
     apt-get update && apt-get install -y --no-install-recommends software-properties-common && \
-    add-apt-repository ppa:deadsnakes/ppa -y && \
+    if [ "$(lsb_release -cs)" != "rolling" ]; then \
+        add-apt-repository ppa:deadsnakes/ppa -y; \
+    fi && \
     \
     # LLVM/Clang - for C/C++ development
     wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | \
