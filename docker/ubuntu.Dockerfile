@@ -106,43 +106,15 @@ RUN NODE_VERSION=$(ls /opt/hostedtoolcache/node | sort -V | tail -1) && \
     ln -sf /opt/hostedtoolcache/node/${NODE_VERSION}/${ARCH}/bin/npm /usr/local/bin/npm && \
     ln -sf /opt/hostedtoolcache/node/${NODE_VERSION}/${ARCH}/bin/npx /usr/local/bin/npx
 
-# Layer 5: Python installation (merged from Dockerfile.python)
-ARG PYTHON_VERSION=3.13
-ARG USE_NATIVE_PYTHON=""
-
-# Add deadsnakes PPA if not using native Python
+# Layer 5: Python installation
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache-${UBUNTU_VERSION}-${TARGETARCH} \
     --mount=type=cache,target=/var/lib/apt,sharing=locked,id=apt-lib-${UBUNTU_VERSION}-${TARGETARCH} \
-    if [ -z "${USE_NATIVE_PYTHON}" ]; then \
-        apt-get update && apt-get install -y --no-install-recommends \
-        software-properties-common \
-        && add-apt-repository ppa:deadsnakes/ppa -y \
-        && rm -rf /var/lib/apt/lists/*; \
-    fi
-
-# Install Python packages
-# If using native Python, install python3 and python3-apt for system tool compatibility
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache-${UBUNTU_VERSION}-${TARGETARCH} \
-    --mount=type=cache,target=/var/lib/apt,sharing=locked,id=apt-lib-${UBUNTU_VERSION}-${TARGETARCH} \
-    apt-get update && \
-    if [ -n "${USE_NATIVE_PYTHON}" ]; then \
-        apt-get install -y --no-install-recommends \
-        python3 \
-        python3-venv \
-        python3-apt; \
-    else \
-        apt-get install -y --no-install-recommends \
-        python${PYTHON_VERSION} \
-        python${PYTHON_VERSION}-venv; \
-    fi \
+    apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    python3-venv \
+    python3-apt \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
-
-# Create Python symlinks (only needed for non-native Python)
-RUN if [ -z "${USE_NATIVE_PYTHON}" ]; then \
-        update-alternatives --install /usr/bin/python3 python3 /usr/bin/python${PYTHON_VERSION} 100 && \
-        update-alternatives --install /usr/bin/python python /usr/bin/python${PYTHON_VERSION} 100; \
-    fi
 
 # Layer 6: uv, Python tools, and Rust installation
 ENV UV_LINK_MODE=copy
@@ -182,6 +154,10 @@ ARG K8S_VERSION=1.31
 RUN --mount=type=cache,target=/tmp/downloads,sharing=locked,id=downloads-${UBUNTU_VERSION}-${TARGETARCH} \
     mkdir -p -m 755 /etc/apt/keyrings /etc/apt/sources.list.d && \
     \
+    # Deadsnakes PPA - for newer Python versions
+    apt-get update && apt-get install -y --no-install-recommends software-properties-common && \
+    add-apt-repository ppa:deadsnakes/ppa -y && \
+    \
     # LLVM/Clang - for C/C++ development
     wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | \
     gpg --dearmor -o /etc/apt/keyrings/llvm-archive-keyring.gpg && \
@@ -212,7 +188,8 @@ RUN --mount=type=cache,target=/tmp/downloads,sharing=locked,id=downloads-${UBUNT
     dpkg -i "${PACKAGE_PATH}" && \
     \
     # Ensure all apt keys have correct permissions (safety net)
-    chmod 644 /etc/apt/keyrings/*.gpg 2>/dev/null || true
+    chmod 644 /etc/apt/keyrings/*.gpg 2>/dev/null || true && \
+    rm -rf /var/lib/apt/lists/*
 
 # Set up environment
 ENV AGENT_TOOLSDIRECTORY=/opt/hostedtoolcache \
