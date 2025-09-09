@@ -140,8 +140,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-ca
     # GitHub CLI repository
     wget -q -O- https://cli.github.com/packages/githubcli-archive-keyring.gpg | \
     gpg --dearmor -o /etc/apt/keyrings/githubcli-archive-keyring.gpg && \
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] \
-    https://cli.github.com/packages stable main" \
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
     > /etc/apt/sources.list.d/github-cli.list && \
     \
     # Install GitHub CLI
