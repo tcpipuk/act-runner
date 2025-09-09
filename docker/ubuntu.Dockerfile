@@ -1,8 +1,10 @@
 # ACT runner image for Ubuntu with Node.js and Python
+ARG UBUNTU_TAG=24.04
 ARG UBUNTU_VERSION=24.04
-FROM ubuntu:${UBUNTU_VERSION} AS base
+FROM ubuntu:${UBUNTU_TAG} AS base
 
 # Re-declare ARG after FROM
+ARG UBUNTU_TAG
 ARG UBUNTU_VERSION
 ARG TARGETARCH
 
@@ -155,7 +157,7 @@ RUN --mount=type=cache,target=/tmp/downloads,sharing=locked,id=act-ubuntu-downlo
     \
     # Deadsnakes PPA - for newer Python versions (skip for rolling release)
     apt-get update && apt-get install -y --no-install-recommends software-properties-common && \
-    if [ "${UBUNTU_VERSION}" != "rolling" ]; then \
+    if [ "${UBUNTU_TAG}" != "rolling" ]; then \
         add-apt-repository ppa:deadsnakes/ppa -y; \
     fi && \
     \
