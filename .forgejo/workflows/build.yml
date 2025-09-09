@@ -269,18 +269,22 @@ jobs:
         run: |
           # Resolve the actual Ubuntu version and Python version
           if [ "${{ matrix.variant }}" = "previous" ]; then
+            UBUNTU_TAG="22.04"
             UBUNTU_VERSION="${{ needs.prepare.outputs.ubuntu-previous }}"
             NATIVE_PYTHON="${{ needs.prepare.outputs.ubuntu-previous-python }}"
             NODE_VERSIONS="${NODE_LTS}"
           elif [ "${{ matrix.variant }}" = "latest" ]; then
+            UBUNTU_TAG="latest"
             UBUNTU_VERSION="${{ needs.prepare.outputs.ubuntu-latest }}"
             NATIVE_PYTHON="${{ needs.prepare.outputs.ubuntu-latest-python }}"
             NODE_VERSIONS="${NODE_LATEST}"
           elif [ "${{ matrix.variant }}" = "rolling" ]; then
+            UBUNTU_TAG="rolling"
             UBUNTU_VERSION="${{ needs.prepare.outputs.ubuntu-rolling }}"
             NATIVE_PYTHON="${{ needs.prepare.outputs.ubuntu-rolling-python }}"
             NODE_VERSIONS="${NODE_LATEST}"
           fi
+          echo "ubuntu-tag=${UBUNTU_TAG}" >> $GITHUB_OUTPUT
           echo "ubuntu-version=${UBUNTU_VERSION}" >> $GITHUB_OUTPUT
           echo "native-python=${NATIVE_PYTHON}" >> $GITHUB_OUTPUT
 
@@ -339,6 +343,7 @@ jobs:
           push: true
           tags: ${{ steps.ubuntu-tags.outputs.tags }}
           build-args: |
+            UBUNTU_TAG=${{ steps.ubuntu-tags.outputs.ubuntu-tag }}
             UBUNTU_VERSION=${{ steps.ubuntu-tags.outputs.ubuntu-version }}
             NODE_VERSIONS=${{ steps.ubuntu-tags.outputs.node_versions_spaced }}
             PYTHON_VERSION=${{ steps.ubuntu-tags.outputs.python-version }}
