@@ -415,6 +415,7 @@ jobs:
           echo "base-image=${BASE_TAG}" >> $GITHUB_OUTPUT
           echo "tags=${TARGET_TAG}" >> $GITHUB_OUTPUT
           echo "python-version=${PYTHON_VERSION}" >> $GITHUB_OUTPUT
+          echo "ubuntu-version=${UBUNTU_VERSION}" >> $GITHUB_OUTPUT
 
           echo "📦 Base image: ${BASE_TAG}"
           echo "📦 Target tags: ${TARGET_TAG}"
@@ -430,6 +431,7 @@ jobs:
           build-args: |
             BASE_IMAGE=${{ steps.ubuntu-python-tags.outputs.base-image }}
             PYTHON_VERSION=${{ steps.ubuntu-python-tags.outputs.python-version }}
+            UBUNTU_VERSION=${{ steps.ubuntu-python-tags.outputs.ubuntu-version }}
           platforms: linux/amd64,linux/arm64/v8,linux/ppc64le,linux/s390x
 
   build-fedora:
