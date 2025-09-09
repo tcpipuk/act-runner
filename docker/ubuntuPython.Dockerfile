@@ -6,9 +6,13 @@ ARG PYTHON_VERSION
 # Builder stage - using our base that already has deadsnakes + build tools
 FROM ${BASE_IMAGE} AS apt-builder
 ARG PYTHON_VERSION
+ARG UBUNTU_VERSION
+ARG TARGETARCH
 
 # Install development packages needed for building python3-apt
-RUN apt-get update && \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-cache-${UBUNTU_VERSION}-${TARGETARCH} \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked,id=act-ubuntu-apt-lib-${UBUNTU_VERSION}-${TARGETARCH} \
+    apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y \
         libapt-pkg-dev \
         python${PYTHON_VERSION}-dev \
@@ -16,7 +20,9 @@ RUN apt-get update && \
         dpkg-dev
 
 # Enable source repositories and build python3-apt for custom Python version
-RUN sed -i 's/^# deb-src/deb-src/' /etc/apt/sources.list && \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-cache-${UBUNTU_VERSION}-${TARGETARCH} \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked,id=act-ubuntu-apt-lib-${UBUNTU_VERSION}-${TARGETARCH} \
+    sed -i 's/^# deb-src/deb-src/' /etc/apt/sources.list && \
     apt-get update && \
     cd /tmp && \
     apt-get source python-apt && \
@@ -27,9 +33,13 @@ RUN sed -i 's/^# deb-src/deb-src/' /etc/apt/sources.list && \
 # Final stage - same base image
 FROM ${BASE_IMAGE}
 ARG PYTHON_VERSION
+ARG UBUNTU_VERSION
+ARG TARGETARCH
 
 # Install the specific Python version (deadsnakes PPA already configured in base)
-RUN apt-get update && \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-cache-${UBUNTU_VERSION}-${TARGETARCH} \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked,id=act-ubuntu-apt-lib-${UBUNTU_VERSION}-${TARGETARCH} \
+    apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y python${PYTHON_VERSION}
 
 # Set custom Python version as default
