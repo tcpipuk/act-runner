@@ -156,7 +156,7 @@ RUN --mount=type=cache,target=/tmp/downloads,sharing=locked,id=downloads-${UBUNT
     \
     # Deadsnakes PPA - for newer Python versions (skip for rolling release)
     apt-get update && apt-get install -y --no-install-recommends software-properties-common && \
-    if [ "$(lsb_release -cs)" != "rolling" ]; then \
+    if [ "${UBUNTU_VERSION}" != "rolling" ]; then \
         add-apt-repository ppa:deadsnakes/ppa -y; \
     fi && \
     \
