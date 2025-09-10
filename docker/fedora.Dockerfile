@@ -111,8 +111,8 @@ RUN --mount=type=cache,target=/root/.cache/uv,sharing=locked,id=act-fedora-uv-ca
     && /root/.local/bin/uv tool install pytest \
     && /root/.local/bin/uv tool install black \
     && /root/.local/bin/uv tool install isort \
-    && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
-        sh -s -- -y --no-modify-path --profile minimal --default-toolchain none \
+    && dnf install -y rustup \
+    && rustup-init -y --no-modify-path --profile minimal --default-toolchain none \
     && echo 'source $HOME/.cargo/env' >> /etc/bashrc
 
 # Layer 6: GitHub CLI installation
