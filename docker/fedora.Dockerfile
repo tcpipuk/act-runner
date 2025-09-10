@@ -26,15 +26,11 @@ RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=act-fedora-dnf-ca
     --mount=type=cache,target=/var/lib/dnf,sharing=locked,id=act-fedora-dnf-lib-${FEDORA_VERSION}-${TARGETARCH} \
     dnf install -y \
     # Core essentials and build tools (alphabetically sorted)
-    bzip2 \
     cmake \
-    curl \
     fedora-packager \
     file \
-    findutils \
     gcc \
     gcc-c++ \
-    gzip \
     jq \
     libffi-devel \
     make \
@@ -44,11 +40,9 @@ RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=act-fedora-dnf-ca
     rpkg \
     rpm-sign \
     rsync \
-    tar \
     unzip \
     wget \
     which \
-    xz \
     zip \
     && dnf clean all \
     && mkdir -p -m 755 /opt/hostedtoolcache
