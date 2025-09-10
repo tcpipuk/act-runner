@@ -1,9 +1,11 @@
 # ACT runner image for Debian with Node.js and Python
-ARG DEBIAN_VERSION=stable
-FROM debian:${DEBIAN_VERSION} AS base
+ARG DEBIAN_TAG=stable
+ARG DEBIAN_VERSION=MUST_PROVIDE_DEBIAN_VERSION
+FROM debian:${DEBIAN_TAG} AS base
 
 # Re-declare ARG after FROM
-ARG DEBIAN_VERSION
+ARG DEBIAN_TAG
+ARG DEBIAN_VERSION=MUST_PROVIDE_DEBIAN_VERSION
 ARG TARGETARCH
 
 # Set shell options for better error detection
@@ -75,7 +77,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-debian-apt-ca
     && mkdir -p -m 755 /opt/hostedtoolcache
 
 # Layer 4: Node.js installation
-ARG NODE_VERSIONS="20 22"
+ARG NODE_VERSIONS=MUST_PROVIDE_NODE_VERSIONS
 RUN --mount=type=cache,target=/tmp/downloads,sharing=locked,id=act-debian-downloads-${DEBIAN_VERSION}-${TARGETARCH} \
     for VERSION in ${NODE_VERSIONS}; do \
     NODE_URL="https://nodejs.org/dist/latest-v${VERSION}.x/"; \
@@ -146,7 +148,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-debian-apt-ca
 
 # Layer 8: Configure additional APT repositories for user convenience
 # Users can install: clang, kubectl, psql, terraform, etc.
-ARG K8S_VERSION=1.31
+ARG K8S_VERSION=MUST_PROVIDE_K8S_VERSION
 RUN --mount=type=cache,target=/tmp/downloads,sharing=locked,id=act-debian-downloads-${DEBIAN_VERSION}-${TARGETARCH} \
     mkdir -p -m 755 /etc/apt/keyrings /etc/apt/sources.list.d && \
     \

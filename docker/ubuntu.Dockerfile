@@ -1,6 +1,6 @@
 # ACT runner image for Ubuntu with Node.js and Python
-ARG UBUNTU_TAG=24.04
-ARG UBUNTU_VERSION=24.04
+ARG UBUNTU_TAG=latest
+ARG UBUNTU_VERSION=MUST_PROVIDE_UBUNTU_VERSION
 FROM ubuntu:${UBUNTU_TAG} AS base
 
 # Re-declare ARG after FROM
@@ -78,7 +78,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-ca
     && mkdir -p -m 755 /opt/hostedtoolcache
 
 # Layer 4: Node.js installation
-ARG NODE_VERSIONS="20 22"
+ARG NODE_VERSIONS=MUST_PROVIDE_NODE_VERSIONS
 RUN --mount=type=cache,target=/tmp/downloads,sharing=locked,id=act-ubuntu-downloads-${UBUNTU_VERSION}-${TARGETARCH} \
     for VERSION in ${NODE_VERSIONS}; do \
     NODE_URL="https://nodejs.org/dist/latest-v${VERSION}.x/"; \
@@ -148,7 +148,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-ca
 
 # Layer 8: Configure additional APT repositories for user convenience
 # Users can install: clang, kubectl, psql, terraform, etc.
-ARG K8S_VERSION=1.31
+ARG K8S_VERSION=MUST_PROVIDE_K8S_VERSION
 RUN --mount=type=cache,target=/tmp/downloads,sharing=locked,id=act-ubuntu-downloads-${UBUNTU_VERSION}-${TARGETARCH} \
     mkdir -p -m 755 /etc/apt/keyrings /etc/apt/sources.list.d && \
     \

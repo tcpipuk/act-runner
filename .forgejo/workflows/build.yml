@@ -238,11 +238,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Ubuntu 22.04 (previous) + Node LTS + native Python
           - variant: "previous"
-          # Ubuntu 24.04 (latest) + Node Latest + native Python
           - variant: "latest"
-          # Ubuntu 25.04 (rolling) + Node Latest + native Python
           - variant: "rolling"
     steps:
       - name: Checkout
@@ -358,11 +355,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          # Ubuntu 22.04 (previous) + Python 3.13
-          - variant: "previous"
-          # Ubuntu 24.04 (latest) + Python 3.13
-          - variant: "latest"
+        variant: ["previous", "latest"]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -467,18 +460,22 @@ jobs:
         run: |
           # Resolve the actual Fedora version and Python version
           if [ "${{ matrix.variant }}" = "previous" ]; then
+            FEDORA_TAG="41"
             FEDORA_VERSION="${{ needs.prepare.outputs.fedora-previous }}"
             PYTHON_VERSION="${{ needs.prepare.outputs.fedora-previous-python }}"
             NODE_VERSIONS="${NODE_LTS}"
           elif [ "${{ matrix.variant }}" = "latest" ]; then
+            FEDORA_TAG="latest"
             FEDORA_VERSION="${{ needs.prepare.outputs.fedora-latest }}"
             PYTHON_VERSION="${{ needs.prepare.outputs.fedora-latest-python }}"
             NODE_VERSIONS="${NODE_LATEST}"
           elif [ "${{ matrix.variant }}" = "rawhide" ]; then
+            FEDORA_TAG="rawhide"
             FEDORA_VERSION="${{ needs.prepare.outputs.fedora-rawhide }}"
             PYTHON_VERSION="${{ needs.prepare.outputs.fedora-rawhide-python }}"
             NODE_VERSIONS="${NODE_LATEST}"
           fi
+          echo "fedora-tag=${FEDORA_TAG}" >> $GITHUB_OUTPUT
           echo "fedora-version=${FEDORA_VERSION}" >> $GITHUB_OUTPUT
           echo "python-version=${PYTHON_VERSION}" >> $GITHUB_OUTPUT
 
@@ -520,6 +517,7 @@ jobs:
           push: true
           tags: ${{ steps.fedora-tags.outputs.tags }}
           build-args: |
+            FEDORA_TAG=${{ steps.fedora-tags.outputs.fedora-tag }}
             FEDORA_VERSION=${{ steps.fedora-tags.outputs.fedora-version }}
             NODE_VERSIONS=${{ steps.fedora-tags.outputs.node_versions_spaced }}
             K8S_VERSION=${{ needs.prepare.outputs.k8s-version }}
@@ -558,21 +556,25 @@ jobs:
         run: |
           # Resolve the actual Debian version and Python version
           if [ "${{ matrix.variant }}" = "oldstable" ]; then
+            DEBIAN_TAG="oldstable"
             DEBIAN_VERSION="${{ needs.prepare.outputs.debian-oldstable }}"
             DEBIAN_CODENAME="${{ needs.prepare.outputs.debian-oldstable-codename }}"
             PYTHON_VERSION="${{ needs.prepare.outputs.debian-oldstable-python }}"
             NODE_VERSIONS="${NODE_LTS}"
           elif [ "${{ matrix.variant }}" = "stable" ]; then
+            DEBIAN_TAG="stable"
             DEBIAN_VERSION="${{ needs.prepare.outputs.debian-stable }}"
             DEBIAN_CODENAME="${{ needs.prepare.outputs.debian-stable-codename }}"
             PYTHON_VERSION="${{ needs.prepare.outputs.debian-stable-python }}"
             NODE_VERSIONS="${NODE_LATEST}"
           elif [ "${{ matrix.variant }}" = "sid" ]; then
+            DEBIAN_TAG="sid"
             DEBIAN_VERSION="${{ needs.prepare.outputs.debian-sid }}"
             DEBIAN_CODENAME="${{ needs.prepare.outputs.debian-sid-codename }}"
             PYTHON_VERSION="${{ needs.prepare.outputs.debian-sid-python }}"
             NODE_VERSIONS="${NODE_LATEST}"
           fi
+          echo "debian-tag=${DEBIAN_TAG}" >> $GITHUB_OUTPUT
           echo "debian-version=${DEBIAN_VERSION}" >> $GITHUB_OUTPUT
           echo "debian-codename=${DEBIAN_CODENAME}" >> $GITHUB_OUTPUT
           echo "python-version=${PYTHON_VERSION}" >> $GITHUB_OUTPUT
@@ -619,7 +621,8 @@ jobs:
           push: true
           tags: ${{ steps.debian-tags.outputs.tags }}
           build-args: |
-            DEBIAN_VERSION=${{ matrix.variant }}
+            DEBIAN_TAG=${{ steps.debian-tags.outputs.debian-tag }}
+            DEBIAN_VERSION=${{ steps.debian-tags.outputs.debian-version }}
             NODE_VERSIONS=${{ steps.debian-tags.outputs.node_versions_spaced }}
             K8S_VERSION=${{ needs.prepare.outputs.k8s-version }}
           platforms: linux/amd64,linux/arm64/v8,linux/ppc64le,linux/s390x
