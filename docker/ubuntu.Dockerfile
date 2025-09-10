@@ -26,7 +26,8 @@ LABEL org.opencontainers.image.title="act-runner-ubuntu${UBUNTU_VERSION}" \
 
 # Layer 1: Core build tools (rarely change - every few months)
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-cache-${UBUNTU_VERSION}-${TARGETARCH} \
-    --mount=type=cache,target=/var/lib/apt,sharing=locked,id=act-ubuntu-apt-lib-${UBUNTU_VERSION}-${TARGETARCH} \
+    # Add _apt to root group to handle BuildKit's restrictive umask (027) \
+    usermod -a -G root _apt && \
     apt-get update && apt-get install -y --no-install-recommends \
     # Build tools and compression utilities (alphabetically sorted)
     apt-utils \
@@ -53,7 +54,6 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-ca
 
 # Layer 2: Monthly-update tools (git, security packages, certificates)
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-cache-${UBUNTU_VERSION}-${TARGETARCH} \
-    --mount=type=cache,target=/var/lib/apt,sharing=locked,id=act-ubuntu-apt-lib-${UBUNTU_VERSION}-${TARGETARCH} \
     apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     git \
@@ -71,7 +71,6 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-ca
 # Layer 3: Docker installation
 # Using docker.io package for consistent multi-architecture support
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-cache-${UBUNTU_VERSION}-${TARGETARCH} \
-    --mount=type=cache,target=/var/lib/apt,sharing=locked,id=act-ubuntu-apt-lib-${UBUNTU_VERSION}-${TARGETARCH} \
     apt-get update && apt-get install -y --no-install-recommends \
     docker-compose \
     docker.io \
@@ -110,7 +109,6 @@ RUN NODE_VERSION=$(ls /opt/hostedtoolcache/node | sort -V | tail -1) && \
 
 # Layer 5: Python installation
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-cache-${UBUNTU_VERSION}-${TARGETARCH} \
-    --mount=type=cache,target=/var/lib/apt,sharing=locked,id=act-ubuntu-apt-lib-${UBUNTU_VERSION}-${TARGETARCH} \
     apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     python3-venv \
@@ -136,7 +134,6 @@ RUN --mount=type=cache,target=/root/.cache/uv,sharing=locked,id=act-ubuntu-uv-ca
 
 # Layer 7: GitHub CLI installation
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-cache-${UBUNTU_VERSION}-${TARGETARCH} \
-    --mount=type=cache,target=/var/lib/apt,sharing=locked,id=act-ubuntu-apt-lib-${UBUNTU_VERSION}-${TARGETARCH} \
     mkdir -p -m 755 /etc/apt/keyrings /etc/apt/sources.list.d && \
     \
     # GitHub CLI repository
