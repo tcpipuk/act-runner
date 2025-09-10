@@ -24,6 +24,8 @@ LABEL org.opencontainers.image.title="act-runner-debian${DEBIAN_VERSION}" \
 
 # Layer 1: Core build tools (rarely change - every few months)
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-debian-apt-cache-${DEBIAN_VERSION}-${TARGETARCH} \
+    # Add _apt to root group to handle BuildKit's restrictive umask (027) \
+    usermod -a -G root _apt && \
     apt-get update && apt-get install -y --no-install-recommends \
     # Build tools and compression utilities (alphabetically sorted)
     apt-utils \
