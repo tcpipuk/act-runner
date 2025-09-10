@@ -1,12 +1,12 @@
 # Custom Python version for Ubuntu images
 # Builds python3-apt for specified Python version and sets it as default
-ARG BASE_IMAGE
-ARG PYTHON_VERSION
+ARG BASE_IMAGE=MUST_PROVIDE_BASE_IMAGE
+ARG PYTHON_VERSION=MUST_PROVIDE_PYTHON_VERSION
 
 # Builder stage - using our base that already has deadsnakes + build tools
 FROM ${BASE_IMAGE} AS apt-builder
-ARG PYTHON_VERSION
-ARG UBUNTU_VERSION
+ARG PYTHON_VERSION=MUST_PROVIDE_PYTHON_VERSION
+ARG UBUNTU_VERSION=MUST_PROVIDE_UBUNTU_VERSION
 ARG TARGETARCH
 
 # Install development packages needed for building python3-apt
@@ -30,8 +30,8 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-ca
 
 # Final stage - same base image
 FROM ${BASE_IMAGE}
-ARG PYTHON_VERSION
-ARG UBUNTU_VERSION
+ARG PYTHON_VERSION=MUST_PROVIDE_PYTHON_VERSION
+ARG UBUNTU_VERSION=MUST_PROVIDE_UBUNTU_VERSION
 ARG TARGETARCH
 
 # Install the specific Python version (deadsnakes PPA already configured in base)

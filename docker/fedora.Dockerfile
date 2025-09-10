@@ -1,9 +1,11 @@
 # ACT runner image for Fedora with Node.js and Python
-ARG FEDORA_VERSION=42
-FROM fedora:${FEDORA_VERSION} AS base
+ARG FEDORA_TAG=latest
+ARG FEDORA_VERSION=MUST_PROVIDE_FEDORA_VERSION
+FROM fedora:${FEDORA_TAG} AS base
 
 # Re-declare ARG after FROM
-ARG FEDORA_VERSION
+ARG FEDORA_TAG
+ARG FEDORA_VERSION=MUST_PROVIDE_FEDORA_VERSION
 ARG TARGETARCH
 
 # Set shell options for better error detection
@@ -76,7 +78,7 @@ RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=act-fedora-dnf-ca
     && systemctl disable docker.service docker.socket || true
 
 # Layer 4: Node.js installation (when NODE_VERSIONS is provided)
-ARG NODE_VERSIONS=""
+ARG NODE_VERSIONS=MUST_PROVIDE_NODE_VERSIONS
 RUN --mount=type=cache,target=/tmp/downloads,sharing=locked,id=act-fedora-downloads-${FEDORA_VERSION}-${TARGETARCH} \
     if [ -n "${NODE_VERSIONS}" ]; then \
         for VERSION in ${NODE_VERSIONS}; do \
@@ -127,7 +129,7 @@ RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=act-fedora-dnf-ca
 
 # Layer 7: Optional repositories for user convenience
 # Users can install: kubectl, terraform, docker-ce, dotnet, powershell, azure-cli, etc.
-ARG K8S_VERSION=1.31
+ARG K8S_VERSION=MUST_PROVIDE_K8S_VERSION
 RUN mkdir -p /etc/yum.repos.d && \
     \
     # Kubernetes
