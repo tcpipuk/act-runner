@@ -2,6 +2,8 @@ name: Build Runner Images
 
 on:
   push:
+    branches-ignore:
+      - 'update-image-versions'  # Exclude automated README update branch
     paths:
       - "docker/ubuntu.Dockerfile"
       - "docker/fedora.Dockerfile"
@@ -291,7 +293,7 @@ jobs:
 
           NODE_TAG=$(echo "${NODE_VERSIONS}" | tr '+' '-')
           NODE_VERSIONS_SPACED=$(echo "${NODE_VERSIONS}" | tr '+' ' ')
-          BASE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:ubuntu${UBUNTU_VERSION}-node${NODE_TAG}-py${PYTHON_VERSION}"
+          BASE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:ubuntu${UBUNTU_VERSION}-node${NODE_TAG}-py${{ steps.ubuntu-tags.outputs.python-version }}"
 
           # Add branch suffix if not on main
           if [ "${{ github.ref_name }}" != "main" ]; then
@@ -329,7 +331,7 @@ jobs:
           echo "node_tag=${NODE_TAG}" >> $GITHUB_OUTPUT
 
           echo "📦 Ubuntu image tags: ${TAGS}"
-          echo "🐍 Python version: ${PYTHON_VERSION}"
+          echo "🐍 Python version: ${NATIVE_PYTHON}"
           echo "🔧 Node versions: ${NODE_VERSIONS_SPACED}"
 
       - name: Build and push Ubuntu image
@@ -394,7 +396,7 @@ jobs:
           NODE_TAG=$(echo "${NODE_VERSIONS}" | tr '+' '-')
 
           # Base image is the native Python image built in previous job
-          BASE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:ubuntu${UBUNTU_VERSION}-node${NODE_TAG}-py${NATIVE_PYTHON}"
+          BASE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:ubuntu${UBUNTU_VERSION}-node${NODE_TAG}-py${{ steps.ubuntu-tags.outputs.python-version }}"
           if [ "${{ github.ref_name }}" != "main" ]; then
             BASE_TAG="${BASE_TAG}-${{ github.ref_name }}"
           fi
