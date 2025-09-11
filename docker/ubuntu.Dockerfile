@@ -26,7 +26,7 @@ LABEL org.opencontainers.image.title="act-runner-ubuntu${UBUNTU_VERSION}" \
 
 # Layer 1: Core build tools (rarely change - every few months)
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-cache-${UBUNTU_VERSION}-${TARGETARCH} \
-    --mount=type=tmpfs,target=/var/lib/apt/lists \
+    --mount=type=tmpfs,target=/var/lib/apt/lists,uid=100 \
     # Add _apt to root group to handle BuildKit's restrictive umask (027) \
     usermod -a -G root _apt && \
     rm -f /etc/apt/apt.conf.d/docker-clean && \
@@ -56,7 +56,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-ca
 
 # Layer 2: Monthly-update tools (git, security packages, certificates)
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-cache-${UBUNTU_VERSION}-${TARGETARCH} \
-    --mount=type=tmpfs,target=/var/lib/apt/lists \
+    --mount=type=tmpfs,target=/var/lib/apt/lists,uid=100 \
     apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     git \
@@ -74,7 +74,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-ca
 # Layer 3: Docker installation
 # Using docker.io package for consistent multi-architecture support
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-cache-${UBUNTU_VERSION}-${TARGETARCH} \
-    --mount=type=tmpfs,target=/var/lib/apt/lists \
+    --mount=type=tmpfs,target=/var/lib/apt/lists,uid=100 \
     apt-get update && apt-get install -y --no-install-recommends \
     docker-compose \
     docker.io \
@@ -113,7 +113,7 @@ RUN NODE_VERSION=$(ls /opt/hostedtoolcache/node | sort -V | tail -1) && \
 
 # Layer 5: Python installation
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-cache-${UBUNTU_VERSION}-${TARGETARCH} \
-    --mount=type=tmpfs,target=/var/lib/apt/lists \
+    --mount=type=tmpfs,target=/var/lib/apt/lists,uid=100 \
     apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     python3-apt \
@@ -139,7 +139,7 @@ RUN --mount=type=cache,target=/root/.cache/uv,sharing=locked,id=act-ubuntu-uv-ca
 
 # Layer 7: GitHub CLI installation
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-cache-${UBUNTU_VERSION}-${TARGETARCH} \
-    --mount=type=tmpfs,target=/var/lib/apt/lists \
+    --mount=type=tmpfs,target=/var/lib/apt/lists,uid=100 \
     mkdir -p -m 755 /etc/apt/keyrings /etc/apt/sources.list.d && \
     \
     # GitHub CLI repository
