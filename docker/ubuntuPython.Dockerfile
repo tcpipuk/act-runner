@@ -3,7 +3,7 @@
 ARG BASE_IMAGE=MUST_PROVIDE_BASE_IMAGE
 ARG PYTHON_VERSION=MUST_PROVIDE_PYTHON_VERSION
 
-# Builder stage - using our base that already has deadsnakes + build tools
+# Builder stage - using our base that already has build tools
 FROM ${BASE_IMAGE} AS apt-builder
 ARG PYTHON_VERSION=MUST_PROVIDE_PYTHON_VERSION
 ARG UBUNTU_VERSION=MUST_PROVIDE_UBUNTU_VERSION
@@ -16,7 +16,6 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-ca
     DEBIAN_FRONTEND=noninteractive apt-get install -y \
         libapt-pkg-dev \
         python${PYTHON_VERSION}-dev \
-        python${PYTHON_VERSION}-distutils \
         dpkg-dev
 
 # Enable source repositories and build python3-apt for custom Python version
@@ -36,14 +35,12 @@ ARG PYTHON_VERSION=MUST_PROVIDE_PYTHON_VERSION
 ARG UBUNTU_VERSION=MUST_PROVIDE_UBUNTU_VERSION
 ARG TARGETARCH
 
-# Install the specific Python version (deadsnakes PPA already configured in base)
+# Install the specific Python version (deadsnakes PPA already in base)
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-cache-${UBUNTU_VERSION}-${TARGETARCH} \
     --mount=type=tmpfs,target=/var/lib/apt/lists \
     apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y python${PYTHON_VERSION}
-
-# Set custom Python version as default
-RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python${PYTHON_VERSION} 100 && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y python${PYTHON_VERSION} && \
+    update-alternatives --install /usr/bin/python3 python3 /usr/bin/python${PYTHON_VERSION} 100 && \
     update-alternatives --install /usr/bin/python python /usr/bin/python${PYTHON_VERSION} 100
 
 # Copy the compiled apt module as last step for maximum cache efficiency

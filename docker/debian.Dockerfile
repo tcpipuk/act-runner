@@ -116,8 +116,9 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-debian-apt-ca
     --mount=type=tmpfs,target=/var/lib/apt/lists \
     apt-get update && apt-get install -y --no-install-recommends \
     python3 \
-    python3-venv \
     python3-apt \
+    python3-setuptools \
+    python3-venv \
     && apt-get clean
 
 # Layer 6: uv, Python tools, and Rust installation
