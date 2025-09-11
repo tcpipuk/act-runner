@@ -26,8 +26,10 @@ LABEL org.opencontainers.image.title="act-runner-debian${DEBIAN_VERSION}" \
 
 # Layer 1: Core build tools (rarely change - every few months)
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-debian-apt-cache-${DEBIAN_VERSION}-${TARGETARCH} \
+    --mount=type=tmpfs,target=/var/lib/apt/lists \
     # Add _apt to root group to handle BuildKit's restrictive umask (027) \
     usermod -a -G root _apt && \
+    rm -f /etc/apt/apt.conf.d/docker-clean && \
     apt-get update && apt-get install -y --no-install-recommends \
     # Build tools and compression utilities (alphabetically sorted)
     apt-utils \
@@ -50,10 +52,11 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-debian-apt-ca
     wget \
     xz-utils \
     zip \
-    && rm -rf /var/lib/apt/lists/*
+    && apt-get clean
 
 # Layer 2: Monthly-update tools (git, security packages, certificates)
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-debian-apt-cache-${DEBIAN_VERSION}-${TARGETARCH} \
+    --mount=type=tmpfs,target=/var/lib/apt/lists \
     apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     git \
@@ -65,15 +68,16 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-debian-apt-ca
     lsb-release \
     openssh-client \
     sudo \
-    && rm -rf /var/lib/apt/lists/*
+    && apt-get clean
 
 # Layer 3: Docker installation
 # Using docker.io package for consistent multi-architecture support
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-debian-apt-cache-${DEBIAN_VERSION}-${TARGETARCH} \
+    --mount=type=tmpfs,target=/var/lib/apt/lists \
     apt-get update && apt-get install -y --no-install-recommends \
     docker-compose \
     docker.io \
-    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean \
     && mkdir -p -m 755 /opt/hostedtoolcache
 
 # Layer 4: Node.js installation
@@ -109,12 +113,12 @@ RUN NODE_VERSION=$(ls /opt/hostedtoolcache/node | sort -V | tail -1) && \
 # Layer 5: Python installation (native version only)
 # Debian provides native Python - no need for external repositories
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-debian-apt-cache-${DEBIAN_VERSION}-${TARGETARCH} \
+    --mount=type=tmpfs,target=/var/lib/apt/lists \
     apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     python3-venv \
     python3-apt \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+    && apt-get clean
 
 # Layer 6: uv, Python tools, and Rust installation
 ENV UV_LINK_MODE=copy
@@ -134,6 +138,7 @@ RUN --mount=type=cache,target=/root/.cache/uv,sharing=locked,id=act-debian-uv-ca
 
 # Layer 7: GitHub CLI installation
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-debian-apt-cache-${DEBIAN_VERSION}-${TARGETARCH} \
+    --mount=type=tmpfs,target=/var/lib/apt/lists \
     mkdir -p -m 755 /etc/apt/keyrings /etc/apt/sources.list.d && \
     \
     # GitHub CLI repository
@@ -144,7 +149,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-debian-apt-ca
     \
     # Install GitHub CLI
     apt-get update && apt-get install -y --no-install-recommends gh && \
-    rm -rf /var/lib/apt/lists/*
+    apt-get clean
 
 # Layer 8: Configure additional APT repositories for user convenience
 # Users can install: clang, kubectl, psql, terraform, etc.
