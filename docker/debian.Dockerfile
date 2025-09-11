@@ -30,7 +30,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-debian-apt-ca
     # Add _apt to root group to handle BuildKit's restrictive umask (027) \
     usermod -a -G root _apt && \
     rm -f /etc/apt/apt.conf.d/docker-clean && \
-    apt-get update -qq && apt-get install -yq --no-install-recommends \
+    apt-get update -qq && apt-get install -yqq --no-install-recommends \
     # Build tools and compression utilities (alphabetically sorted)
     apt-utils \
     build-essential \
@@ -57,7 +57,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-debian-apt-ca
 # Layer 2: Monthly-update tools (git, security packages, certificates)
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-debian-apt-cache-${DEBIAN_VERSION}-${TARGETARCH} \
     --mount=type=tmpfs,target=/var/lib/apt/lists \
-    apt-get update -qq && apt-get install -yq --no-install-recommends \
+    apt-get update -qq && apt-get install -yqq --no-install-recommends \
     ca-certificates \
     git \
     git-lfs \
@@ -74,7 +74,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-debian-apt-ca
 # Using docker.io package for consistent multi-architecture support
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-debian-apt-cache-${DEBIAN_VERSION}-${TARGETARCH} \
     --mount=type=tmpfs,target=/var/lib/apt/lists \
-    apt-get update -qq && apt-get install -yq --no-install-recommends \
+    apt-get update -qq && apt-get install -yqq --no-install-recommends \
     docker-compose \
     docker.io \
     && apt-get clean \
@@ -114,7 +114,7 @@ RUN NODE_VERSION=$(ls /opt/hostedtoolcache/node | sort -V | tail -1) && \
 # Debian provides native Python - no need for external repositories
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-debian-apt-cache-${DEBIAN_VERSION}-${TARGETARCH} \
     --mount=type=tmpfs,target=/var/lib/apt/lists \
-    apt-get update -qq && apt-get install -yq --no-install-recommends \
+    apt-get update -qq && apt-get install -yqq --no-install-recommends \
     python3 \
     python3-apt \
     python3-setuptools \

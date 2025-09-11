@@ -13,7 +13,7 @@ ARG TARGETARCH
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-cache-${UBUNTU_VERSION}-${TARGETARCH} \
     --mount=type=tmpfs,target=/var/lib/apt/lists \
     apt-get update -qq && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -yq \
+    DEBIAN_FRONTEND=noninteractive apt-get install -yqq \
         libapt-pkg-dev \
         python${PYTHON_VERSION}-dev \
         dpkg-dev
@@ -39,7 +39,7 @@ ARG TARGETARCH
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-cache-${UBUNTU_VERSION}-${TARGETARCH} \
     --mount=type=tmpfs,target=/var/lib/apt/lists \
     apt-get update -qq && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -yq python${PYTHON_VERSION} && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -yqq python${PYTHON_VERSION} && \
     update-alternatives --install /usr/bin/python3 python3 /usr/bin/python${PYTHON_VERSION} 100 && \
     update-alternatives --install /usr/bin/python python /usr/bin/python${PYTHON_VERSION} 100
 
