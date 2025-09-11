@@ -12,8 +12,8 @@ ARG TARGETARCH
 # Install development packages needed for building python3-apt
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-cache-${UBUNTU_VERSION}-${TARGETARCH} \
     --mount=type=tmpfs,target=/var/lib/apt/lists \
-    apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    apt-get update -qq && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -yq \
         libapt-pkg-dev \
         python${PYTHON_VERSION}-dev \
         dpkg-dev
@@ -22,7 +22,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-ca
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-cache-${UBUNTU_VERSION}-${TARGETARCH} \
     --mount=type=tmpfs,target=/var/lib/apt/lists \
     sed -i 's/^# deb-src/deb-src/' /etc/apt/sources.list && \
-    apt-get update && \
+    apt-get update -qq && \
     cd /tmp && \
     apt-get source python-apt && \
     cd python-apt-* && \
@@ -38,8 +38,8 @@ ARG TARGETARCH
 # Install the specific Python version (deadsnakes PPA already in base)
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-cache-${UBUNTU_VERSION}-${TARGETARCH} \
     --mount=type=tmpfs,target=/var/lib/apt/lists \
-    apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y python${PYTHON_VERSION} && \
+    apt-get update -qq && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -yq python${PYTHON_VERSION} && \
     update-alternatives --install /usr/bin/python3 python3 /usr/bin/python${PYTHON_VERSION} 100 && \
     update-alternatives --install /usr/bin/python python /usr/bin/python${PYTHON_VERSION} 100
 

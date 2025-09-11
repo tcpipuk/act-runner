@@ -56,6 +56,12 @@ jobs:
       debian-sid-python: ${{ steps.debian-sid.outputs.python }}
       debian-sid-codename: ${{ steps.debian-sid.outputs.codename }}
     steps:
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver: ${{ env.BUILDKIT_ENDPOINT != '' && 'remote' || 'docker-container' }}
+          endpoint: ${{ env.BUILDKIT_ENDPOINT || '' }}
+
       - name: Get stable K8s version
         id: k8s
         run: |
@@ -96,7 +102,7 @@ jobs:
           UBUNTU_CODENAME=$(docker run --rm ubuntu:22.04 bash -c "grep VERSION_CODENAME /etc/os-release | cut -d= -f2 | tr -d '\"'")
           # Check what Python version is available in the repositories
           PYTHON_VERSION=$(docker run --rm ubuntu:22.04 bash -c "
-            apt-get update >/dev/null 2>&1
+            apt-get update -qq
             apt-cache show python3 | grep '^Version:' | head -1 | cut -d' ' -f2 | cut -d. -f1-2
           ")
 
@@ -114,7 +120,7 @@ jobs:
           UBUNTU_CODENAME=$(docker run --rm ubuntu:24.04 bash -c "grep VERSION_CODENAME /etc/os-release | cut -d= -f2 | tr -d '\"'")
           # Check what Python version is available in the repositories
           PYTHON_VERSION=$(docker run --rm ubuntu:24.04 bash -c "
-            apt-get update >/dev/null 2>&1
+            apt-get update -qq
             apt-cache show python3 | grep '^Version:' | head -1 | cut -d' ' -f2 | cut -d. -f1-2
           ")
 
@@ -132,7 +138,7 @@ jobs:
           UBUNTU_CODENAME=$(docker run --rm ubuntu:rolling bash -c "grep VERSION_CODENAME /etc/os-release | cut -d= -f2 | tr -d '\"'")
           # Check what Python version is available in the repositories
           PYTHON_VERSION=$(docker run --rm ubuntu:rolling bash -c "
-            apt-get update >/dev/null 2>&1
+            apt-get update -qq
             apt-cache show python3 | grep '^Version:' | head -1 | cut -d' ' -f2 | cut -d. -f1-2
           ")
 
@@ -190,7 +196,7 @@ jobs:
           DEBIAN_CODENAME=$(docker run --rm debian:oldstable bash -c "grep VERSION_CODENAME /etc/os-release | cut -d= -f2 | tr -d '\"'")
           # Check what Python version is available
           PYTHON_VERSION=$(docker run --rm debian:oldstable bash -c "
-            apt-get update >/dev/null 2>&1
+            apt-get update -qq
             apt-cache show python3 | grep '^Version:' | head -1 | cut -d' ' -f2 | cut -d. -f1-2
           ")
           echo "debian=${DEBIAN_VERSION}" >> $GITHUB_OUTPUT
@@ -207,7 +213,7 @@ jobs:
           DEBIAN_CODENAME=$(docker run --rm debian:stable bash -c "grep VERSION_CODENAME /etc/os-release | cut -d= -f2 | tr -d '\"'")
           # Check what Python version is available
           PYTHON_VERSION=$(docker run --rm debian:stable bash -c "
-            apt-get update >/dev/null 2>&1
+            apt-get update -qq
             apt-cache show python3 | grep '^Version:' | head -1 | cut -d' ' -f2 | cut -d. -f1-2
           ")
           echo "debian=${DEBIAN_VERSION}" >> $GITHUB_OUTPUT
@@ -224,7 +230,7 @@ jobs:
           DEBIAN_CODENAME=$(docker run --rm debian:sid bash -c "grep VERSION_CODENAME /etc/os-release | cut -d= -f2 | tr -d '\"' || echo 'unknown'")
           # Check what Python version is available
           PYTHON_VERSION=$(docker run --rm debian:sid bash -c "
-            apt-get update >/dev/null 2>&1
+            apt-get update -qq
             apt-cache show python3 | grep '^Version:' | head -1 | cut -d' ' -f2 | cut -d. -f1-2
           ")
           echo "debian=${DEBIAN_VERSION}" >> $GITHUB_OUTPUT
