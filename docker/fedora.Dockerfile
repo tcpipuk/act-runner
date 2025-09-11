@@ -24,7 +24,7 @@ LABEL org.opencontainers.image.title="act-runner-fedora${FEDORA_VERSION}-base" \
 # Layer 1: Core build tools and compression utilities (rarely change - every few months)
 RUN --mount=type=cache,target=/var/cache,sharing=locked,id=act-fedora-cache-${FEDORA_VERSION}-${TARGETARCH} \
     --mount=type=tmpfs,target=/var/lib/dnf \
-    dnf install -y \
+    dnf install -yq \
     # Core essentials and build tools (alphabetically sorted)
     cmake \
     fedora-packager \
@@ -50,7 +50,7 @@ RUN --mount=type=cache,target=/var/cache,sharing=locked,id=act-fedora-cache-${FE
 # Layer 2: Monthly-update tools (git, security-sensitive packages, certificates)
 RUN --mount=type=cache,target=/var/cache,sharing=locked,id=act-fedora-cache-${FEDORA_VERSION}-${TARGETARCH} \
     --mount=type=tmpfs,target=/var/lib/dnf \
-    dnf install -y \
+    dnf install -yq \
     ca-certificates \
     git \
     git-lfs \
@@ -65,7 +65,7 @@ RUN --mount=type=cache,target=/var/cache,sharing=locked,id=act-fedora-cache-${FE
 # Layer 3: Docker (using moby-engine for consistent multi-arch support)
 RUN --mount=type=cache,target=/var/cache,sharing=locked,id=act-fedora-cache-${FEDORA_VERSION}-${TARGETARCH} \
     --mount=type=tmpfs,target=/var/lib/dnf \
-    dnf install -y \
+    dnf install -yq \
     moby-engine \
     docker-compose \
     && dnf clean all \
@@ -113,7 +113,7 @@ RUN --mount=type=cache,target=/var/cache,sharing=locked,id=act-fedora-cache-${FE
     && /root/.local/bin/uv tool install pytest \
     && /root/.local/bin/uv tool install black \
     && /root/.local/bin/uv tool install isort \
-    && dnf install -y rustup \
+    && dnf install -yq rustup \
     && dnf clean all \
     && rustup-init -y --no-modify-path --profile minimal --default-toolchain none \
     && echo 'source $HOME/.cargo/env' >> /etc/bashrc
@@ -122,7 +122,7 @@ RUN --mount=type=cache,target=/var/cache,sharing=locked,id=act-fedora-cache-${FE
 RUN --mount=type=cache,target=/var/cache,sharing=locked,id=act-fedora-cache-${FEDORA_VERSION}-${TARGETARCH} \
     --mount=type=tmpfs,target=/var/lib/dnf \
     dnf config-manager addrepo --from-repofile=https://cli.github.com/packages/rpm/gh-cli.repo && \
-    dnf install -y gh && dnf clean all
+    dnf install -yq gh && dnf clean all
 
 # Layer 7: Optional repositories for user convenience
 # Users can install: kubectl, terraform, docker-ce, dotnet, powershell, azure-cli, etc.
