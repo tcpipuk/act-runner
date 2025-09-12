@@ -507,11 +507,11 @@ jobs:
           NODE_LTS="${{ needs.prepare.outputs.node-lts }}"
           NODE_LATEST="${{ needs.prepare.outputs.node-latest }}"
 
-          # Convert Node versions from + to slash for display
-          NODE_LTS_DISPLAY=$(echo "${NODE_LTS}" | tr '+' '/')
-          NODE_LATEST_DISPLAY=$(echo "${NODE_LATEST}" | tr '+' '/')
-          NODE_LTS_TAG=$(echo "${NODE_LTS}" | tr '+' '-')
-          NODE_LATEST_TAG=$(echo "${NODE_LATEST}" | tr '+' '-')
+          # Convert Node versions from spaces to slashes for display, spaces to dashes for tags
+          NODE_LTS_DISPLAY=$(echo "${NODE_LTS}" | tr ' ' '/')
+          NODE_LATEST_DISPLAY=$(echo "${NODE_LATEST}" | tr ' ' '/')
+          NODE_LTS_TAG=$(echo "${NODE_LTS}" | tr ' ' '-')
+          NODE_LATEST_TAG=$(echo "${NODE_LATEST}" | tr ' ' '-')
 
           # Generate Ubuntu images table
           {
