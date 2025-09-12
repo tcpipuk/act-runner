@@ -161,12 +161,13 @@ RUN --mount=type=cache,target=/tmp/downloads,sharing=locked,id=act-debian-downlo
     # LLVM/Clang - for C/C++ development
     wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | \
     gpg --dearmor -o /etc/apt/keyrings/llvm-archive-keyring.gpg && \
-    if [ "${DEBIAN_VERSION}" = "sid" ] || [ "${DEBIAN_VERSION}" = "unstable" ]; then \
+    CODENAME=$(lsb_release -cs) && \
+    if [ "${DEBIAN_TAG}" = "sid" ] || [ "${CODENAME}" = "sid" ]; then \
       echo "deb [signed-by=/etc/apt/keyrings/llvm-archive-keyring.gpg] \
       http://apt.llvm.org/unstable/ llvm-toolchain main"; \
     else \
       echo "deb [signed-by=/etc/apt/keyrings/llvm-archive-keyring.gpg] \
-      http://apt.llvm.org/$(lsb_release -cs)/ llvm-toolchain-$(lsb_release -cs) main"; \
+      http://apt.llvm.org/${CODENAME}/ llvm-toolchain-${CODENAME} main"; \
     fi > /etc/apt/sources.list.d/llvm.list && \
     \
     # Kubernetes - for k8s operations
@@ -177,7 +178,7 @@ RUN --mount=type=cache,target=/tmp/downloads,sharing=locked,id=act-debian-downlo
     > /etc/apt/sources.list.d/kubernetes.list && \
     \
     # HashiCorp - for Terraform, Vault, Consul, etc. (skip for sid/unstable)
-    if [ "${DEBIAN_VERSION}" != "sid" ] && [ "${DEBIAN_VERSION}" != "unstable" ]; then \
+    if [ "${DEBIAN_TAG}" != "sid" ]; then \
       wget -q -O- https://apt.releases.hashicorp.com/gpg | \
       gpg --dearmor -o /etc/apt/keyrings/hashicorp-archive-keyring.gpg && \
       echo "deb [signed-by=/etc/apt/keyrings/hashicorp-archive-keyring.gpg] \
