@@ -15,7 +15,7 @@ runs:
   steps:
     - name: Check Node.js versions
       id: check
-      shell: python3
+      shell: python
       run: |
         import json
         import urllib.request
@@ -35,11 +35,13 @@ runs:
             return int(version.split('.')[0])
 
         # Main execution
+        print("🔍 Fetching Node.js release index from nodejs.org...")
         print(f"::debug::Fetching Node.js release index")
 
         try:
             # Fetch Node.js release index
             releases = get_node_releases()
+            print(f"✓ Fetched {len(releases)} releases")
 
             # Extract versions that are in Active or Maintenance LTS status
             lts_versions = []
@@ -68,6 +70,10 @@ runs:
             lts_output = " ".join(str(v) for v in lts_versions)
             all_output = " ".join(str(v) for v in all_versions)
 
+            print(f"🎯 Detected Node.js versions:")
+            print(f"   LTS: {lts_output}")
+            print(f"   Latest: {all_output}")
+
             print(f"::debug::All supported versions: {all_output}")
             print(f"::debug::LTS versions: {lts_output}")
 
@@ -75,6 +81,8 @@ runs:
             with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
                 f.write(f"all={all_output}\n")
                 f.write(f"lts={lts_output}\n")
+
+            print(f"✓ Successfully set action outputs")
 
             if all_output:
                 print(f"::notice::All supported Node.js versions: {all_output}")
