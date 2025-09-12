@@ -21,7 +21,8 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-ca
 # Enable source repositories and build python3-apt for custom Python version
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-cache-${UBUNTU_VERSION}-${TARGETARCH} \
     --mount=type=tmpfs,target=/var/lib/apt/lists \
-    sed -i 's/^# deb-src/deb-src/' /etc/apt/sources.list && \
+    find /etc/apt -name "*.list" -exec sed -i 's/^# deb-src/deb-src/' {} \; && \
+    find /etc/apt/sources.list.d -name "*.sources" -exec sed -i 's/^# Types: deb$/Types: deb deb-src/' {} \; && \
     apt-get update -qq && \
     cd /tmp && \
     apt-get source python-apt && \
