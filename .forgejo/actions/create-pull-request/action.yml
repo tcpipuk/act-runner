@@ -28,11 +28,11 @@ inputs:
   git-user-name:
     description: Git user name for commits
     required: false
-    default: "Forgejo Actions"
+    default: "forgejo-actions[bot]"
   git-user-email:
     description: Git user email for commits
     required: false
-    default: "git@tomfos.tr"
+    default: "actions@noreply.git.tomfos.tr"
 
 outputs:
   pr-created:

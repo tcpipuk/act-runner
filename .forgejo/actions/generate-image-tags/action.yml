@@ -1,0 +1,96 @@
+name: Generate Image Tags
+description: Generate Docker image tags with consistent naming and aliases
+author: Tom Foster
+
+inputs:
+  registry:
+    description: Container registry (e.g. git.tomfos.tr)
+    required: true
+  image-name:
+    description: Base image name (e.g. tom/act-runner)
+    required: true
+  os-name:
+    description: Operating system name (ubuntu, fedora, debian)
+    required: true
+  os-version:
+    description: OS version number (e.g. 24.04, 42, 12)
+    required: true
+  node-versions:
+    description: Space-separated Node.js versions (e.g. "20 22")
+    required: true
+  python-version:
+    description: Python version (e.g. 3.12)
+    required: true
+  variant:
+    description: OS variant (previous, latest, rolling, rawhide, oldstable, stable, sid)
+    required: false
+    default: ""
+  branch-name:
+    description: Current git branch name
+    required: false
+    default: "main"
+
+outputs:
+  tags:
+    description: Comma-separated list of Docker image tags
+    value: ${{ steps.generate.outputs.tags }}
+  base-tag:
+    description: The primary base tag for this image
+    value: ${{ steps.generate.outputs.base_tag }}
+
+runs:
+  using: composite
+  steps:
+    - name: Generate image tags
+      id: generate
+      shell: bash
+      run: |
+        REGISTRY="${{ inputs.registry }}"
+        IMAGE_NAME="${{ inputs.image-name }}"
+        OS_NAME="${{ inputs.os-name }}"
+        OS_VERSION="${{ inputs.os-version }}"
+        NODE_VERSIONS="${{ inputs.node-versions }}"
+        PYTHON_VERSION="${{ inputs.python-version }}"
+        VARIANT="${{ inputs.variant }}"
+        BRANCH_NAME="${{ inputs.branch-name }}"
+
+        echo "🏷️ Generating tags for ${OS_NAME}:${OS_VERSION} with Node.js ${NODE_VERSIONS} and Python ${PYTHON_VERSION}"
+
+        # Convert Node.js versions to tag format (space to dash)
+        NODE_TAG=$(echo "${NODE_VERSIONS}" | tr ' ' '-')
+
+        # Handle special OS versions
+        if [ "$OS_VERSION" = "rawhide" ]; then
+          BASE_TAG="${REGISTRY}/${IMAGE_NAME}:${OS_NAME}${OS_VERSION}-node${NODE_TAG}-py${PYTHON_VERSION}"
+        else
+          BASE_TAG="${REGISTRY}/${IMAGE_NAME}:${OS_NAME}${OS_VERSION}-node${NODE_TAG}-py${PYTHON_VERSION}"
+        fi
+
+        # Add branch suffix if not on main
+        if [ "$BRANCH_NAME" != "main" ]; then
+          BASE_TAG="${BASE_TAG}-${BRANCH_NAME}"
+        fi
+
+        TAGS="$BASE_TAG"
+
+        # Add variant alias if specified
+        if [ -n "$VARIANT" ]; then
+          if [ "$OS_NAME" = "debian" ] && [ "$VARIANT" = "latest" ]; then
+            # Special case: debian-latest instead of debian-stable
+            ALIAS_TAG="${REGISTRY}/${IMAGE_NAME}:debian-latest"
+          else
+            ALIAS_TAG="${REGISTRY}/${IMAGE_NAME}:${OS_NAME}-${VARIANT}"
+          fi
+
+          # Add branch suffix for alias too
+          if [ "$BRANCH_NAME" != "main" ]; then
+            ALIAS_TAG="${ALIAS_TAG}-${BRANCH_NAME}"
+          fi
+
+          TAGS="${TAGS},${ALIAS_TAG}"
+        fi
+
+        echo "base_tag=${BASE_TAG}" >> $GITHUB_OUTPUT
+        echo "tags=${TAGS}" >> $GITHUB_OUTPUT
+
+        echo "✅ Generated tags: ${TAGS}"

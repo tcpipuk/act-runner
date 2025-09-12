@@ -1,0 +1,72 @@
+name: Detect OS Version
+description: Detect OS version information using Docker containers
+author: Tom Foster
+
+inputs:
+  os-type:
+    description: Operating system type (ubuntu, fedora, debian)
+    required: true
+  os-tag:
+    description: Docker image tag to pull (e.g. 22.04, latest, rolling)
+    required: true
+
+outputs:
+  version:
+    description: OS version (e.g. 24.04, 42, 12)
+    value: ${{ steps.detect.outputs.version }}
+  codename:
+    description: OS codename (e.g. noble, bookworm)
+    value: ${{ steps.detect.outputs.codename }}
+  python-version:
+    description: Native Python version available (e.g. 3.12)
+    value: ${{ steps.detect.outputs.python_version }}
+
+runs:
+  using: composite
+  steps:
+    - name: Detect OS version info
+      id: detect
+      shell: bash
+      run: |
+        OS_TYPE="${{ inputs.os-type }}"
+        OS_TAG="${{ inputs.os-tag }}"
+
+        echo "🔍 Detecting ${OS_TYPE}:${OS_TAG} version information..."
+
+        # Pull the Docker image
+        docker pull ${OS_TYPE}:${OS_TAG}
+
+        # Extract version information
+        if [ "$OS_TYPE" = "ubuntu" ] || [ "$OS_TYPE" = "debian" ]; then
+          # Ubuntu and Debian
+          VERSION=$(docker run --rm ${OS_TYPE}:${OS_TAG} bash -c "grep VERSION_ID /etc/os-release | cut -d= -f2 | tr -d '\"'")
+          CODENAME=$(docker run --rm ${OS_TYPE}:${OS_TAG} bash -c "grep VERSION_CODENAME /etc/os-release | cut -d= -f2 | tr -d '\"'")
+
+          # Get Python version from package manager
+          PYTHON_VERSION=$(docker run --rm ${OS_TYPE}:${OS_TAG} bash -c "
+            apt-get update -qq
+            apt-cache show python3 | grep '^Version:' | head -1 | cut -d' ' -f2 | cut -d. -f1-2
+          ")
+        elif [ "$OS_TYPE" = "fedora" ]; then
+          # Fedora
+          if [ "$OS_TAG" = "rawhide" ]; then
+            VERSION="rawhide"
+          else
+            VERSION=$(docker run --rm ${OS_TYPE}:${OS_TAG} bash -c "grep VERSION_ID /etc/os-release | cut -d= -f2 | tr -d '\"'")
+          fi
+          CODENAME=""  # Fedora doesn't use codenames
+
+          # Get Python version from package manager
+          PYTHON_VERSION=$(docker run --rm ${OS_TYPE}:${OS_TAG} bash -c "
+            dnf info python3 2>/dev/null | grep '^Version' | head -1 | awk '{print \$3}' | cut -d. -f1-2
+          ")
+        else
+          echo "::error::Unsupported OS type: $OS_TYPE"
+          exit 1
+        fi
+
+        echo "version=${VERSION}" >> $GITHUB_OUTPUT
+        echo "codename=${CODENAME}" >> $GITHUB_OUTPUT
+        echo "python_version=${PYTHON_VERSION}" >> $GITHUB_OUTPUT
+
+        echo "✅ ${OS_TYPE}:${OS_TAG} → Version: ${VERSION}, Codename: ${CODENAME}, Python: ${PYTHON_VERSION}"

@@ -19,77 +19,54 @@ runs:
       run: |
         import json
         import urllib.request
-        from datetime import datetime
         import os
         import sys
 
         def get_node_releases():
-            """Fetch Node.js release schedule from official repository."""
-            url = "https://raw.githubusercontent.com/nodejs/Release/main/schedule.json"
+            """Fetch Node.js releases from official distribution index."""
+            url = "https://nodejs.org/dist/index.json"
             with urllib.request.urlopen(url) as response:
                 return json.loads(response.read().decode())
 
-        def is_supported(version_info, today):
-            """Check if a version is currently supported and released."""
-            # Must have both start and end dates
-            if 'start' not in version_info or 'end' not in version_info:
-                return False
-
-            start_date = datetime.strptime(version_info['start'], '%Y-%m-%d')
-            end_date = datetime.strptime(version_info['end'], '%Y-%m-%d')
-
-            # Version must be released (start date has passed) and still supported
-            return start_date <= today < end_date
-
         def get_major_version(version_str):
             """Extract the major version number."""
-            # Handle both 'v18' and '18' formats
+            # Handle 'v18.1.0' format
             version = version_str.replace('v', '')
-            # Handle old versions like 0.8, 0.10, 0.12 - use second part as major
-            if version.startswith('0.'):
-                return int(version.split('.')[1])
-            return int(version)
+            return int(version.split('.')[0])
 
         # Main execution
-        today = datetime.now()
-
-        print(f"::debug::Fetching Node.js release schedule")
+        print(f"::debug::Fetching Node.js release index")
 
         try:
-            # Fetch release schedule
+            # Fetch Node.js release index
             releases = get_node_releases()
 
-            # Filter supported versions
-            all_supported = []
+            # Extract versions that are in Active or Maintenance LTS status
             lts_versions = []
+            for release in releases:
+                if release.get('lts') and release.get('lts') != False:
+                    major = get_major_version(release['version'])
+                    if major not in lts_versions:
+                        lts_versions.append(major)
 
-            for version, info in releases.items():
-                major = get_major_version(version)
-
+            # Get the two most recent stable versions (even-numbered only)
+            all_versions = []
+            for release in releases:
+                major = get_major_version(release['version'])
                 # Only include even-numbered versions (stable releases)
-                # Odd-numbered versions are development/unstable
-                if is_supported(info, today) and major % 2 == 0:
-                    all_supported.append(major)
+                if major % 2 == 0 and major not in all_versions:
+                    all_versions.append(major)
 
-                    # Check if this is an LTS version
-                    if 'lts' in info and info['lts'] and info['lts'] != False:
-                        # Check if LTS has already started
-                        if isinstance(info['lts'], str):
-                            lts_start = datetime.strptime(info['lts'], '%Y-%m-%d')
-                        else:
-                            # Already in LTS
-                            lts_start = today
-
-                        if lts_start <= today:
-                            lts_versions.append(major)
-
-            # Sort versions in ascending order
-            all_supported.sort()
+            # Sort and take most recent versions
             lts_versions.sort()
+            lts_versions = lts_versions[-2:] if len(lts_versions) >= 2 else lts_versions
+
+            all_versions.sort()
+            all_versions = all_versions[-2:] if len(all_versions) >= 2 else all_versions
 
             # Convert to space-separated strings
-            all_output = " ".join(str(v) for v in all_supported)
             lts_output = " ".join(str(v) for v in lts_versions)
+            all_output = " ".join(str(v) for v in all_versions)
 
             print(f"::debug::All supported versions: {all_output}")
             print(f"::debug::LTS versions: {lts_output}")

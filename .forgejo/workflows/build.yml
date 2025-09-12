@@ -29,33 +29,38 @@ jobs:
     outputs:
       k8s-version: ${{ steps.k8s.outputs.version }}
       # Node.js versions
-      node-lts: ${{ steps.node.outputs.lts }}
-      node-latest: ${{ steps.node.outputs.latest }}
+      node-lts: ${{ steps.node.outputs.lts-versions }}
+      node-latest: ${{ steps.node.outputs.live-versions }}
+      # Python versions
+      python-deadsnakes: ${{ steps.python.outputs.python-versions }}
       # Ubuntu versions and Python
-      ubuntu-previous: ${{ steps.ubuntu-previous.outputs.ubuntu }}
-      ubuntu-previous-python: ${{ steps.ubuntu-previous.outputs.python }}
-      ubuntu-latest: ${{ steps.ubuntu-latest.outputs.ubuntu }}
-      ubuntu-latest-python: ${{ steps.ubuntu-latest.outputs.python }}
-      ubuntu-rolling: ${{ steps.ubuntu-rolling.outputs.ubuntu }}
-      ubuntu-rolling-python: ${{ steps.ubuntu-rolling.outputs.python }}
+      ubuntu-previous: ${{ steps.ubuntu-previous.outputs.version }}
+      ubuntu-previous-python: ${{ steps.ubuntu-previous.outputs.python-version }}
+      ubuntu-latest: ${{ steps.ubuntu-latest.outputs.version }}
+      ubuntu-latest-python: ${{ steps.ubuntu-latest.outputs.python-version }}
+      ubuntu-rolling: ${{ steps.ubuntu-rolling.outputs.version }}
+      ubuntu-rolling-python: ${{ steps.ubuntu-rolling.outputs.python-version }}
       # Fedora versions and Python
-      fedora-previous: ${{ steps.fedora-previous.outputs.fedora }}
-      fedora-previous-python: ${{ steps.fedora-previous.outputs.python }}
-      fedora-latest: ${{ steps.fedora-latest.outputs.fedora }}
-      fedora-latest-python: ${{ steps.fedora-latest.outputs.python }}
-      fedora-rawhide: ${{ steps.fedora-rawhide.outputs.fedora }}
-      fedora-rawhide-python: ${{ steps.fedora-rawhide.outputs.python }}
+      fedora-previous: ${{ steps.fedora-previous.outputs.version }}
+      fedora-previous-python: ${{ steps.fedora-previous.outputs.python-version }}
+      fedora-latest: ${{ steps.fedora-latest.outputs.version }}
+      fedora-latest-python: ${{ steps.fedora-latest.outputs.python-version }}
+      fedora-rawhide: ${{ steps.fedora-rawhide.outputs.version }}
+      fedora-rawhide-python: ${{ steps.fedora-rawhide.outputs.python-version }}
       # Debian versions and Python
-      debian-oldstable: ${{ steps.debian-oldstable.outputs.debian }}
-      debian-oldstable-python: ${{ steps.debian-oldstable.outputs.python }}
+      debian-oldstable: ${{ steps.debian-oldstable.outputs.version }}
+      debian-oldstable-python: ${{ steps.debian-oldstable.outputs.python-version }}
       debian-oldstable-codename: ${{ steps.debian-oldstable.outputs.codename }}
-      debian-stable: ${{ steps.debian-stable.outputs.debian }}
-      debian-stable-python: ${{ steps.debian-stable.outputs.python }}
+      debian-stable: ${{ steps.debian-stable.outputs.version }}
+      debian-stable-python: ${{ steps.debian-stable.outputs.python-version }}
       debian-stable-codename: ${{ steps.debian-stable.outputs.codename }}
-      debian-sid: ${{ steps.debian-sid.outputs.debian }}
-      debian-sid-python: ${{ steps.debian-sid.outputs.python }}
+      debian-sid: ${{ steps.debian-sid.outputs.version }}
+      debian-sid-python: ${{ steps.debian-sid.outputs.python-version }}
       debian-sid-codename: ${{ steps.debian-sid.outputs.codename }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Set up Docker
         uses: docker/setup-buildx-action@v3
         with:
@@ -71,172 +76,77 @@ jobs:
 
       - name: Detect Node.js versions
         id: node
-        run: |
-          # Get Node.js release schedule from nodejs.org
-          SCHEDULE_JSON=$(curl -sL https://nodejs.org/dist/index.json)
+        uses: ./.forgejo/actions/check-nodejs-versions
 
-          # Extract versions in Active or Maintenance LTS status
-          LTS_VERSIONS=$(echo "$SCHEDULE_JSON" | jq -r '
-            [.[] | select(.lts != false) | .version[1:] | split(".")[0] | tonumber]
-            | unique | sort | reverse | .[0:2] | join("+")
-          ')
-
-          # Get the two most recent stable versions
-          # Node.js follows odd=development, even=stable convention
-          LATEST_VERSIONS=$(echo "$SCHEDULE_JSON" | jq -r '
-            [.[] | .version[1:] | split(".")[0] | tonumber | select(. % 2 == 0)]
-            | unique | sort | reverse | .[0:2] | join("+")
-          ')
-
-          echo "lts=${LTS_VERSIONS}" >> $GITHUB_OUTPUT
-          echo "latest=${LATEST_VERSIONS}" >> $GITHUB_OUTPUT
-          echo "📦 Node.js LTS versions: ${LTS_VERSIONS}"
-          echo "📦 Node.js latest versions: ${LATEST_VERSIONS}"
+      - name: Detect Python versions for deadsnakes
+        id: python
+        uses: ./.forgejo/actions/check-deadsnakes-versions
+        with:
+          ubuntu-versions: "22.04 24.04"
+          limit: "1"
 
       - name: Detect Ubuntu previous version (22.04 LTS)
         id: ubuntu-previous
-        run: |
-          # Use Ubuntu 22.04 LTS as our "previous" release
-          docker pull ubuntu:22.04
-          UBUNTU_VERSION=$(docker run --rm ubuntu:22.04 bash -c "grep VERSION_ID /etc/os-release | cut -d= -f2 | tr -d '\"'")
-          UBUNTU_CODENAME=$(docker run --rm ubuntu:22.04 bash -c "grep VERSION_CODENAME /etc/os-release | cut -d= -f2 | tr -d '\"'")
-          # Check what Python version is available in the repositories
-          PYTHON_VERSION=$(docker run --rm ubuntu:22.04 bash -c "
-            apt-get update -qq
-            apt-cache show python3 | grep '^Version:' | head -1 | cut -d' ' -f2 | cut -d. -f1-2
-          ")
-
-          echo "ubuntu=${UBUNTU_VERSION}" >> $GITHUB_OUTPUT
-          echo "codename=${UBUNTU_CODENAME}" >> $GITHUB_OUTPUT
-          echo "python=${PYTHON_VERSION}" >> $GITHUB_OUTPUT
-          echo "📦 Ubuntu previous is ${UBUNTU_VERSION} (${UBUNTU_CODENAME}) with Python ${PYTHON_VERSION}"
+        uses: ./.forgejo/actions/detect-os-version
+        with:
+          os-type: ubuntu
+          os-tag: "22.04"
 
       - name: Detect Ubuntu latest version (24.04 LTS)
         id: ubuntu-latest
-        run: |
-          # Use Ubuntu 24.04 LTS as our "latest" stable release
-          docker pull ubuntu:24.04
-          UBUNTU_VERSION=$(docker run --rm ubuntu:24.04 bash -c "grep VERSION_ID /etc/os-release | cut -d= -f2 | tr -d '\"'")
-          UBUNTU_CODENAME=$(docker run --rm ubuntu:24.04 bash -c "grep VERSION_CODENAME /etc/os-release | cut -d= -f2 | tr -d '\"'")
-          # Check what Python version is available in the repositories
-          PYTHON_VERSION=$(docker run --rm ubuntu:24.04 bash -c "
-            apt-get update -qq
-            apt-cache show python3 | grep '^Version:' | head -1 | cut -d' ' -f2 | cut -d. -f1-2
-          ")
-
-          echo "ubuntu=${UBUNTU_VERSION}" >> $GITHUB_OUTPUT
-          echo "codename=${UBUNTU_CODENAME}" >> $GITHUB_OUTPUT
-          echo "python=${PYTHON_VERSION}" >> $GITHUB_OUTPUT
-          echo "📦 Ubuntu latest is ${UBUNTU_VERSION} (${UBUNTU_CODENAME}) with Python ${PYTHON_VERSION}"
+        uses: ./.forgejo/actions/detect-os-version
+        with:
+          os-type: ubuntu
+          os-tag: "24.04"
 
       - name: Detect Ubuntu rolling version
         id: ubuntu-rolling
-        run: |
-          # Pull rolling image and get version info
-          docker pull ubuntu:rolling
-          UBUNTU_VERSION=$(docker run --rm ubuntu:rolling bash -c "grep VERSION_ID /etc/os-release | cut -d= -f2 | tr -d '\"'")
-          UBUNTU_CODENAME=$(docker run --rm ubuntu:rolling bash -c "grep VERSION_CODENAME /etc/os-release | cut -d= -f2 | tr -d '\"'")
-          # Check what Python version is available in the repositories
-          PYTHON_VERSION=$(docker run --rm ubuntu:rolling bash -c "
-            apt-get update -qq
-            apt-cache show python3 | grep '^Version:' | head -1 | cut -d' ' -f2 | cut -d. -f1-2
-          ")
-
-          echo "ubuntu=${UBUNTU_VERSION}" >> $GITHUB_OUTPUT
-          echo "codename=${UBUNTU_CODENAME}" >> $GITHUB_OUTPUT
-          echo "python=${PYTHON_VERSION}" >> $GITHUB_OUTPUT
-          echo "🔄 Ubuntu rolling is ${UBUNTU_VERSION} (${UBUNTU_CODENAME}) with Python ${PYTHON_VERSION}"
+        uses: ./.forgejo/actions/detect-os-version
+        with:
+          os-type: ubuntu
+          os-tag: rolling
 
       - name: Detect Fedora previous version (41)
         id: fedora-previous
-        run: |
-          # Fedora 41 as our "previous" release
-          docker pull fedora:41
-          FEDORA_VERSION=$(docker run --rm fedora:41 bash -c "grep VERSION_ID /etc/os-release | cut -d= -f2 | tr -d '\"'")
-          # Check what Python version is available
-          PYTHON_VERSION=$(docker run --rm fedora:41 bash -c "
-            dnf info python3 2>/dev/null | grep '^Version' | head -1 | awk '{print \$3}' | cut -d. -f1-2
-          ")
-          echo "fedora=${FEDORA_VERSION}" >> $GITHUB_OUTPUT
-          echo "python=${PYTHON_VERSION}" >> $GITHUB_OUTPUT
-          echo "📦 Fedora previous is ${FEDORA_VERSION} with Python ${PYTHON_VERSION}"
+        uses: ./.forgejo/actions/detect-os-version
+        with:
+          os-type: fedora
+          os-tag: "41"
 
       - name: Detect Fedora latest version
         id: fedora-latest
-        run: |
-          docker pull fedora:latest
-          FEDORA_VERSION=$(docker run --rm fedora:latest bash -c "grep VERSION_ID /etc/os-release | cut -d= -f2 | tr -d '\"'")
-          # Check what Python version is available
-          PYTHON_VERSION=$(docker run --rm fedora:latest bash -c "
-            dnf info python3 2>/dev/null | grep '^Version' | head -1 | awk '{print \$3}' | cut -d. -f1-2
-          ")
-          echo "fedora=${FEDORA_VERSION}" >> $GITHUB_OUTPUT
-          echo "python=${PYTHON_VERSION}" >> $GITHUB_OUTPUT
-          echo "📦 Fedora latest is ${FEDORA_VERSION} with Python ${PYTHON_VERSION}"
+        uses: ./.forgejo/actions/detect-os-version
+        with:
+          os-type: fedora
+          os-tag: latest
 
       - name: Detect Fedora rawhide version
         id: fedora-rawhide
-        run: |
-          docker pull fedora:rawhide
-          # Rawhide doesn't have a VERSION_ID, so we use "rawhide"
-          # Check what Python version is available
-          PYTHON_VERSION=$(docker run --rm fedora:rawhide bash -c "
-            dnf info python3 2>/dev/null | grep '^Version' | head -1 | awk '{print \$3}' | cut -d. -f1-2
-          ")
-          echo "fedora=rawhide" >> $GITHUB_OUTPUT
-          echo "python=${PYTHON_VERSION}" >> $GITHUB_OUTPUT
-          echo "📦 Fedora rawhide is development branch with Python ${PYTHON_VERSION}"
+        uses: ./.forgejo/actions/detect-os-version
+        with:
+          os-type: fedora
+          os-tag: rawhide
 
       - name: Detect Debian oldstable version (bookworm)
         id: debian-oldstable
-        run: |
-          # Use Debian oldstable (bookworm) as our "oldstable" release
-          docker pull debian:oldstable
-          DEBIAN_VERSION=$(docker run --rm debian:oldstable bash -c "grep VERSION_ID /etc/os-release | cut -d= -f2 | tr -d '\"'")
-          DEBIAN_CODENAME=$(docker run --rm debian:oldstable bash -c "grep VERSION_CODENAME /etc/os-release | cut -d= -f2 | tr -d '\"'")
-          # Check what Python version is available
-          PYTHON_VERSION=$(docker run --rm debian:oldstable bash -c "
-            apt-get update -qq
-            apt-cache show python3 | grep '^Version:' | head -1 | cut -d' ' -f2 | cut -d. -f1-2
-          ")
-          echo "debian=${DEBIAN_VERSION}" >> $GITHUB_OUTPUT
-          echo "codename=${DEBIAN_CODENAME}" >> $GITHUB_OUTPUT
-          echo "python=${PYTHON_VERSION}" >> $GITHUB_OUTPUT
-          echo "📦 Debian oldstable is ${DEBIAN_VERSION} (${DEBIAN_CODENAME}) with Python ${PYTHON_VERSION}"
+        uses: ./.forgejo/actions/detect-os-version
+        with:
+          os-type: debian
+          os-tag: oldstable
 
       - name: Detect Debian stable version
         id: debian-stable
-        run: |
-          # Use Debian stable as our "stable" release
-          docker pull debian:stable
-          DEBIAN_VERSION=$(docker run --rm debian:stable bash -c "grep VERSION_ID /etc/os-release | cut -d= -f2 | tr -d '\"'")
-          DEBIAN_CODENAME=$(docker run --rm debian:stable bash -c "grep VERSION_CODENAME /etc/os-release | cut -d= -f2 | tr -d '\"'")
-          # Check what Python version is available
-          PYTHON_VERSION=$(docker run --rm debian:stable bash -c "
-            apt-get update -qq
-            apt-cache show python3 | grep '^Version:' | head -1 | cut -d' ' -f2 | cut -d. -f1-2
-          ")
-          echo "debian=${DEBIAN_VERSION}" >> $GITHUB_OUTPUT
-          echo "codename=${DEBIAN_CODENAME}" >> $GITHUB_OUTPUT
-          echo "python=${PYTHON_VERSION}" >> $GITHUB_OUTPUT
-          echo "📦 Debian stable is ${DEBIAN_VERSION} (${DEBIAN_CODENAME}) with Python ${PYTHON_VERSION}"
+        uses: ./.forgejo/actions/detect-os-version
+        with:
+          os-type: debian
+          os-tag: stable
 
       - name: Detect Debian sid version
         id: debian-sid
-        run: |
-          # Use Debian sid as our "unstable" release (equivalent to Fedora Rawhide)
-          docker pull debian:sid
-          DEBIAN_VERSION=$(docker run --rm debian:sid bash -c "grep VERSION_ID /etc/os-release | cut -d= -f2 | tr -d '\"' || echo 'sid'")
-          DEBIAN_CODENAME=$(docker run --rm debian:sid bash -c "grep VERSION_CODENAME /etc/os-release | cut -d= -f2 | tr -d '\"' || echo 'unknown'")
-          # Check what Python version is available
-          PYTHON_VERSION=$(docker run --rm debian:sid bash -c "
-            apt-get update -qq
-            apt-cache show python3 | grep '^Version:' | head -1 | cut -d' ' -f2 | cut -d. -f1-2
-          ")
-          echo "debian=${DEBIAN_VERSION}" >> $GITHUB_OUTPUT
-          echo "codename=${DEBIAN_CODENAME}" >> $GITHUB_OUTPUT
-          echo "python=${PYTHON_VERSION}" >> $GITHUB_OUTPUT
-          echo "📦 Debian sid is ${DEBIAN_VERSION} (${DEBIAN_CODENAME}) with Python ${PYTHON_VERSION}"
+        uses: ./.forgejo/actions/detect-os-version
+        with:
+          os-type: debian
+          os-tag: sid
 
   build-ubuntu:
     name: Build Ubuntu ${{ matrix.variant == 'previous' && 'Previous' || matrix.variant == 'latest' && 'Latest' || matrix.variant == 'rolling' && 'Rolling' }}
@@ -268,77 +178,16 @@ jobs:
 
       - name: Generate Ubuntu tags
         id: ubuntu-tags
-        env:
-          NODE_LTS: ${{ needs.prepare.outputs.node-lts }}
-          NODE_LATEST: ${{ needs.prepare.outputs.node-latest }}
-        run: |
-          # Resolve the actual Ubuntu version and Python version
-          if [ "${{ matrix.variant }}" = "previous" ]; then
-            UBUNTU_TAG="22.04"
-            UBUNTU_VERSION="${{ needs.prepare.outputs.ubuntu-previous }}"
-            NATIVE_PYTHON="${{ needs.prepare.outputs.ubuntu-previous-python }}"
-            NODE_VERSIONS="${NODE_LTS}"
-          elif [ "${{ matrix.variant }}" = "latest" ]; then
-            UBUNTU_TAG="latest"
-            UBUNTU_VERSION="${{ needs.prepare.outputs.ubuntu-latest }}"
-            NATIVE_PYTHON="${{ needs.prepare.outputs.ubuntu-latest-python }}"
-            NODE_VERSIONS="${NODE_LATEST}"
-          elif [ "${{ matrix.variant }}" = "rolling" ]; then
-            UBUNTU_TAG="rolling"
-            UBUNTU_VERSION="${{ needs.prepare.outputs.ubuntu-rolling }}"
-            NATIVE_PYTHON="${{ needs.prepare.outputs.ubuntu-rolling-python }}"
-            NODE_VERSIONS="${NODE_LATEST}"
-          fi
-          echo "ubuntu-tag=${UBUNTU_TAG}" >> $GITHUB_OUTPUT
-          echo "ubuntu-version=${UBUNTU_VERSION}" >> $GITHUB_OUTPUT
-          echo "native-python=${NATIVE_PYTHON}" >> $GITHUB_OUTPUT
-
-          # Ubuntu always uses native Python
-          echo "python-version=${NATIVE_PYTHON}" >> $GITHUB_OUTPUT
-          echo "use-native-python=true" >> $GITHUB_OUTPUT
-
-          NODE_TAG=$(echo "${NODE_VERSIONS}" | tr '+' '-')
-          NODE_VERSIONS_SPACED=$(echo "${NODE_VERSIONS}" | tr '+' ' ')
-          BASE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:ubuntu${UBUNTU_VERSION}-node${NODE_TAG}-py${{ steps.ubuntu-tags.outputs.python-version }}"
-
-          # Add branch suffix if not on main
-          if [ "${{ github.ref_name }}" != "main" ]; then
-            BASE_TAG="${BASE_TAG}-${{ github.ref_name }}"
-          fi
-
-          TAGS="${BASE_TAG}"
-
-          # Auto-generate alias tags based on combination
-          # ubuntu-previous: previous + native python
-          # ubuntu-latest: latest + native python
-          # ubuntu-rolling: rolling + native python
-          if [ "${{ matrix.variant }}" = "previous" ]; then
-            ALIAS_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:ubuntu-previous"
-            if [ "${{ github.ref_name }}" != "main" ]; then
-              ALIAS_TAG="${ALIAS_TAG}-${{ github.ref_name }}"
-            fi
-            TAGS="${TAGS},${ALIAS_TAG}"
-          elif [ "${{ matrix.variant }}" = "latest" ]; then
-            ALIAS_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:ubuntu-latest"
-            if [ "${{ github.ref_name }}" != "main" ]; then
-              ALIAS_TAG="${ALIAS_TAG}-${{ github.ref_name }}"
-            fi
-            TAGS="${TAGS},${ALIAS_TAG}"
-          elif [ "${{ matrix.variant }}" = "rolling" ]; then
-            ALIAS_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:ubuntu-rolling"
-            if [ "${{ github.ref_name }}" != "main" ]; then
-              ALIAS_TAG="${ALIAS_TAG}-${{ github.ref_name }}"
-            fi
-            TAGS="${TAGS},${ALIAS_TAG}"
-          fi
-
-          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
-          echo "node_versions_spaced=${NODE_VERSIONS_SPACED}" >> $GITHUB_OUTPUT
-          echo "node_tag=${NODE_TAG}" >> $GITHUB_OUTPUT
-
-          echo "📦 Ubuntu image tags: ${TAGS}"
-          echo "🐍 Python version: ${NATIVE_PYTHON}"
-          echo "🔧 Node versions: ${NODE_VERSIONS_SPACED}"
+        uses: ./.forgejo/actions/generate-image-tags
+        with:
+          registry: ${{ env.REGISTRY }}
+          image-name: ${{ env.IMAGE_NAME }}
+          os-name: ubuntu
+          os-version: ${{ matrix.variant == 'previous' && needs.prepare.outputs.ubuntu-previous || matrix.variant == 'latest' && needs.prepare.outputs.ubuntu-latest || matrix.variant == 'rolling' && needs.prepare.outputs.ubuntu-rolling }}
+          node-versions: ${{ matrix.variant == 'previous' && needs.prepare.outputs.node-lts || needs.prepare.outputs.node-latest }}
+          python-version: ${{ matrix.variant == 'previous' && needs.prepare.outputs.ubuntu-previous-python || matrix.variant == 'latest' && needs.prepare.outputs.ubuntu-latest-python || matrix.variant == 'rolling' && needs.prepare.outputs.ubuntu-rolling-python }}
+          variant: ${{ matrix.variant }}
+          branch-name: ${{ github.ref_name }}
 
       - name: Build and push Ubuntu image
         uses: docker/build-push-action@v6
@@ -348,11 +197,11 @@ jobs:
           push: true
           tags: ${{ steps.ubuntu-tags.outputs.tags }}
           build-args: |
-            UBUNTU_TAG=${{ steps.ubuntu-tags.outputs.ubuntu-tag }}
-            UBUNTU_VERSION=${{ steps.ubuntu-tags.outputs.ubuntu-version }}
-            NODE_VERSIONS=${{ steps.ubuntu-tags.outputs.node_versions_spaced }}
-            PYTHON_VERSION=${{ steps.ubuntu-tags.outputs.python-version }}
-            USE_NATIVE_PYTHON=${{ steps.ubuntu-tags.outputs.use-native-python }}
+            UBUNTU_TAG=${{ matrix.variant == 'previous' && '22.04' || matrix.variant == 'latest' && '24.04' || matrix.variant == 'rolling' && 'rolling' }}
+            UBUNTU_VERSION=${{ matrix.variant == 'previous' && needs.prepare.outputs.ubuntu-previous || matrix.variant == 'latest' && needs.prepare.outputs.ubuntu-latest || matrix.variant == 'rolling' && needs.prepare.outputs.ubuntu-rolling }}
+            NODE_VERSIONS=${{ matrix.variant == 'previous' && needs.prepare.outputs.node-lts || needs.prepare.outputs.node-latest }}
+            PYTHON_VERSION=${{ matrix.variant == 'previous' && needs.prepare.outputs.ubuntu-previous-python || matrix.variant == 'latest' && needs.prepare.outputs.ubuntu-latest-python || matrix.variant == 'rolling' && needs.prepare.outputs.ubuntu-rolling-python }}
+            USE_NATIVE_PYTHON=true
             K8S_VERSION=${{ needs.prepare.outputs.k8s-version }}
           platforms: linux/amd64,linux/arm64/v8,linux/ppc64le,linux/s390x
 
@@ -383,44 +232,15 @@ jobs:
 
       - name: Generate Ubuntu Python tags
         id: ubuntu-python-tags
-        env:
-          NODE_LTS: ${{ needs.prepare.outputs.node-lts }}
-          NODE_LATEST: ${{ needs.prepare.outputs.node-latest }}
-        run: |
-          # Resolve the actual Ubuntu version and Python version
-          if [ "${{ matrix.variant }}" = "previous" ]; then
-            UBUNTU_VERSION="${{ needs.prepare.outputs.ubuntu-previous }}"
-            NATIVE_PYTHON="${{ needs.prepare.outputs.ubuntu-previous-python }}"
-            NODE_VERSIONS="${NODE_LTS}"
-          elif [ "${{ matrix.variant }}" = "latest" ]; then
-            UBUNTU_VERSION="${{ needs.prepare.outputs.ubuntu-latest }}"
-            NATIVE_PYTHON="${{ needs.prepare.outputs.ubuntu-latest-python }}"
-            NODE_VERSIONS="${NODE_LATEST}"
-          fi
-
-          PYTHON_VERSION="3.13"
-          NODE_TAG=$(echo "${NODE_VERSIONS}" | tr '+' '-')
-
-          # Base image is the native Python image built in previous job
-          BASE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:ubuntu${UBUNTU_VERSION}-node${NODE_TAG}-py${{ steps.ubuntu-tags.outputs.python-version }}"
-          if [ "${{ github.ref_name }}" != "main" ]; then
-            BASE_TAG="${BASE_TAG}-${{ github.ref_name }}"
-          fi
-
-          # Target tag for Python 3.13 image
-          TARGET_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:ubuntu${UBUNTU_VERSION}-node${NODE_TAG}-py${PYTHON_VERSION}"
-          if [ "${{ github.ref_name }}" != "main" ]; then
-            TARGET_TAG="${TARGET_TAG}-${{ github.ref_name }}"
-          fi
-
-          echo "base-image=${BASE_TAG}" >> $GITHUB_OUTPUT
-          echo "tags=${TARGET_TAG}" >> $GITHUB_OUTPUT
-          echo "python-version=${PYTHON_VERSION}" >> $GITHUB_OUTPUT
-          echo "ubuntu-version=${UBUNTU_VERSION}" >> $GITHUB_OUTPUT
-
-          echo "📦 Base image: ${BASE_TAG}"
-          echo "📦 Target tags: ${TARGET_TAG}"
-          echo "🐍 Python version: ${PYTHON_VERSION}"
+        uses: ./.forgejo/actions/generate-image-tags
+        with:
+          registry: ${{ env.REGISTRY }}
+          image-name: ${{ env.IMAGE_NAME }}
+          os-name: ubuntu
+          os-version: ${{ matrix.variant == 'previous' && needs.prepare.outputs.ubuntu-previous || needs.prepare.outputs.ubuntu-latest }}
+          node-versions: ${{ matrix.variant == 'previous' && needs.prepare.outputs.node-lts || needs.prepare.outputs.node-latest }}
+          python-version: ${{ needs.prepare.outputs.python-deadsnakes }}
+          branch-name: ${{ github.ref_name }}
 
       - name: Build and push Ubuntu Python image
         uses: docker/build-push-action@v6
@@ -462,60 +282,16 @@ jobs:
 
       - name: Generate Fedora tags
         id: fedora-tags
-        env:
-          NODE_LTS: ${{ needs.prepare.outputs.node-lts }}
-          NODE_LATEST: ${{ needs.prepare.outputs.node-latest }}
-        run: |
-          # Resolve the actual Fedora version and Python version
-          if [ "${{ matrix.variant }}" = "previous" ]; then
-            FEDORA_TAG="41"
-            FEDORA_VERSION="${{ needs.prepare.outputs.fedora-previous }}"
-            PYTHON_VERSION="${{ needs.prepare.outputs.fedora-previous-python }}"
-            NODE_VERSIONS="${NODE_LTS}"
-          elif [ "${{ matrix.variant }}" = "latest" ]; then
-            FEDORA_TAG="latest"
-            FEDORA_VERSION="${{ needs.prepare.outputs.fedora-latest }}"
-            PYTHON_VERSION="${{ needs.prepare.outputs.fedora-latest-python }}"
-            NODE_VERSIONS="${NODE_LATEST}"
-          elif [ "${{ matrix.variant }}" = "rawhide" ]; then
-            FEDORA_TAG="rawhide"
-            FEDORA_VERSION="${{ needs.prepare.outputs.fedora-rawhide }}"
-            PYTHON_VERSION="${{ needs.prepare.outputs.fedora-rawhide-python }}"
-            NODE_VERSIONS="${NODE_LATEST}"
-          fi
-          echo "fedora-tag=${FEDORA_TAG}" >> $GITHUB_OUTPUT
-          echo "fedora-version=${FEDORA_VERSION}" >> $GITHUB_OUTPUT
-          echo "python-version=${PYTHON_VERSION}" >> $GITHUB_OUTPUT
-
-          NODE_TAG=$(echo "${NODE_VERSIONS}" | tr '+' '-')
-          NODE_VERSIONS_SPACED=$(echo "${NODE_VERSIONS}" | tr '+' ' ')
-
-          # Include Python version in tags for consistency with Ubuntu
-          if [ "${FEDORA_VERSION}" = "rawhide" ]; then
-            BASE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:fedorarawhide-node${NODE_TAG}-py${PYTHON_VERSION}"
-          else
-            BASE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:fedora${FEDORA_VERSION}-node${NODE_TAG}-py${PYTHON_VERSION}"
-          fi
-
-          # Add branch suffix if not on main
-          if [ "${{ github.ref_name }}" != "main" ]; then
-            BASE_TAG="${BASE_TAG}-${{ github.ref_name }}"
-          fi
-
-          TAGS="${BASE_TAG}"
-
-          # Auto-generate alias tags based on variant
-          ALIAS_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:fedora-${{ matrix.variant }}"
-          if [ "${{ github.ref_name }}" != "main" ]; then
-            ALIAS_TAG="${ALIAS_TAG}-${{ github.ref_name }}"
-          fi
-          TAGS="${TAGS},${ALIAS_TAG}"
-
-          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
-          echo "node_versions_spaced=${NODE_VERSIONS_SPACED}" >> $GITHUB_OUTPUT
-          echo "📦 Fedora image tags: ${TAGS}"
-          echo "🔧 Node.js versions: ${NODE_VERSIONS_SPACED}"
-          echo "🐍 Python version: ${PYTHON_VERSION}"
+        uses: ./.forgejo/actions/generate-image-tags
+        with:
+          registry: ${{ env.REGISTRY }}
+          image-name: ${{ env.IMAGE_NAME }}
+          os-name: fedora
+          os-version: ${{ matrix.variant == 'previous' && needs.prepare.outputs.fedora-previous || matrix.variant == 'latest' && needs.prepare.outputs.fedora-latest || matrix.variant == 'rawhide' && needs.prepare.outputs.fedora-rawhide }}
+          node-versions: ${{ matrix.variant == 'previous' && needs.prepare.outputs.node-lts || needs.prepare.outputs.node-latest }}
+          python-version: ${{ matrix.variant == 'previous' && needs.prepare.outputs.fedora-previous-python || matrix.variant == 'latest' && needs.prepare.outputs.fedora-latest-python || matrix.variant == 'rawhide' && needs.prepare.outputs.fedora-rawhide-python }}
+          variant: ${{ matrix.variant }}
+          branch-name: ${{ github.ref_name }}
 
       - name: Build and push Fedora image
         uses: docker/build-push-action@v6
@@ -558,68 +334,16 @@ jobs:
 
       - name: Generate Debian tags
         id: debian-tags
-        env:
-          NODE_LTS: ${{ needs.prepare.outputs.node-lts }}
-          NODE_LATEST: ${{ needs.prepare.outputs.node-latest }}
-        run: |
-          # Resolve the actual Debian version and Python version
-          if [ "${{ matrix.variant }}" = "oldstable" ]; then
-            DEBIAN_TAG="oldstable"
-            DEBIAN_VERSION="${{ needs.prepare.outputs.debian-oldstable }}"
-            DEBIAN_CODENAME="${{ needs.prepare.outputs.debian-oldstable-codename }}"
-            PYTHON_VERSION="${{ needs.prepare.outputs.debian-oldstable-python }}"
-            NODE_VERSIONS="${NODE_LTS}"
-          elif [ "${{ matrix.variant }}" = "stable" ]; then
-            DEBIAN_TAG="stable"
-            DEBIAN_VERSION="${{ needs.prepare.outputs.debian-stable }}"
-            DEBIAN_CODENAME="${{ needs.prepare.outputs.debian-stable-codename }}"
-            PYTHON_VERSION="${{ needs.prepare.outputs.debian-stable-python }}"
-            NODE_VERSIONS="${NODE_LATEST}"
-          elif [ "${{ matrix.variant }}" = "sid" ]; then
-            DEBIAN_TAG="sid"
-            DEBIAN_VERSION="${{ needs.prepare.outputs.debian-sid }}"
-            DEBIAN_CODENAME="${{ needs.prepare.outputs.debian-sid-codename }}"
-            PYTHON_VERSION="${{ needs.prepare.outputs.debian-sid-python }}"
-            NODE_VERSIONS="${NODE_LATEST}"
-          fi
-          echo "debian-tag=${DEBIAN_TAG}" >> $GITHUB_OUTPUT
-          echo "debian-version=${DEBIAN_VERSION}" >> $GITHUB_OUTPUT
-          echo "debian-codename=${DEBIAN_CODENAME}" >> $GITHUB_OUTPUT
-          echo "python-version=${PYTHON_VERSION}" >> $GITHUB_OUTPUT
-
-          NODE_TAG=$(echo "${NODE_VERSIONS}" | tr '+' '-')
-          NODE_VERSIONS_SPACED=$(echo "${NODE_VERSIONS}" | tr '+' ' ')
-
-          # Include Python version in tags for consistency
-          BASE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:debian${DEBIAN_VERSION}-node${NODE_TAG}-py${PYTHON_VERSION}"
-
-          # Add branch suffix if not on main
-          if [ "${{ github.ref_name }}" != "main" ]; then
-            BASE_TAG="${BASE_TAG}-${{ github.ref_name }}"
-          fi
-
-          TAGS="${BASE_TAG}"
-
-          # Auto-generate alias tags based on variant
-          # Map to our desired aliases using proper Debian terminology
-          if [ "${{ matrix.variant }}" = "oldstable" ]; then
-            ALIAS_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:debian-oldstable"
-          elif [ "${{ matrix.variant }}" = "stable" ]; then
-            ALIAS_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:debian-latest"
-          elif [ "${{ matrix.variant }}" = "sid" ]; then
-            ALIAS_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:debian-sid"
-          fi
-          if [ "${{ github.ref_name }}" != "main" ]; then
-            ALIAS_TAG="${ALIAS_TAG}-${{ github.ref_name }}"
-          fi
-          TAGS="${TAGS},${ALIAS_TAG}"
-
-          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
-          echo "node_versions_spaced=${NODE_VERSIONS_SPACED}" >> $GITHUB_OUTPUT
-          echo "📦 Debian image tags: ${TAGS}"
-          echo "🔧 Node.js versions: ${NODE_VERSIONS_SPACED}"
-          echo "🐍 Python version: ${PYTHON_VERSION}"
-          echo "📋 Debian ${DEBIAN_VERSION} (${DEBIAN_CODENAME})"
+        uses: ./.forgejo/actions/generate-image-tags
+        with:
+          registry: ${{ env.REGISTRY }}
+          image-name: ${{ env.IMAGE_NAME }}
+          os-name: debian
+          os-version: ${{ matrix.variant == 'oldstable' && needs.prepare.outputs.debian-oldstable || matrix.variant == 'stable' && needs.prepare.outputs.debian-stable || matrix.variant == 'sid' && needs.prepare.outputs.debian-sid }}
+          node-versions: ${{ matrix.variant == 'oldstable' && needs.prepare.outputs.node-lts || needs.prepare.outputs.node-latest }}
+          python-version: ${{ matrix.variant == 'oldstable' && needs.prepare.outputs.debian-oldstable-python || matrix.variant == 'stable' && needs.prepare.outputs.debian-stable-python || matrix.variant == 'sid' && needs.prepare.outputs.debian-sid-python }}
+          variant: ${{ matrix.variant == 'stable' && 'latest' || matrix.variant }}
+          branch-name: ${{ github.ref_name }}
 
       - name: Build and push Debian image
         uses: docker/build-push-action@v6
@@ -896,50 +620,40 @@ jobs:
 
       - name: Create Pull Request
         if: steps.update.outputs.changed == 'true'
-        env:
-          FORGEJO_TOKEN: ${{ secrets.FORGEJO_TOKEN }}
-        run: |
-          # Configure git
-          git config user.name "forgejo-actions[bot]"
-          git config user.email "actions@noreply.git.tomfos.tr"
+        uses: ./.forgejo/actions/create-pull-request
+        with:
+          token: ${{ secrets.FORGEJO_TOKEN }}
+          branch-name: update-image-versions
+          commit-message: |
+            chore: update Ubuntu and Fedora images in README
 
-          # Create or update branch
-          BRANCH_NAME="update-image-versions"
-          git checkout -B $BRANCH_NAME
+            Node.js LTS: ${{ needs.prepare.outputs.node-lts }}
+            Node.js Latest: ${{ needs.prepare.outputs.node-latest }}
+            Ubuntu Previous: ${{ needs.prepare.outputs.ubuntu-previous }} (Python ${{ needs.prepare.outputs.ubuntu-previous-python }})
+            Ubuntu Latest: ${{ needs.prepare.outputs.ubuntu-latest }} (Python ${{ needs.prepare.outputs.ubuntu-latest-python }})
+            Ubuntu Rolling: ${{ needs.prepare.outputs.ubuntu-rolling }} (Python ${{ needs.prepare.outputs.ubuntu-rolling-python }})
+            Fedora Previous: ${{ needs.prepare.outputs.fedora-previous }} (Python ${{ needs.prepare.outputs.fedora-previous-python }})
+            Fedora Latest: ${{ needs.prepare.outputs.fedora-latest }} (Python ${{ needs.prepare.outputs.fedora-latest-python }})
+            Fedora Rawhide: Python ${{ needs.prepare.outputs.fedora-rawhide-python }}
+          pr-title: "chore: update Ubuntu and Fedora images in README"
+          pr-body: |
+            ### Automated Images Update
 
-          # Commit changes
-          git add README.md
-          git commit -m "chore: update Ubuntu and Fedora images in README
+            This PR updates both Ubuntu and Fedora images tables to reflect the current runtime versions:
 
-          Node.js LTS: ${{ needs.prepare.outputs.node-lts }}
-          Node.js Latest: ${{ needs.prepare.outputs.node-latest }}
-          Ubuntu Previous: ${{ needs.prepare.outputs.ubuntu-previous }} (Python ${{ needs.prepare.outputs.ubuntu-previous-python }})
-          Ubuntu Latest: ${{ needs.prepare.outputs.ubuntu-latest }} (Python ${{ needs.prepare.outputs.ubuntu-latest-python }})
-          Ubuntu Rolling: ${{ needs.prepare.outputs.ubuntu-rolling }} (Python ${{ needs.prepare.outputs.ubuntu-rolling-python }})
-          Fedora Previous: ${{ needs.prepare.outputs.fedora-previous }} (Python ${{ needs.prepare.outputs.fedora-previous-python }})
-          Fedora Latest: ${{ needs.prepare.outputs.fedora-latest }} (Python ${{ needs.prepare.outputs.fedora-latest-python }})
-          Fedora Rawhide: Python ${{ needs.prepare.outputs.fedora-rawhide-python }}"
+            **Node.js Versions:**
+            - LTS: ${{ needs.prepare.outputs.node-lts }}
+            - Latest: ${{ needs.prepare.outputs.node-latest }}
 
-          # Push changes
-          git push -f origin $BRANCH_NAME
+            **Ubuntu Releases:**
+            - Previous: ${{ needs.prepare.outputs.ubuntu-previous }} (Python ${{ needs.prepare.outputs.ubuntu-previous-python }})
+            - Latest: ${{ needs.prepare.outputs.ubuntu-latest }} (Python ${{ needs.prepare.outputs.ubuntu-latest-python }})
+            - Rolling: ${{ needs.prepare.outputs.ubuntu-rolling }} (Python ${{ needs.prepare.outputs.ubuntu-rolling-python }})
 
-          # Check if PR already exists
-          PR_EXISTS=$(curl -s -H "Authorization: token $FORGEJO_TOKEN" \
-            "https://git.tomfos.tr/api/v1/repos/tom/act-runner/pulls?state=open&head=tom:$BRANCH_NAME" | \
-            jq '. | length')
+            **Fedora Releases:**
+            - Previous: ${{ needs.prepare.outputs.fedora-previous }} (Python ${{ needs.prepare.outputs.fedora-previous-python }})
+            - Latest: ${{ needs.prepare.outputs.fedora-latest }} (Python ${{ needs.prepare.outputs.fedora-latest-python }})
+            - Rawhide: Python ${{ needs.prepare.outputs.fedora-rawhide-python }}
 
-          if [ "$PR_EXISTS" -eq "0" ]; then
-            # Create new PR
-            curl -X POST -H "Authorization: token $FORGEJO_TOKEN" \
-              -H "Content-Type: application/json" \
-              "https://git.tomfos.tr/api/v1/repos/tom/act-runner/pulls" \
-              -d "{
-                \"title\": \"chore: update Ubuntu and Fedora images in README\",
-                \"head\": \"$BRANCH_NAME\",
-                \"base\": \"main\",
-                \"body\": \"### Automated Images Update\\n\\nThis PR updates both Ubuntu and Fedora images tables to reflect the current runtime versions:\\n\\n**Node.js Versions:**\\n- LTS: ${{ needs.prepare.outputs.node-lts }}\\n- Latest: ${{ needs.prepare.outputs.node-latest }}\\n\\n**Ubuntu Releases:**\\n- Previous: ${{ needs.prepare.outputs.ubuntu-previous }} (Python ${{ needs.prepare.outputs.ubuntu-previous-python }})\\n- Latest: ${{ needs.prepare.outputs.ubuntu-latest }} (Python ${{ needs.prepare.outputs.ubuntu-latest-python }})\\n- Rolling: ${{ needs.prepare.outputs.ubuntu-rolling }} (Python ${{ needs.prepare.outputs.ubuntu-rolling-python }})\\n\\n**Fedora Releases:**\\n- Previous: ${{ needs.prepare.outputs.fedora-previous }} (Python ${{ needs.prepare.outputs.fedora-previous-python }})\\n- Latest: ${{ needs.prepare.outputs.fedora-latest }} (Python ${{ needs.prepare.outputs.fedora-latest-python }})\\n- Rawhide: Python ${{ needs.prepare.outputs.fedora-rawhide-python }}\\n\\nThe images tables are regenerated based on the actual images being built.\"
-              }"
-            echo "✅ Created new PR for README updates"
-          else
-            echo "✅ PR already exists, changes have been pushed"
-          fi
+            The images tables are regenerated based on the actual images being built.
+          files-to-commit: README.md
