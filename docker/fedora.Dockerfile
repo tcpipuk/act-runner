@@ -23,7 +23,7 @@ LABEL org.opencontainers.image.title="act-runner-fedora${FEDORA_VERSION}-base" \
 
 # Layer 1: Core build tools and compression utilities (rarely change - every few months)
 RUN --mount=type=cache,target=/var/cache,sharing=locked,id=act-fedora-cache-${FEDORA_VERSION}-${TARGETARCH} \
-    --mount=type=tmpfs,target=/var/lib/dnf \
+    --mount=type=cache,target=/var/lib/dnf,sharing=locked,id=act-fedora-dnf-state-${FEDORA_VERSION}-${TARGETARCH} \
     dnf install -yq \
     # Core essentials and build tools (alphabetically sorted)
     cmake \
@@ -49,7 +49,7 @@ RUN --mount=type=cache,target=/var/cache,sharing=locked,id=act-fedora-cache-${FE
 
 # Layer 2: Monthly-update tools (git, security-sensitive packages, certificates)
 RUN --mount=type=cache,target=/var/cache,sharing=locked,id=act-fedora-cache-${FEDORA_VERSION}-${TARGETARCH} \
-    --mount=type=tmpfs,target=/var/lib/dnf \
+    --mount=type=cache,target=/var/lib/dnf,sharing=locked,id=act-fedora-dnf-state-${FEDORA_VERSION}-${TARGETARCH} \
     dnf install -yq \
     ca-certificates \
     git \
@@ -65,7 +65,7 @@ RUN --mount=type=cache,target=/var/cache,sharing=locked,id=act-fedora-cache-${FE
 
 # Layer 3: Docker (using moby-engine for consistent multi-arch support)
 RUN --mount=type=cache,target=/var/cache,sharing=locked,id=act-fedora-cache-${FEDORA_VERSION}-${TARGETARCH} \
-    --mount=type=tmpfs,target=/var/lib/dnf \
+    --mount=type=cache,target=/var/lib/dnf,sharing=locked,id=act-fedora-dnf-state-${FEDORA_VERSION}-${TARGETARCH} \
     dnf install -yq \
     moby-engine \
     docker-compose \
@@ -110,7 +110,7 @@ RUN --mount=type=cache,target=/tmp/downloads,sharing=locked,id=act-fedora-downlo
 
 # Layer 5: uv, Python tools, and Rust installation
 RUN --mount=type=cache,target=/var/cache,sharing=locked,id=act-fedora-cache-${FEDORA_VERSION}-${TARGETARCH} \
-    --mount=type=tmpfs,target=/var/lib/dnf \
+    --mount=type=cache,target=/var/lib/dnf,sharing=locked,id=act-fedora-dnf-state-${FEDORA_VERSION}-${TARGETARCH} \
     --mount=type=cache,target=/root/.cache/uv,sharing=locked,id=act-fedora-uv-cache-${FEDORA_VERSION}-${TARGETARCH} \
     curl -LsSf https://astral.sh/uv/install.sh | sh \
     && uv tool install prek \
@@ -126,7 +126,7 @@ RUN --mount=type=cache,target=/var/cache,sharing=locked,id=act-fedora-cache-${FE
 
 # Layer 6: GitHub CLI installation
 RUN --mount=type=cache,target=/var/cache,sharing=locked,id=act-fedora-cache-${FEDORA_VERSION}-${TARGETARCH} \
-    --mount=type=tmpfs,target=/var/lib/dnf \
+    --mount=type=cache,target=/var/lib/dnf,sharing=locked,id=act-fedora-dnf-state-${FEDORA_VERSION}-${TARGETARCH} \
     dnf config-manager addrepo --from-repofile=https://cli.github.com/packages/rpm/gh-cli.repo && \
     dnf install -yq gh && dnf clean all
 
