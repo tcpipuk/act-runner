@@ -60,7 +60,8 @@ RUN --mount=type=cache,target=/var/cache,sharing=locked,id=act-fedora-cache-${FE
     python3 \
     python3-pip \
     sudo \
-    && dnf clean all
+    && dnf clean all \
+    && alternatives --install /usr/bin/python python /usr/bin/python3 100
 
 # Layer 3: Docker (using moby-engine for consistent multi-arch support)
 RUN --mount=type=cache,target=/var/cache,sharing=locked,id=act-fedora-cache-${FEDORA_VERSION}-${TARGETARCH} \
