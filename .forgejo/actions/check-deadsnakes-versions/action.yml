@@ -1,4 +1,4 @@
-name: Check Deadsnakes Python Versions
+name: Check Deadsnakes Versions
 description: Find Python versions available across specified Ubuntu releases in the deadsnakes PPA
 author: Tom Foster
 
