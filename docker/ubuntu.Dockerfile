@@ -168,10 +168,11 @@ RUN --mount=type=cache,target=/tmp/downloads,sharing=locked,id=act-ubuntu-downlo
     fi && \
     \
     # LLVM/Clang - for C/C++ development
+    CODENAME=$(lsb_release -cs) && \
     wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | \
     gpg --dearmor -o /etc/apt/keyrings/llvm-archive-keyring.gpg && \
     echo "deb [signed-by=/etc/apt/keyrings/llvm-archive-keyring.gpg] \
-    http://apt.llvm.org/$(lsb_release -cs)/ llvm-toolchain-$(lsb_release -cs) main" \
+    https://apt.llvm.org/${CODENAME}/ llvm-toolchain-${CODENAME} main" \
     > /etc/apt/sources.list.d/llvm.list && \
     \
     # Kubernetes - for k8s operations
