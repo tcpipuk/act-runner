@@ -21,7 +21,7 @@ runs:
   steps:
     - name: Check Python versions
       id: check
-      shell: python3
+      shell: python
       run: |
         import json
         import re
