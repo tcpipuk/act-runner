@@ -119,7 +119,8 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-debian-apt-ca
     python3-apt \
     python3-setuptools \
     python3-venv \
-    && apt-get clean
+    && apt-get clean \
+    && update-alternatives --install /usr/bin/python python /usr/bin/python3 100
 
 # Layer 6: uv, Python tools, and Rust installation
 ENV UV_LINK_MODE=copy

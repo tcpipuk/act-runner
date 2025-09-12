@@ -15,7 +15,7 @@ runs:
   steps:
     - name: Check Node.js versions
       id: check
-      shell: python
+      shell: python3
       run: |
         import json
         import urllib.request
