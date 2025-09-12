@@ -33,6 +33,10 @@ jobs:
       node-latest: ${{ steps.node.outputs.live-versions }}
       # Python versions
       python-deadsnakes: ${{ steps.python.outputs.python-versions }}
+      # Ubuntu Docker tags
+      ubuntu-previous-tag: ${{ steps.define-tags.outputs.ubuntu_previous_tag }}
+      ubuntu-latest-tag: ${{ steps.define-tags.outputs.ubuntu_latest_tag }}
+      ubuntu-rolling-tag: ${{ steps.define-tags.outputs.ubuntu_rolling_tag }}
       # Ubuntu versions and Python
       ubuntu-previous: ${{ steps.ubuntu-previous.outputs.version }}
       ubuntu-previous-python: ${{ steps.ubuntu-previous.outputs.python-version }}
@@ -40,6 +44,10 @@ jobs:
       ubuntu-latest-python: ${{ steps.ubuntu-latest.outputs.python-version }}
       ubuntu-rolling: ${{ steps.ubuntu-rolling.outputs.version }}
       ubuntu-rolling-python: ${{ steps.ubuntu-rolling.outputs.python-version }}
+      # Fedora Docker tags
+      fedora-previous-tag: ${{ steps.define-tags.outputs.fedora_previous_tag }}
+      fedora-latest-tag: ${{ steps.define-tags.outputs.fedora_latest_tag }}
+      fedora-rawhide-tag: ${{ steps.define-tags.outputs.fedora_rawhide_tag }}
       # Fedora versions and Python
       fedora-previous: ${{ steps.fedora-previous.outputs.version }}
       fedora-previous-python: ${{ steps.fedora-previous.outputs.python-version }}
@@ -47,6 +55,10 @@ jobs:
       fedora-latest-python: ${{ steps.fedora-latest.outputs.python-version }}
       fedora-rawhide: ${{ steps.fedora-rawhide.outputs.version }}
       fedora-rawhide-python: ${{ steps.fedora-rawhide.outputs.python-version }}
+      # Debian Docker tags
+      debian-oldstable-tag: ${{ steps.define-tags.outputs.debian_oldstable_tag }}
+      debian-stable-tag: ${{ steps.define-tags.outputs.debian_stable_tag }}
+      debian-sid-tag: ${{ steps.define-tags.outputs.debian_sid_tag }}
       # Debian versions and Python
       debian-oldstable: ${{ steps.debian-oldstable.outputs.version }}
       debian-oldstable-python: ${{ steps.debian-oldstable.outputs.python-version }}
@@ -61,6 +73,25 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Define Docker tags
+        id: define-tags
+        run: |
+          # Define Docker tags in one place
+          echo "ubuntu_previous_tag=jammy" >> $GITHUB_OUTPUT
+          echo "ubuntu_latest_tag=latest" >> $GITHUB_OUTPUT
+          echo "ubuntu_rolling_tag=rolling" >> $GITHUB_OUTPUT
+          echo "fedora_previous_tag=41" >> $GITHUB_OUTPUT
+          echo "fedora_latest_tag=latest" >> $GITHUB_OUTPUT
+          echo "fedora_rawhide_tag=rawhide" >> $GITHUB_OUTPUT
+          echo "debian_oldstable_tag=oldstable" >> $GITHUB_OUTPUT
+          echo "debian_stable_tag=stable" >> $GITHUB_OUTPUT
+          echo "debian_sid_tag=sid" >> $GITHUB_OUTPUT
+
+          echo "🏷️ Docker tags defined:"
+          echo "  Ubuntu: jammy (previous), latest, rolling"
+          echo "  Fedora: 41 (previous), latest, rawhide"
+          echo "  Debian: oldstable, stable, sid"
+
       - name: Set up Docker
         uses: docker/setup-buildx-action@v3
         with:
@@ -74,30 +105,19 @@ jobs:
           echo "version=${K8S_VERSION}" >> $GITHUB_OUTPUT
           echo "🎯 Kubernetes stable version: ${K8S_VERSION}"
 
-      - name: Detect Node.js versions
-        id: node
-        uses: ./.forgejo/actions/check-nodejs-versions
-
-      - name: Detect Python versions for deadsnakes
-        id: python
-        uses: ./.forgejo/actions/check-deadsnakes-versions
-        with:
-          ubuntu-versions: "22.04 24.04"
-          limit: "1"
-
-      - name: Detect Ubuntu previous version (22.04 LTS)
+      - name: Detect Ubuntu previous version (jammy)
         id: ubuntu-previous
         uses: ./.forgejo/actions/detect-os-version
         with:
           os-type: ubuntu
-          os-tag: "22.04"
+          os-tag: ${{ steps.define-tags.outputs.ubuntu_previous_tag }}
 
-      - name: Detect Ubuntu latest version (24.04 LTS)
+      - name: Detect Ubuntu latest version
         id: ubuntu-latest
         uses: ./.forgejo/actions/detect-os-version
         with:
           os-type: ubuntu
-          os-tag: "24.04"
+          os-tag: ${{ steps.define-tags.outputs.ubuntu_latest_tag }}
 
       - name: Detect Ubuntu rolling version
         id: ubuntu-rolling
@@ -111,7 +131,7 @@ jobs:
         uses: ./.forgejo/actions/detect-os-version
         with:
           os-type: fedora
-          os-tag: "41"
+          os-tag: ${{ steps.define-tags.outputs.fedora_previous_tag }}
 
       - name: Detect Fedora latest version
         id: fedora-latest
@@ -147,6 +167,17 @@ jobs:
         with:
           os-type: debian
           os-tag: sid
+
+      - name: Detect Node.js versions
+        id: node
+        uses: ./.forgejo/actions/check-nodejs-versions
+
+      - name: Detect Python versions for deadsnakes
+        id: python
+        uses: ./.forgejo/actions/check-deadsnakes-versions
+        with:
+          ubuntu-versions: "${{ steps.ubuntu-previous.outputs.version }} ${{ steps.ubuntu-latest.outputs.version }}"
+          limit: "1"
 
   build-ubuntu:
     name: Build Ubuntu ${{ matrix.variant == 'previous' && 'Previous' || matrix.variant == 'latest' && 'Latest' || matrix.variant == 'rolling' && 'Rolling' }}
@@ -197,7 +228,7 @@ jobs:
           push: true
           tags: ${{ steps.ubuntu-tags.outputs.tags }}
           build-args: |
-            UBUNTU_TAG=${{ matrix.variant == 'previous' && '22.04' || matrix.variant == 'latest' && '24.04' || matrix.variant == 'rolling' && 'rolling' }}
+            UBUNTU_TAG=${{ matrix.variant == 'previous' && needs.prepare.outputs.ubuntu-previous-tag || matrix.variant == 'latest' && needs.prepare.outputs.ubuntu-latest-tag || matrix.variant == 'rolling' && needs.prepare.outputs.ubuntu-rolling-tag }}
             UBUNTU_VERSION=${{ matrix.variant == 'previous' && needs.prepare.outputs.ubuntu-previous || matrix.variant == 'latest' && needs.prepare.outputs.ubuntu-latest || matrix.variant == 'rolling' && needs.prepare.outputs.ubuntu-rolling }}
             NODE_VERSIONS=${{ matrix.variant == 'previous' && needs.prepare.outputs.node-lts || needs.prepare.outputs.node-latest }}
             PYTHON_VERSION=${{ matrix.variant == 'previous' && needs.prepare.outputs.ubuntu-previous-python || matrix.variant == 'latest' && needs.prepare.outputs.ubuntu-latest-python || matrix.variant == 'rolling' && needs.prepare.outputs.ubuntu-rolling-python }}
@@ -301,7 +332,7 @@ jobs:
           push: true
           tags: ${{ steps.fedora-tags.outputs.tags }}
           build-args: |
-            FEDORA_TAG=${{ steps.fedora-tags.outputs.fedora-tag }}
+            FEDORA_TAG=${{ matrix.variant == 'previous' && needs.prepare.outputs.fedora-previous-tag || matrix.variant == 'latest' && needs.prepare.outputs.fedora-latest-tag || matrix.variant == 'rawhide' && needs.prepare.outputs.fedora-rawhide-tag }}
             FEDORA_VERSION=${{ steps.fedora-tags.outputs.fedora-version }}
             NODE_VERSIONS=${{ steps.fedora-tags.outputs.node_versions_spaced }}
             K8S_VERSION=${{ needs.prepare.outputs.k8s-version }}
@@ -353,7 +384,7 @@ jobs:
           push: true
           tags: ${{ steps.debian-tags.outputs.tags }}
           build-args: |
-            DEBIAN_TAG=${{ steps.debian-tags.outputs.debian-tag }}
+            DEBIAN_TAG=${{ matrix.variant == 'oldstable' && needs.prepare.outputs.debian-oldstable-tag || matrix.variant == 'stable' && needs.prepare.outputs.debian-stable-tag || matrix.variant == 'sid' && needs.prepare.outputs.debian-sid-tag }}
             DEBIAN_VERSION=${{ steps.debian-tags.outputs.debian-version }}
             NODE_VERSIONS=${{ steps.debian-tags.outputs.node_versions_spaced }}
             K8S_VERSION=${{ needs.prepare.outputs.k8s-version }}
