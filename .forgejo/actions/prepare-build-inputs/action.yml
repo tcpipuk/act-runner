@@ -1,0 +1,92 @@
+name: Prepare Build Inputs
+description: Detect OS version information for build inputs across multiple OS variants
+author: Tom Foster
+
+inputs:
+  os-name:
+    description: Operating system name (ubuntu, fedora, debian)
+    required: true
+  previous-tag:
+    description: Docker tag for previous/oldstable version (e.g., jammy, 41, oldstable)
+    required: true
+  latest-tag:
+    description: Docker tag for latest/stable version (e.g., latest, latest, stable)
+    required: true
+  unstable-tag:
+    description: Docker tag for rolling/rawhide/sid version (e.g., rolling, rawhide, sid)
+    required: true
+
+outputs:
+  # Previous version outputs
+  previous-tag:
+    description: Previous Docker tag (passed through)
+    value: ${{ inputs.previous-tag }}
+  previous-version:
+    description: Previous OS version (e.g., 22.04, 41, 12)
+    value: ${{ steps.previous.outputs.version }}
+  previous-python:
+    description: Previous native Python version (e.g., 3.10)
+    value: ${{ steps.previous.outputs.python-version }}
+  previous-codename:
+    description: Previous OS codename (e.g., jammy, bookworm)
+    value: ${{ steps.previous.outputs.codename }}
+
+  # Latest version outputs
+  latest-tag:
+    description: Latest Docker tag (passed through)
+    value: ${{ inputs.latest-tag }}
+  latest-version:
+    description: Latest OS version (e.g., 24.04, 42, 13)
+    value: ${{ steps.latest.outputs.version }}
+  latest-python:
+    description: Latest native Python version (e.g., 3.12)
+    value: ${{ steps.latest.outputs.python-version }}
+  latest-codename:
+    description: Latest OS codename (e.g., noble, trixie)
+    value: ${{ steps.latest.outputs.codename }}
+
+  # Unstable version outputs
+  unstable-tag:
+    description: Unstable Docker tag (passed through)
+    value: ${{ inputs.unstable-tag }}
+  unstable-version:
+    description: Unstable OS version (e.g., 25.04, rawhide, sid)
+    value: ${{ steps.unstable.outputs.version }}
+  unstable-python:
+    description: Unstable native Python version (e.g., 3.13)
+    value: ${{ steps.unstable.outputs.python-version }}
+  unstable-codename:
+    description: Unstable OS codename (e.g., oracular, sid)
+    value: ${{ steps.unstable.outputs.codename }}
+
+runs:
+  using: composite
+  steps:
+    - name: Detect previous version info
+      id: previous
+      uses: ./.forgejo/actions/detect-os-version
+      with:
+        os-type: ${{ inputs.os-name }}
+        os-tag: ${{ inputs.previous-tag }}
+
+    - name: Detect latest version info
+      id: latest
+      uses: ./.forgejo/actions/detect-os-version
+      with:
+        os-type: ${{ inputs.os-name }}
+        os-tag: ${{ inputs.latest-tag }}
+
+    - name: Detect unstable version info
+      id: unstable
+      uses: ./.forgejo/actions/detect-os-version
+      with:
+        os-type: ${{ inputs.os-name }}
+        os-tag: ${{ inputs.unstable-tag }}
+
+    - name: Log detected versions
+      shell: bash
+      run: |
+        echo "🔍 Detected versions for ${{ inputs.os-name }}:"
+        echo "  Previous (${{ inputs.previous-tag }}): ${{ steps.previous.outputs.version }} (Python ${{ steps.previous.outputs.python-version }})"
+        echo "  Latest (${{ inputs.latest-tag }}): ${{ steps.latest.outputs.version }} (Python ${{ steps.latest.outputs.python-version }})"
+        echo "  Unstable (${{ inputs.unstable-tag }}): ${{ steps.unstable.outputs.version }} (Python ${{ steps.unstable.outputs.python-version }})"
