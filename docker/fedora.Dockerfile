@@ -72,6 +72,11 @@ RUN --mount=type=cache,target=/var/cache,sharing=locked,id=act-fedora-cache-${FE
     && dnf clean all \
     && systemctl disable docker.service docker.socket || true
 
+# Set up environment paths and uv configuration
+ENV AGENT_TOOLSDIRECTORY=/opt/hostedtoolcache \
+    UV_LINK_MODE=copy \
+    PATH="/root/.local/bin:/root/.cargo/bin:${PATH}"
+
 # Layer 4: Node.js installation (when NODE_VERSIONS is provided)
 ARG NODE_VERSIONS=MUST_PROVIDE_NODE_VERSIONS
 RUN --mount=type=cache,target=/tmp/downloads,sharing=locked,id=act-fedora-downloads-${FEDORA_VERSION}-${TARGETARCH} \
@@ -108,12 +113,12 @@ RUN --mount=type=cache,target=/var/cache,sharing=locked,id=act-fedora-cache-${FE
     --mount=type=tmpfs,target=/var/lib/dnf \
     --mount=type=cache,target=/root/.cache/uv,sharing=locked,id=act-fedora-uv-cache-${FEDORA_VERSION}-${TARGETARCH} \
     curl -LsSf https://astral.sh/uv/install.sh | sh \
-    && /root/.local/bin/uv tool install prek \
-    && /root/.local/bin/uv tool install ruff \
-    && /root/.local/bin/uv tool install mypy \
-    && /root/.local/bin/uv tool install pytest \
-    && /root/.local/bin/uv tool install black \
-    && /root/.local/bin/uv tool install isort \
+    && uv tool install prek \
+    && uv tool install ruff \
+    && uv tool install mypy \
+    && uv tool install pytest \
+    && uv tool install black \
+    && uv tool install isort \
     && dnf install -yq rustup \
     && dnf clean all \
     && rustup-init -y --no-modify-path --profile minimal --default-toolchain none \
@@ -152,11 +157,6 @@ RUN mkdir -p /etc/yum.repos.d && \
     echo 'enabled=1' >> /etc/yum.repos.d/microsoft.repo && \
     echo 'gpgcheck=1' >> /etc/yum.repos.d/microsoft.repo && \
     echo 'gpgkey=https://packages.microsoft.com/keys/microsoft.asc' >> /etc/yum.repos.d/microsoft.repo
-
-# Set up environment
-ENV AGENT_TOOLSDIRECTORY=/opt/hostedtoolcache \
-    FEDORA_VERSION=${FEDORA_VERSION} \
-    PATH="/root/.local/bin:/root/.cargo/bin:${PATH}"
 
 WORKDIR /tmp
 

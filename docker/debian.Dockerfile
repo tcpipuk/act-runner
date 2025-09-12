@@ -80,6 +80,11 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-debian-apt-ca
     && apt-get clean \
     && mkdir -p -m 755 /opt/hostedtoolcache
 
+# Set up environment paths and uv configuration
+ENV AGENT_TOOLSDIRECTORY=/opt/hostedtoolcache \
+    UV_LINK_MODE=copy \
+    PATH="/root/.local/bin:/root/.cargo/bin:${PATH}"
+
 # Layer 4: Node.js installation
 ARG NODE_VERSIONS=MUST_PROVIDE_NODE_VERSIONS
 RUN --mount=type=cache,target=/tmp/downloads,sharing=locked,id=act-debian-downloads-${DEBIAN_VERSION}-${TARGETARCH} \
@@ -123,17 +128,14 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-debian-apt-ca
     && update-alternatives --install /usr/bin/python python /usr/bin/python3 100
 
 # Layer 6: uv, Python tools, and Rust installation
-ENV UV_LINK_MODE=copy
-ENV PATH="/root/.local/bin:${PATH}"
-
 RUN --mount=type=cache,target=/root/.cache/uv,sharing=locked,id=act-debian-uv-cache-${DEBIAN_VERSION}-${TARGETARCH} \
     curl -LsSf https://astral.sh/uv/install.sh | sh \
-    && /root/.local/bin/uv tool install prek \
-    && /root/.local/bin/uv tool install ruff \
-    && /root/.local/bin/uv tool install mypy \
-    && /root/.local/bin/uv tool install pytest \
-    && /root/.local/bin/uv tool install black \
-    && /root/.local/bin/uv tool install isort \
+    && uv tool install prek \
+    && uv tool install ruff \
+    && uv tool install mypy \
+    && uv tool install pytest \
+    && uv tool install black \
+    && uv tool install isort \
     && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
         sh -s -- -y --no-modify-path --profile minimal --default-toolchain none \
     && echo 'source $HOME/.cargo/env' >> /etc/bash.bashrc
@@ -200,12 +202,9 @@ RUN --mount=type=cache,target=/tmp/downloads,sharing=locked,id=act-debian-downlo
     chmod 644 /etc/apt/keyrings/*.gpg 2>/dev/null || true
 
 # Set up environment
-ENV AGENT_TOOLSDIRECTORY=/opt/hostedtoolcache \
-    BUILDKIT_PROGRESS=plain \
+ENV BUILDKIT_PROGRESS=plain \
     CI=true \
-    DOCKER_BUILDKIT=1 \
-    DEBIAN_VERSION=${DEBIAN_VERSION} \
-    PATH="/root/.local/bin:/root/.cargo/bin:${PATH}"
+    DOCKER_BUILDKIT=1
 
 WORKDIR /tmp
 
