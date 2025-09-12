@@ -22,7 +22,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-ca
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-cache-${UBUNTU_VERSION}-${TARGETARCH} \
     --mount=type=tmpfs,target=/var/lib/apt/lists \
     find /etc/apt -name "*.list" -exec sed -i 's/^# deb-src/deb-src/' {} \; && \
-    find /etc/apt/sources.list.d -name "*.sources" -exec sed -i 's/^# Types: deb$/Types: deb deb-src/' {} \; && \
+    find /etc/apt/sources.list.d -name "*.sources" -exec sed -i 's/^Types: deb$/Types: deb deb-src/' {} \; && \
     apt-get update -qq && \
     cd /tmp && \
     apt-get source python-apt && \
