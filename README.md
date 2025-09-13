@@ -80,19 +80,27 @@ providing better system integration than external PPAs.
 **All images include:**
 
 - Build essentials (gcc, g++, make, cmake, pkg-config)
-- Full Docker stack including daemon, CLI and Compose (via Ubuntu's `docker.io` package for
-  guaranteed multi-architecture support and Docker-in-Docker capabilities)
+- Full Docker stack including daemon, CLI and Compose (via `docker.io` package on
+  Ubuntu/Debian, `docker-ce` on Fedora, all with multi-architecture support and
+  Docker-in-Docker capabilities)
 - [GitHub CLI](https://cli.github.com/manual/) (`gh`)
 - Git and Git LFS
 - Common utilities (curl, wget, jq, tar, zip)
-- Pre-configured package repositories (LLVM, Kubernetes, HashiCorp, Microsoft)
+- Pre-configured package repositories (LLVM, Kubernetes, HashiCorp*, Microsoft)
+- Deadsnakes PPA repository (non-rolling Ubuntu releases only)
+
+> [!NOTE]
+> \* HashiCorp repository is not available for Debian sid/unstable
 
 **Runtime languages:**
 
-- [Node.js](https://nodejs.org/) with npm/npx (LTS versions for "previous" releases, latest
-  stable for others)
-- Python (native OS version or latest stable from deadsnakes PPA for Ubuntu)
+- [Node.js](https://nodejs.org/) with npm/npx (single version per image: oldest supported
+  LTS for 'previous/oldstable' releases, newest LTS for 'latest/stable' releases, newest
+  stable for 'rolling/rawhide/sid' releases)
+- Python (native OS version, plus optionally latest stable Python from deadsnakes PPA for
+  non-rolling Ubuntu releases)
 - [uv](https://docs.astral.sh/uv/) package manager
+- Rust toolchain manager (rustup) with minimal profile
 - Pre-installed Python development tools (ruff, mypy, pytest, black, isort, prek)
 - Compatible with [actions/setup-node](https://github.com/actions/setup-node)
 - See [docs/python.md](docs/python.md) for full details
