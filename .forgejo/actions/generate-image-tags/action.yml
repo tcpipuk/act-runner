@@ -60,7 +60,7 @@ runs:
         NODE_TAG="${NODE_VERSION}"
 
         # Handle special OS versions
-        if [ "$OS_VERSION" = "rawhide" ]; then
+        if [ "$OS_VERSION" = "rawhide" ] || [ "$OS_VERSION" = "sid" ]; then
           BASE_TAG="${REGISTRY}/${IMAGE_NAME}:${OS_NAME}${OS_VERSION}-node${NODE_TAG}-py${PYTHON_VERSION}"
         else
           BASE_TAG="${REGISTRY}/${IMAGE_NAME}:${OS_NAME}${OS_VERSION}-node${NODE_TAG}-py${PYTHON_VERSION}"

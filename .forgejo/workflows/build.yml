@@ -383,6 +383,7 @@ jobs:
                [[ "$TAG" =~ ^fedora[0-9]+-node[0-9]+-py[0-9]+\.[0-9]+$ ]] || \
                [[ "$TAG" =~ ^fedorarawhide-node[0-9]+-py[0-9]+\.[0-9]+$ ]] || \
                [[ "$TAG" =~ ^debian[0-9]+-node[0-9]+-py[0-9]+\.[0-9]+$ ]] || \
+               [[ "$TAG" =~ ^debiansid-node[0-9]+-py[0-9]+\.[0-9]+$ ]] || \
                [[ "$TAG" =~ ^(ubuntu|fedora)-(previous|latest|rolling|rawhide)$ ]] || \
                [[ "$TAG" =~ ^debian-(oldstable|latest|sid)$ ]]; then
               TAGS_TO_MIRROR+=("$TAG")

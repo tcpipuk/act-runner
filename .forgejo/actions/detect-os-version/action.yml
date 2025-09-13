@@ -42,6 +42,11 @@ runs:
           VERSION=$(docker run --rm ${OS_TYPE}:${OS_TAG} bash -c "grep VERSION_ID /etc/os-release | cut -d= -f2 | tr -d '\"'")
           CODENAME=$(docker run --rm ${OS_TYPE}:${OS_TAG} bash -c "grep VERSION_CODENAME /etc/os-release | cut -d= -f2 | tr -d '\"'")
 
+          # Special case for Debian sid which has no VERSION_ID
+          if [ "$OS_TYPE" = "debian" ] && [ "$OS_TAG" = "sid" ] && [ -z "$VERSION" ]; then
+            VERSION="sid"
+          fi
+
           # Get Python version from package manager
           PYTHON_VERSION=$(docker run --rm ${OS_TYPE}:${OS_TAG} bash -c "
             apt-get update -qq
