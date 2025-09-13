@@ -18,7 +18,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-ca
         python${PYTHON_VERSION}-venv && \
     update-alternatives --install /usr/bin/python3 python3 /usr/bin/python${PYTHON_VERSION} 100 && \
     update-alternatives --install /usr/bin/python python /usr/bin/python${PYTHON_VERSION} 100 && \
-    python -m ensurepip --root-user-action=ignore
+    python -m ensurepip
 
 # Builder stage - using common python base
 FROM python AS apt-builder
