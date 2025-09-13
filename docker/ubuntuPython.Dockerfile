@@ -9,21 +9,16 @@ ARG PYTHON_VERSION=MUST_PROVIDE_PYTHON_VERSION
 ARG UBUNTU_VERSION=MUST_PROVIDE_UBUNTU_VERSION
 ARG TARGETARCH
 
-# Install development packages needed for building python3-apt
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-cache-${UBUNTU_VERSION}-${TARGETARCH} \
-    --mount=type=tmpfs,target=/var/lib/apt/lists \
-    apt-get update -qq && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -yqq -o Dpkg::Use-Pty=0 \
-        libapt-pkg-dev \
-        python${PYTHON_VERSION}-dev \
-        dpkg-dev
-
-# Enable source repositories and build python3-apt for custom Python version
+# Install development packages and build python3-apt for custom Python version
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-cache-${UBUNTU_VERSION}-${TARGETARCH} \
     --mount=type=tmpfs,target=/var/lib/apt/lists \
     find /etc/apt -name "*.list" -exec sed -i 's/^# deb-src/deb-src/' {} \; && \
     find /etc/apt/sources.list.d -name "*.sources" -exec sed -i 's/^Types: deb$/Types: deb deb-src/' {} \; && \
     apt-get update -qq && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -yqq -o Dpkg::Use-Pty=0 \
+        libapt-pkg-dev \
+        python${PYTHON_VERSION}-dev \
+        dpkg-dev && \
     cd /tmp && \
     apt-get source python-apt && \
     cd python-apt-* && \
