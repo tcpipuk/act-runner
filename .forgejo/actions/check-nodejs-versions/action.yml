@@ -3,12 +3,15 @@ description: Find currently supported Node.js versions including LTS releases
 author: Tom Foster
 
 outputs:
-  lts-versions:
-    description: Space-separated list of Node.js LTS versions
-    value: ${{ steps.check.outputs.lts }}
-  live-versions:
-    description: Space-separated list of all supported Node.js versions
-    value: ${{ steps.check.outputs.all }}
+  node-previous:
+    description: Oldest supported LTS Node.js version
+    value: ${{ steps.check.outputs.previous }}
+  node-latest:
+    description: Newest supported LTS Node.js version
+    value: ${{ steps.check.outputs.latest }}
+  node-unstable:
+    description: Newest even-numbered Node.js version
+    value: ${{ steps.check.outputs.unstable }}
 
 runs:
   using: composite
@@ -51,48 +54,44 @@ runs:
                     if major not in lts_versions:
                         lts_versions.append(major)
 
-            # Get the two most recent stable versions (even-numbered only)
-            all_versions = []
+            # Get all even-numbered stable versions
+            stable_versions = []
             for release in releases:
                 major = get_major_version(release['version'])
                 # Only include even-numbered versions (stable releases)
-                if major % 2 == 0 and major not in all_versions:
-                    all_versions.append(major)
+                if major % 2 == 0 and major not in stable_versions:
+                    stable_versions.append(major)
 
-            # Sort and take most recent versions
+            # Sort versions
             lts_versions.sort()
-            lts_versions = lts_versions[-2:] if len(lts_versions) >= 2 else lts_versions
+            stable_versions.sort()
 
-            all_versions.sort()
-            all_versions = all_versions[-2:] if len(all_versions) >= 2 else all_versions
-
-            # Convert to space-separated strings
-            lts_output = " ".join(str(v) for v in lts_versions)
-            all_output = " ".join(str(v) for v in all_versions)
+            # Determine the three distinct versions
+            # Use the two most recent LTS versions for previous/latest, and newest stable for unstable
+            node_previous = str(lts_versions[-2]) if len(lts_versions) >= 2 else str(lts_versions[0]) if lts_versions else str(stable_versions[-2])
+            node_latest = str(lts_versions[-1]) if lts_versions else str(stable_versions[-2] if len(stable_versions) >= 2 else stable_versions[-1])
+            node_unstable = str(stable_versions[-1])
 
             print(f"🎯 Detected Node.js versions:")
-            print(f"   LTS: {lts_output}")
-            print(f"   Latest: {all_output}")
+            print(f"   Previous (second newest LTS): {node_previous}")
+            print(f"   Latest (newest LTS): {node_latest}")
+            print(f"   Unstable (newest stable): {node_unstable}")
 
-            print(f"::debug::All supported versions: {all_output}")
-            print(f"::debug::LTS versions: {lts_output}")
+            print(f"::debug::Previous: {node_previous}")
+            print(f"::debug::Latest: {node_latest}")
+            print(f"::debug::Unstable: {node_unstable}")
 
             # Set outputs using GitHub Actions format
             with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
-                f.write(f"all={all_output}\n")
-                f.write(f"lts={lts_output}\n")
+                f.write(f"previous={node_previous}\n")
+                f.write(f"latest={node_latest}\n")
+                f.write(f"unstable={node_unstable}\n")
 
             print(f"✓ Successfully set action outputs")
 
-            if all_output:
-                print(f"::notice::All supported Node.js versions: {all_output}")
-            else:
-                print(f"::warning::No supported Node.js versions found")
-
-            if lts_output:
-                print(f"::notice::LTS Node.js versions: {lts_output}")
-            else:
-                print(f"::warning::No LTS Node.js versions found")
+            print(f"::notice::Previous Node.js version: {node_previous}")
+            print(f"::notice::Latest Node.js version: {node_latest}")
+            print(f"::notice::Unstable Node.js version: {node_unstable}")
 
         except Exception as e:
             print(f"::error::Failed to check Node.js versions: {e}")

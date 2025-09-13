@@ -29,8 +29,9 @@ jobs:
     outputs:
       k8s-version: ${{ steps.k8s.outputs.version }}
       # Node.js versions (shared across all builds)
-      node-lts: ${{ steps.node.outputs.lts-versions }}
-      node-latest: ${{ steps.node.outputs.live-versions }}
+      node-previous: ${{ steps.node.outputs.node-previous }}
+      node-latest: ${{ steps.node.outputs.node-latest }}
+      node-unstable: ${{ steps.node.outputs.node-unstable }}
       # Python deadsnakes versions
       python-deadsnakes: ${{ steps.python.outputs.python-versions }}
       # Ubuntu Python base images
@@ -128,9 +129,9 @@ jobs:
       - name: Generate Ubuntu Python base image names
         id: ubuntu-python-base
         run: |
-          # Convert space-separated Node.js versions to dash-separated for image tags
-          UBUNTU_PREV_NODE_TAG=$(echo "${{ steps.node.outputs.lts-versions }}" | tr ' ' '-')
-          UBUNTU_LATEST_NODE_TAG=$(echo "${{ steps.node.outputs.live-versions }}" | tr ' ' '-')
+          # Use single Node.js versions for base image tags
+          UBUNTU_PREV_NODE_TAG="${{ steps.node.outputs.node-previous }}"
+          UBUNTU_LATEST_NODE_TAG="${{ steps.node.outputs.node-latest }}"
 
           echo "previous-base=git.tomfos.tr/tom/act-runner:ubuntu${{ steps.ubuntu.outputs.previous-version }}-node${UBUNTU_PREV_NODE_TAG}-py${{ steps.ubuntu.outputs.previous-python }}" >> $GITHUB_OUTPUT
           echo "latest-base=git.tomfos.tr/tom/act-runner:ubuntu${{ steps.ubuntu.outputs.latest-version }}-node${UBUNTU_LATEST_NODE_TAG}-py${{ steps.ubuntu.outputs.latest-python }}" >> $GITHUB_OUTPUT
@@ -171,7 +172,7 @@ jobs:
           image-name: ${{ env.IMAGE_NAME }}
           os-name: ubuntu
           os-version: ${{ matrix.variant == 'previous' && needs.prepare.outputs.ubuntu-previous || matrix.variant == 'latest' && needs.prepare.outputs.ubuntu-latest || matrix.variant == 'rolling' && needs.prepare.outputs.ubuntu-rolling }}
-          node-versions: ${{ matrix.variant == 'previous' && needs.prepare.outputs.node-lts || needs.prepare.outputs.node-latest }}
+          node-version: ${{ matrix.variant == 'previous' && needs.prepare.outputs.node-previous || matrix.variant == 'latest' && needs.prepare.outputs.node-latest || matrix.variant == 'rolling' && needs.prepare.outputs.node-unstable }}
           python-version: ${{ matrix.variant == 'previous' && needs.prepare.outputs.ubuntu-previous-python || matrix.variant == 'latest' && needs.prepare.outputs.ubuntu-latest-python || matrix.variant == 'rolling' && needs.prepare.outputs.ubuntu-rolling-python }}
           variant: ${{ matrix.variant }}
           branch-name: ${{ github.ref_name }}
@@ -186,7 +187,7 @@ jobs:
           build-args: |
             UBUNTU_TAG=${{ matrix.variant == 'previous' && needs.prepare.outputs.ubuntu-previous-tag || matrix.variant == 'latest' && needs.prepare.outputs.ubuntu-latest-tag || matrix.variant == 'rolling' && needs.prepare.outputs.ubuntu-rolling-tag }}
             UBUNTU_VERSION=${{ matrix.variant == 'previous' && needs.prepare.outputs.ubuntu-previous || matrix.variant == 'latest' && needs.prepare.outputs.ubuntu-latest || matrix.variant == 'rolling' && needs.prepare.outputs.ubuntu-rolling }}
-            NODE_VERSIONS=${{ matrix.variant == 'previous' && needs.prepare.outputs.node-lts || needs.prepare.outputs.node-latest }}
+            NODE_VERSION=${{ matrix.variant == 'previous' && needs.prepare.outputs.node-previous || matrix.variant == 'latest' && needs.prepare.outputs.node-latest || matrix.variant == 'rolling' && needs.prepare.outputs.node-unstable }}
             PYTHON_VERSION=${{ matrix.variant == 'previous' && needs.prepare.outputs.ubuntu-previous-python || matrix.variant == 'latest' && needs.prepare.outputs.ubuntu-latest-python || matrix.variant == 'rolling' && needs.prepare.outputs.ubuntu-rolling-python }}
             USE_NATIVE_PYTHON=true
             K8S_VERSION=${{ needs.prepare.outputs.k8s-version }}
@@ -225,7 +226,7 @@ jobs:
           image-name: ${{ env.IMAGE_NAME }}
           os-name: ubuntu
           os-version: ${{ matrix.variant == 'previous' && needs.prepare.outputs.ubuntu-previous || needs.prepare.outputs.ubuntu-latest }}
-          node-versions: ${{ matrix.variant == 'previous' && needs.prepare.outputs.node-lts || needs.prepare.outputs.node-latest }}
+          node-version: ${{ matrix.variant == 'previous' && needs.prepare.outputs.node-previous || needs.prepare.outputs.node-latest }}
           python-version: ${{ needs.prepare.outputs.python-deadsnakes }}
           branch-name: ${{ github.ref_name }}
 
@@ -275,7 +276,7 @@ jobs:
           image-name: ${{ env.IMAGE_NAME }}
           os-name: fedora
           os-version: ${{ matrix.variant == 'previous' && needs.prepare.outputs.fedora-previous || matrix.variant == 'latest' && needs.prepare.outputs.fedora-latest || matrix.variant == 'rawhide' && needs.prepare.outputs.fedora-rawhide }}
-          node-versions: ${{ matrix.variant == 'previous' && needs.prepare.outputs.node-lts || needs.prepare.outputs.node-latest }}
+          node-version: ${{ matrix.variant == 'previous' && needs.prepare.outputs.node-previous || matrix.variant == 'latest' && needs.prepare.outputs.node-latest || matrix.variant == 'rawhide' && needs.prepare.outputs.node-unstable }}
           python-version: ${{ matrix.variant == 'previous' && needs.prepare.outputs.fedora-previous-python || matrix.variant == 'latest' && needs.prepare.outputs.fedora-latest-python || matrix.variant == 'rawhide' && needs.prepare.outputs.fedora-rawhide-python }}
           variant: ${{ matrix.variant }}
           branch-name: ${{ github.ref_name }}
@@ -290,7 +291,7 @@ jobs:
           build-args: |
             FEDORA_TAG=${{ matrix.variant == 'previous' && needs.prepare.outputs.fedora-previous-tag || matrix.variant == 'latest' && needs.prepare.outputs.fedora-latest-tag || matrix.variant == 'rawhide' && needs.prepare.outputs.fedora-rawhide-tag }}
             FEDORA_VERSION=${{ matrix.variant == 'previous' && needs.prepare.outputs.fedora-previous || matrix.variant == 'latest' && needs.prepare.outputs.fedora-latest || matrix.variant == 'rawhide' && needs.prepare.outputs.fedora-rawhide }}
-            NODE_VERSIONS=${{ matrix.variant == 'previous' && needs.prepare.outputs.node-lts || needs.prepare.outputs.node-latest }}
+            NODE_VERSION=${{ matrix.variant == 'previous' && needs.prepare.outputs.node-previous || matrix.variant == 'latest' && needs.prepare.outputs.node-latest || matrix.variant == 'rawhide' && needs.prepare.outputs.node-unstable }}
             K8S_VERSION=${{ needs.prepare.outputs.k8s-version }}
           platforms: linux/amd64,linux/arm64/v8,linux/ppc64le,linux/s390x
 
@@ -327,7 +328,7 @@ jobs:
           image-name: ${{ env.IMAGE_NAME }}
           os-name: debian
           os-version: ${{ matrix.variant == 'oldstable' && needs.prepare.outputs.debian-oldstable || matrix.variant == 'stable' && needs.prepare.outputs.debian-stable || matrix.variant == 'sid' && needs.prepare.outputs.debian-sid }}
-          node-versions: ${{ matrix.variant == 'oldstable' && needs.prepare.outputs.node-lts || needs.prepare.outputs.node-latest }}
+          node-version: ${{ matrix.variant == 'oldstable' && needs.prepare.outputs.node-previous || matrix.variant == 'stable' && needs.prepare.outputs.node-latest || matrix.variant == 'sid' && needs.prepare.outputs.node-unstable }}
           python-version: ${{ matrix.variant == 'oldstable' && needs.prepare.outputs.debian-oldstable-python || matrix.variant == 'stable' && needs.prepare.outputs.debian-stable-python || matrix.variant == 'sid' && needs.prepare.outputs.debian-sid-python }}
           variant: ${{ matrix.variant == 'stable' && 'latest' || matrix.variant }}
           branch-name: ${{ github.ref_name }}
@@ -342,7 +343,7 @@ jobs:
           build-args: |
             DEBIAN_TAG=${{ matrix.variant == 'oldstable' && needs.prepare.outputs.debian-oldstable-tag || matrix.variant == 'stable' && needs.prepare.outputs.debian-stable-tag || matrix.variant == 'sid' && needs.prepare.outputs.debian-sid-tag }}
             DEBIAN_VERSION=${{ matrix.variant == 'oldstable' && needs.prepare.outputs.debian-oldstable || matrix.variant == 'stable' && needs.prepare.outputs.debian-stable || matrix.variant == 'sid' && needs.prepare.outputs.debian-sid }}
-            NODE_VERSIONS=${{ matrix.variant == 'oldstable' && needs.prepare.outputs.node-lts || needs.prepare.outputs.node-latest }}
+            NODE_VERSION=${{ matrix.variant == 'oldstable' && needs.prepare.outputs.node-previous || matrix.variant == 'stable' && needs.prepare.outputs.node-latest || matrix.variant == 'sid' && needs.prepare.outputs.node-unstable }}
             K8S_VERSION=${{ needs.prepare.outputs.k8s-version }}
           platforms: linux/amd64,linux/arm64/v8,linux/ppc64le,linux/s390x
 
@@ -504,22 +505,25 @@ jobs:
           DEBIAN_SID_CODENAME="${{ needs.prepare.outputs.debian-sid-codename }}"
           DEBIAN_SID_PYTHON="${{ needs.prepare.outputs.debian-sid-python }}"
 
-          NODE_LTS="${{ needs.prepare.outputs.node-lts }}"
+          NODE_PREVIOUS="${{ needs.prepare.outputs.node-previous }}"
           NODE_LATEST="${{ needs.prepare.outputs.node-latest }}"
+          NODE_UNSTABLE="${{ needs.prepare.outputs.node-unstable }}"
 
-          # Convert Node versions from spaces to slashes for display, spaces to dashes for tags
-          NODE_LTS_DISPLAY=$(echo "${NODE_LTS}" | tr ' ' '/')
-          NODE_LATEST_DISPLAY=$(echo "${NODE_LATEST}" | tr ' ' '/')
-          NODE_LTS_TAG=$(echo "${NODE_LTS}" | tr ' ' '-')
-          NODE_LATEST_TAG=$(echo "${NODE_LATEST}" | tr ' ' '-')
+          # Use single Node versions directly
+          NODE_PREVIOUS_DISPLAY="${NODE_PREVIOUS}"
+          NODE_LATEST_DISPLAY="${NODE_LATEST}"
+          NODE_UNSTABLE_DISPLAY="${NODE_UNSTABLE}"
+          NODE_PREVIOUS_TAG="${NODE_PREVIOUS}"
+          NODE_LATEST_TAG="${NODE_LATEST}"
+          NODE_UNSTABLE_TAG="${NODE_UNSTABLE}"
 
           # Generate Ubuntu images table
           {
             echo "| Ubuntu Version | Alias Tag | Node.js | Python Versions Available |"
             echo "|----------------|-----------|---------|---------------------------|"
-            echo "| ${UBUNTU_ROLLING_VERSION} (Development) | **[\`ubuntu-rolling\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu-rolling)** | ${NODE_LATEST_DISPLAY} | [***${UBUNTU_ROLLING_PYTHON}***](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${UBUNTU_ROLLING_VERSION}-node${NODE_LATEST_TAG}-py${UBUNTU_ROLLING_PYTHON}) |"
+            echo "| ${UBUNTU_ROLLING_VERSION} (Development) | **[\`ubuntu-rolling\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu-rolling)** | ${NODE_UNSTABLE_DISPLAY} | [***${UBUNTU_ROLLING_PYTHON}***](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${UBUNTU_ROLLING_VERSION}-node${NODE_UNSTABLE_TAG}-py${UBUNTU_ROLLING_PYTHON}) |"
             echo "| ${UBUNTU_LATEST_VERSION} LTS (Current) | **[\`ubuntu-latest\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu-latest)** | ${NODE_LATEST_DISPLAY} | [***${UBUNTU_LATEST_PYTHON}***](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${UBUNTU_LATEST_VERSION}-node${NODE_LATEST_TAG}-py${UBUNTU_LATEST_PYTHON}), [${PYTHON_VERSIONS}](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${UBUNTU_LATEST_VERSION}-node${NODE_LATEST_TAG}-py${PYTHON_VERSIONS}) |"
-            echo "| ${UBUNTU_PREV_VERSION} LTS (Previous) | **[\`ubuntu-previous\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu-previous)** | ${NODE_LTS_DISPLAY} | [***${UBUNTU_PREV_PYTHON}***](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${UBUNTU_PREV_VERSION}-node${NODE_LTS_TAG}-py${UBUNTU_PREV_PYTHON}), [${PYTHON_VERSIONS}](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${UBUNTU_PREV_VERSION}-node${NODE_LTS_TAG}-py${PYTHON_VERSIONS}) |"
+            echo "| ${UBUNTU_PREV_VERSION} LTS (Previous) | **[\`ubuntu-previous\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu-previous)** | ${NODE_PREVIOUS_DISPLAY} | [***${UBUNTU_PREV_PYTHON}***](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${UBUNTU_PREV_VERSION}-node${NODE_PREVIOUS_TAG}-py${UBUNTU_PREV_PYTHON}), [${PYTHON_VERSIONS}](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${UBUNTU_PREV_VERSION}-node${NODE_PREVIOUS_TAG}-py${PYTHON_VERSIONS}) |"
             echo ""
             echo "**Note**: ***Italicised*** versions are the native Python for each Ubuntu release. Non-native"
             echo "versions use the latest stable Python (${PYTHON_VERSIONS}) from deadsnakes PPA."
@@ -530,18 +534,18 @@ jobs:
           {
             echo "| Fedora Version | Alias Tag | Node.js | Python Versions Available |"
             echo "|----------------|-----------|---------|---------------------------|"
-            echo "| Rawhide (Development) | **[\`fedora-rawhide\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora-rawhide)** | ${NODE_LATEST_DISPLAY} | [**${FEDORA_RAWHIDE_PYTHON}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedorarawhide-node${NODE_LATEST_TAG}-py${FEDORA_RAWHIDE_PYTHON}) |"
+            echo "| Rawhide (Development) | **[\`fedora-rawhide\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora-rawhide)** | ${NODE_UNSTABLE_DISPLAY} | [**${FEDORA_RAWHIDE_PYTHON}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedorarawhide-node${NODE_UNSTABLE_TAG}-py${FEDORA_RAWHIDE_PYTHON}) |"
             echo "| ${FEDORA_LATEST_VERSION} (Current) | **[\`fedora-latest\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora-latest)** | ${NODE_LATEST_DISPLAY} | [**${FEDORA_LATEST_PYTHON}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora${FEDORA_LATEST_VERSION}-node${NODE_LATEST_TAG}-py${FEDORA_LATEST_PYTHON}) |"
-            echo "| ${FEDORA_PREV_VERSION} (Previous) | **[\`fedora-previous\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora-previous)** | ${NODE_LTS_DISPLAY} | [**${FEDORA_PREV_PYTHON}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora${FEDORA_PREV_VERSION}-node${NODE_LTS_TAG}-py${FEDORA_PREV_PYTHON}) |"
+            echo "| ${FEDORA_PREV_VERSION} (Previous) | **[\`fedora-previous\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora-previous)** | ${NODE_PREVIOUS_DISPLAY} | [**${FEDORA_PREV_PYTHON}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora${FEDORA_PREV_VERSION}-node${NODE_PREVIOUS_TAG}-py${FEDORA_PREV_PYTHON}) |"
           } > /tmp/fedora-images.md
 
           # Generate Debian images table
           {
             echo "| Debian Version | Alias Tag | Node.js | Python Versions Available |"
             echo "|----------------|-----------|---------|---------------------------|"
-            echo "| ${DEBIAN_SID_VERSION} (${DEBIAN_SID_CODENAME^} - Sid/Unstable) | **[\`debian-sid\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/debian-sid)** | ${NODE_LATEST_DISPLAY} | [**${DEBIAN_SID_PYTHON}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/debian${DEBIAN_SID_VERSION}-node${NODE_LATEST_TAG}-py${DEBIAN_SID_PYTHON}) |"
+            echo "| ${DEBIAN_SID_VERSION} (${DEBIAN_SID_CODENAME^} - Sid/Unstable) | **[\`debian-sid\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/debian-sid)** | ${NODE_UNSTABLE_DISPLAY} | [**${DEBIAN_SID_PYTHON}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/debian${DEBIAN_SID_VERSION}-node${NODE_UNSTABLE_TAG}-py${DEBIAN_SID_PYTHON}) |"
             echo "| ${DEBIAN_STABLE_VERSION} (${DEBIAN_STABLE_CODENAME^} - Stable) | **[\`debian-latest\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/debian-latest)** | ${NODE_LATEST_DISPLAY} | [**${DEBIAN_STABLE_PYTHON}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/debian${DEBIAN_STABLE_VERSION}-node${NODE_LATEST_TAG}-py${DEBIAN_STABLE_PYTHON}) |"
-            echo "| ${DEBIAN_OLDSTABLE_VERSION} (${DEBIAN_OLDSTABLE_CODENAME^} - Oldstable) | **[\`debian-oldstable\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/debian-oldstable)** | ${NODE_LTS_DISPLAY} | [**${DEBIAN_OLDSTABLE_PYTHON}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/debian${DEBIAN_OLDSTABLE_VERSION}-node${NODE_LTS_TAG}-py${DEBIAN_OLDSTABLE_PYTHON}) |"
+            echo "| ${DEBIAN_OLDSTABLE_VERSION} (${DEBIAN_OLDSTABLE_CODENAME^} - Oldstable) | **[\`debian-oldstable\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/debian-oldstable)** | ${NODE_PREVIOUS_DISPLAY} | [**${DEBIAN_OLDSTABLE_PYTHON}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/debian${DEBIAN_OLDSTABLE_VERSION}-node${NODE_PREVIOUS_TAG}-py${DEBIAN_OLDSTABLE_PYTHON}) |"
             echo ""
             echo "**Note**: Debian images use only the native Python version for each release,"
             echo "providing better system integration than external PPAs."
@@ -614,8 +618,9 @@ jobs:
           commit-message: |
             chore: update Ubuntu and Fedora images in README
 
-            Node.js LTS: ${{ needs.prepare.outputs.node-lts }}
+            Node.js Previous: ${{ needs.prepare.outputs.node-previous }}
             Node.js Latest: ${{ needs.prepare.outputs.node-latest }}
+            Node.js Unstable: ${{ needs.prepare.outputs.node-unstable }}
             Ubuntu Previous: ${{ needs.prepare.outputs.ubuntu-previous }} (Python ${{ needs.prepare.outputs.ubuntu-previous-python }})
             Ubuntu Latest: ${{ needs.prepare.outputs.ubuntu-latest }} (Python ${{ needs.prepare.outputs.ubuntu-latest-python }})
             Ubuntu Rolling: ${{ needs.prepare.outputs.ubuntu-rolling }} (Python ${{ needs.prepare.outputs.ubuntu-rolling-python }})
@@ -629,8 +634,9 @@ jobs:
             This PR updates both Ubuntu and Fedora images tables to reflect the current runtime versions:
 
             **Node.js Versions:**
-            - LTS: ${{ needs.prepare.outputs.node-lts }}
+            - Previous: ${{ needs.prepare.outputs.node-previous }}
             - Latest: ${{ needs.prepare.outputs.node-latest }}
+            - Unstable: ${{ needs.prepare.outputs.node-unstable }}
 
             **Ubuntu Releases:**
             - Previous: ${{ needs.prepare.outputs.ubuntu-previous }} (Python ${{ needs.prepare.outputs.ubuntu-previous-python }})

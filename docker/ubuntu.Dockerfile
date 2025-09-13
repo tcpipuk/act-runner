@@ -88,34 +88,28 @@ ENV AGENT_TOOLSDIRECTORY=/opt/hostedtoolcache \
     PATH="/root/.local/bin:/root/.cargo/bin:${PATH}"
 
 # Layer 4: Node.js installation
-ARG NODE_VERSIONS=MUST_PROVIDE_NODE_VERSIONS
+ARG NODE_VERSION=MUST_PROVIDE_NODE_VERSION
 RUN --mount=type=cache,target=/tmp/downloads,sharing=locked,id=act-ubuntu-downloads-${UBUNTU_VERSION}-${TARGETARCH} \
-    for VERSION in ${NODE_VERSIONS}; do \
-    NODE_URL="https://nodejs.org/dist/latest-v${VERSION}.x/"; \
-    NODE_VERSION=$(curl -sL ${NODE_URL} | grep -oP 'node-v\K[0-9]+\.[0-9]+\.[0-9]+' | head -1); \
-    FULL_VERSION="v${NODE_VERSION}"; \
-    ARCH=$(dpkg --print-architecture | sed 's/amd64/x64/;s/ppc64el/ppc64le/'); \
-    TARBALL="/tmp/downloads/node-${FULL_VERSION}-linux-${ARCH}.tar.xz"; \
+    NODE_URL="https://nodejs.org/dist/latest-v${NODE_VERSION}.x/" && \
+    FULL_NODE_VERSION=$(curl -sL ${NODE_URL} | grep -oP 'node-v\K[0-9]+\.[0-9]+\.[0-9]+' | head -1) && \
+    FULL_VERSION="v${FULL_NODE_VERSION}" && \
+    ARCH=$(dpkg --print-architecture | sed 's/amd64/x64/;s/ppc64el/ppc64le/') && \
+    TARBALL="/tmp/downloads/node-${FULL_VERSION}-linux-${ARCH}.tar.xz" && \
     if [ ! -f "${TARBALL}" ] || ! xz -t "${TARBALL}" 2>/dev/null; then \
-    echo "Downloading Node.js ${FULL_VERSION} for ${ARCH}..."; \
-    rm -f "${TARBALL}"; \
-    curl -fSL "${NODE_URL}/node-${FULL_VERSION}-linux-${ARCH}.tar.xz" -o "${TARBALL}" || \
-    (echo "Failed to download Node.js ${FULL_VERSION} for ${ARCH}" && exit 1); \
-    xz -t "${TARBALL}" || (echo "Downloaded file is corrupted" && rm -f "${TARBALL}" && exit 1); \
-    fi; \
-    NODE_PATH="/opt/hostedtoolcache/node/${NODE_VERSION}/${ARCH}"; \
-    mkdir -p "${NODE_PATH}"; \
-    echo "Extracting Node.js ${FULL_VERSION} to ${NODE_PATH}..."; \
-    tar -xJf "${TARBALL}" --strip-components=1 -C "${NODE_PATH}"; \
-    done
-
-# Add newest Node version to PATH
-RUN NODE_VERSION=$(ls /opt/hostedtoolcache/node | sort -V | tail -1) && \
-    ARCH=$(dpkg --print-architecture | sed 's/amd64/x64/;s/armhf/armv7l/;s/ppc64el/ppc64le/') && \
-    echo "export PATH=/opt/hostedtoolcache/node/${NODE_VERSION}/${ARCH}/bin:\$PATH" >> /etc/profile.d/node.sh && \
-    ln -sf /opt/hostedtoolcache/node/${NODE_VERSION}/${ARCH}/bin/node /usr/local/bin/node && \
-    ln -sf /opt/hostedtoolcache/node/${NODE_VERSION}/${ARCH}/bin/npm /usr/local/bin/npm && \
-    ln -sf /opt/hostedtoolcache/node/${NODE_VERSION}/${ARCH}/bin/npx /usr/local/bin/npx
+        echo "Downloading Node.js ${FULL_VERSION} for ${ARCH}..." && \
+        rm -f "${TARBALL}" && \
+        curl -fSL "${NODE_URL}/node-${FULL_VERSION}-linux-${ARCH}.tar.xz" -o "${TARBALL}" || \
+            (echo "Failed to download Node.js ${FULL_VERSION} for ${ARCH}" && exit 1) && \
+        xz -t "${TARBALL}" || (echo "Downloaded file is corrupted" && rm -f "${TARBALL}" && exit 1); \
+    fi && \
+    NODE_PATH="/opt/hostedtoolcache/node/${FULL_NODE_VERSION}/${ARCH}" && \
+    mkdir -p "${NODE_PATH}" && \
+    echo "Extracting Node.js ${FULL_VERSION} to ${NODE_PATH}..." && \
+    tar -xJf "${TARBALL}" --strip-components=1 -C "${NODE_PATH}" && \
+    echo "export PATH=${NODE_PATH}/bin:\$PATH" >> /etc/profile.d/node.sh && \
+    ln -sf ${NODE_PATH}/bin/node /usr/local/bin/node && \
+    ln -sf ${NODE_PATH}/bin/npm /usr/local/bin/npm && \
+    ln -sf ${NODE_PATH}/bin/npx /usr/local/bin/npx
 
 # Layer 5: Python installation
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-cache-${UBUNTU_VERSION}-${TARGETARCH} \
