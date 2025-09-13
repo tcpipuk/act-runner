@@ -36,9 +36,9 @@ act -P ubuntu-latest=ghcr.io/tcpipuk/act-runner:ubuntu-latest
 
 | Ubuntu Version | Alias Tag | Node.js | Python Versions Available |
 |----------------|-----------|---------|---------------------------|
-| 25.04 (Development) | **[`ubuntu-rolling`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu-rolling)** | 22/24 | [***3.13***](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu25.04-node22-24-py3.13) |
-| 24.04 LTS (Current) | **[`ubuntu-latest`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu-latest)** | 22/24 | [***3.12***](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu24.04-node22-24-py3.12), [3.13](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu24.04-node22-24-py3.13) |
-| 22.04 LTS (Previous) | **[`ubuntu-previous`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu-previous)** | 20/22 | [***3.10***](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu22.04-node20-22-py3.10), [3.13](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu22.04-node20-22-py3.13) |
+| 25.04 (Development) | **[`ubuntu-rolling`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu-rolling)** | 24 | [***3.13***](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu25.04-node24-py3.13) |
+| 24.04 LTS (Current) | **[`ubuntu-latest`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu-latest)** | 22 | [***3.12***](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu24.04-node22-py3.12), [3.13](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu24.04-node22-py3.13) |
+| 22.04 LTS (Previous) | **[`ubuntu-previous`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu-previous)** | 20 | [***3.10***](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu22.04-node20-py3.10), [3.13](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu22.04-node20-py3.13) |
 
 **Note**: ***Italicised*** versions are the native Python for each Ubuntu release. Non-native
 versions use the latest stable Python (3.13) from deadsnakes PPA.
@@ -49,9 +49,9 @@ versions use the latest stable Python (3.13) from deadsnakes PPA.
 
 | Fedora Version | Alias Tag | Node.js | Python Versions Available |
 |----------------|-----------|---------|---------------------------|
-| Rawhide (Development) | **[`fedora-rawhide`](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora-rawhide)** | 22/24 | [**3.14**](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedorarawhide-node22-24-py3.14) |
-| 42 (Current) | **[`fedora-latest`](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora-latest)** | 22/24 | [**3.13**](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora42-node22-24-py3.13) |
-| 41 (Previous) | **[`fedora-previous`](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora-previous)** | 20/22 | [**3.13**](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora41-node20-22-py3.13) |
+| Rawhide (Development) | **[`fedora-rawhide`](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora-rawhide)** | 24 | [**3.14**](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedorarawhide-node24-py3.14) |
+| 42 (Current) | **[`fedora-latest`](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora-latest)** | 22 | [**3.13**](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora42-node22-py3.13) |
+| 41 (Previous) | **[`fedora-previous`](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora-previous)** | 20 | [**3.13**](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora41-node20-py3.13) |
 
 ## Debian images
 
@@ -59,9 +59,9 @@ versions use the latest stable Python (3.13) from deadsnakes PPA.
 
 | Debian Version | Alias Tag | Node.js | Python Versions Available |
 |----------------|-----------|---------|---------------------------|
-|  (Forky - Sid/Unstable) | **[`debian-sid`](https://git.tomfos.tr/tom/-/packages/container/act-runner/debian-sid)** | 22/24 | [**3.13**](https://git.tomfos.tr/tom/-/packages/container/act-runner/debian-node22-24-py3.13) |
-| 13 (Trixie - Stable) | **[`debian-latest`](https://git.tomfos.tr/tom/-/packages/container/act-runner/debian-latest)** | 22/24 | [**3.13**](https://git.tomfos.tr/tom/-/packages/container/act-runner/debian13-node22-24-py3.13) |
-| 12 (Bookworm - Oldstable) | **[`debian-oldstable`](https://git.tomfos.tr/tom/-/packages/container/act-runner/debian-oldstable)** | 20/22 | [**3.11**](https://git.tomfos.tr/tom/-/packages/container/act-runner/debian12-node20-22-py3.11) |
+|  (Forky - Sid/Unstable) | **[`debian-sid`](https://git.tomfos.tr/tom/-/packages/container/act-runner/debian-sid)** | 24 | [**3.13**](https://git.tomfos.tr/tom/-/packages/container/act-runner/debian-node24-py3.13) |
+| 13 (Trixie - Stable) | **[`debian-latest`](https://git.tomfos.tr/tom/-/packages/container/act-runner/debian-latest)** | 22 | [**3.13**](https://git.tomfos.tr/tom/-/packages/container/act-runner/debian13-node22-py3.13) |
+| 12 (Bookworm - Oldstable) | **[`debian-oldstable`](https://git.tomfos.tr/tom/-/packages/container/act-runner/debian-oldstable)** | 20 | [**3.11**](https://git.tomfos.tr/tom/-/packages/container/act-runner/debian12-node20-py3.11) |
 
 **Note**: Debian images use only the native Python version for each release,
 providing better system integration than external PPAs.
