@@ -27,10 +27,11 @@ LABEL org.opencontainers.image.title="act-runner-ubuntu${UBUNTU_VERSION}" \
 # Layer 1: Core build tools (rarely change - every few months)
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-cache-${UBUNTU_VERSION}-${TARGETARCH} \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked,id=act-ubuntu-apt-lists-${UBUNTU_VERSION}-${TARGETARCH} \
-    # Add _apt to root group to handle BuildKit's restrictive umask (027) \
-    usermod -a -G root _apt && \
+    # Configure APT for containerised builds \
     rm -f /etc/apt/apt.conf.d/docker-clean && \
-    apt-get update -qq && apt-get install -yqq -o Dpkg::Use-Pty=0 --no-install-recommends \
+    echo 'APT::Sandbox::User "root";' > /etc/apt/apt.conf.d/00docker-buildkit && \
+    echo 'Dpkg::Use-Pty "0";' >> /etc/apt/apt.conf.d/00docker-buildkit && \
+    apt-get -qq update && apt-get -qq install -y --no-install-recommends \
     # Build tools and compression utilities (alphabetically sorted)
     apt-utils \
     build-essential \
@@ -57,7 +58,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-ca
 # Layer 2: Monthly-update tools (git, security packages, certificates)
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-cache-${UBUNTU_VERSION}-${TARGETARCH} \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked,id=act-ubuntu-apt-lists-${UBUNTU_VERSION}-${TARGETARCH} \
-    apt-get update -qq && apt-get install -yqq -o Dpkg::Use-Pty=0 --no-install-recommends \
+    apt-get -qq update && apt-get -qq install -y --no-install-recommends \
     ca-certificates \
     git \
     git-lfs \
@@ -75,7 +76,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-ca
 # Using docker.io package for consistent multi-architecture support
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-cache-${UBUNTU_VERSION}-${TARGETARCH} \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked,id=act-ubuntu-apt-lists-${UBUNTU_VERSION}-${TARGETARCH} \
-    apt-get update -qq && apt-get install -yqq -o Dpkg::Use-Pty=0 --no-install-recommends \
+    apt-get -qq update && apt-get -qq install -y --no-install-recommends \
     docker-compose \
     docker.io \
     && apt-get clean \
@@ -119,7 +120,7 @@ RUN NODE_VERSION=$(ls /opt/hostedtoolcache/node | sort -V | tail -1) && \
 # Layer 5: Python installation
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-cache-${UBUNTU_VERSION}-${TARGETARCH} \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked,id=act-ubuntu-apt-lists-${UBUNTU_VERSION}-${TARGETARCH} \
-    apt-get update -qq && apt-get install -yqq -o Dpkg::Use-Pty=0 --no-install-recommends \
+    apt-get -qq update && apt-get -qq install -y --no-install-recommends \
     python3 \
     python3-apt \
     python3-setuptools \
@@ -152,7 +153,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-ca
     > /etc/apt/sources.list.d/github-cli.list && \
     \
     # Install GitHub CLI
-    apt-get update -qq && apt-get install -yqq -o Dpkg::Use-Pty=0 --no-install-recommends gh && \
+    apt-get -qq update && apt-get -qq install -y --no-install-recommends gh && \
     apt-get clean
 
 # Layer 8: Configure additional APT repositories for user convenience
@@ -162,7 +163,7 @@ RUN --mount=type=cache,target=/tmp/downloads,sharing=locked,id=act-ubuntu-downlo
     mkdir -p -m 755 /etc/apt/keyrings /etc/apt/sources.list.d && \
     \
     # Deadsnakes PPA - for newer Python versions (skip for rolling release)
-    apt-get update -qq && apt-get install -yqq -o Dpkg::Use-Pty=0 --no-install-recommends software-properties-common && \
+    apt-get -qq update && apt-get -qq install -y --no-install-recommends software-properties-common && \
     if [ "${UBUNTU_TAG}" != "rolling" ]; then \
         add-apt-repository ppa:deadsnakes/ppa -y; \
     fi && \
@@ -218,4 +219,4 @@ RUN git --version && \
     (command -v node >/dev/null 2>&1 && node --version || echo "Node.js not installed") && \
     (command -v npm >/dev/null 2>&1 && npm --version || echo "npm not installed") && \
     # Preload package lists and validate repositories
-    apt-get update
+    apt-get -qq update
