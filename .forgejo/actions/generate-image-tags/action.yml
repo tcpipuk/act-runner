@@ -15,8 +15,8 @@ inputs:
   os-version:
     description: OS version number (e.g. 24.04, 42, 12)
     required: true
-  node-versions:
-    description: Space-separated Node.js versions (e.g. "20 22")
+  node-version:
+    description: Single Node.js version (e.g. "22")
     required: true
   python-version:
     description: Python version (e.g. 3.12)
@@ -49,15 +49,15 @@ runs:
         IMAGE_NAME="${{ inputs.image-name }}"
         OS_NAME="${{ inputs.os-name }}"
         OS_VERSION="${{ inputs.os-version }}"
-        NODE_VERSIONS="${{ inputs.node-versions }}"
+        NODE_VERSION="${{ inputs.node-version }}"
         PYTHON_VERSION="${{ inputs.python-version }}"
         VARIANT="${{ inputs.variant }}"
         BRANCH_NAME="${{ inputs.branch-name }}"
 
-        echo "🏷️ Generating tags for ${OS_NAME}:${OS_VERSION} with Node.js ${NODE_VERSIONS} and Python ${PYTHON_VERSION}"
+        echo "🏷️ Generating tags for ${OS_NAME}:${OS_VERSION} with Node.js ${NODE_VERSION} and Python ${PYTHON_VERSION}"
 
-        # Convert Node.js versions to tag format (space to dash)
-        NODE_TAG=$(echo "${NODE_VERSIONS}" | tr ' ' '-')
+        # Use single Node.js version directly
+        NODE_TAG="${NODE_VERSION}"
 
         # Handle special OS versions
         if [ "$OS_VERSION" = "rawhide" ]; then
