@@ -18,7 +18,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-ca
         python${PYTHON_VERSION}-venv && \
     update-alternatives --install /usr/bin/python3 python3 /usr/bin/python${PYTHON_VERSION} 100 && \
     update-alternatives --install /usr/bin/python python /usr/bin/python${PYTHON_VERSION} 100 && \
-    python -m ensurepip
+    python -m ensurepip --root-user-action=ignore
 
 # Builder stage - using common python base
 FROM python AS apt-builder
@@ -31,7 +31,11 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-ca
         libapt-pkg-dev \
         python${PYTHON_VERSION}-dev && \
     cd /tmp && \
-    git clone --depth=1 https://salsa.debian.org/apt-team/python-apt.git && \
+    if [ "${UBUNTU_VERSION}" = "22.04" ]; then \
+        git clone --depth=1 --branch 2.7.5 https://salsa.debian.org/apt-team/python-apt.git; \
+    else \
+        git clone --depth=1 https://salsa.debian.org/apt-team/python-apt.git; \
+    fi && \
     cd python-apt && \
     python -m pip install --root-user-action=ignore --target /tmp/apt-install/usr/lib/python3/dist-packages .
 
