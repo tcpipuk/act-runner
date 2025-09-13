@@ -85,6 +85,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-ca
 # Set up environment paths and uv configuration
 ENV AGENT_TOOLSDIRECTORY=/opt/hostedtoolcache \
     UV_LINK_MODE=copy \
+    UV_NO_PROGRESS=true \
     PATH="/root/.local/bin:/root/.cargo/bin:${PATH}"
 
 # Layer 4: Node.js installation
