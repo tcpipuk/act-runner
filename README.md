@@ -81,7 +81,7 @@ providing better system integration than external PPAs.
 
 - Build essentials (gcc, g++, make, cmake, pkg-config)
 - Full Docker stack including daemon, CLI and Compose (via `docker.io` package on
-  Ubuntu/Debian, `docker-ce` on Fedora, all with multi-architecture support and
+  Ubuntu/Debian, `moby-engine` on Fedora, all with multi-architecture support and
   Docker-in-Docker capabilities)
 - [GitHub CLI](https://cli.github.com/manual/) (`gh`)
 - Git and Git LFS

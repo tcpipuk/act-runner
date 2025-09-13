@@ -376,13 +376,13 @@ jobs:
           for TAG in $ALL_TAGS; do
 
             # Include our patterns:
-            # - Ubuntu: ubuntu{version}-node{versions}-py{python}, ubuntu-{previous,latest,rolling}
-            # - Fedora: fedora{version}-node{versions}-py{python}, fedora-{previous,latest,rawhide}
-            # - Debian: debian{version}-node{versions}-py{python}, debian-{oldstable,latest,sid}
-            if [[ "$TAG" =~ ^ubuntu[0-9]+\.[0-9]+-node[0-9]+-[0-9]+-py[0-9]+\.[0-9]+$ ]] || \
-               [[ "$TAG" =~ ^fedora[0-9]+-node[0-9]+-[0-9]+-py[0-9]+\.[0-9]+$ ]] || \
-               [[ "$TAG" =~ ^fedorarawhide-node[0-9]+-[0-9]+-py[0-9]+\.[0-9]+$ ]] || \
-               [[ "$TAG" =~ ^debian[0-9]+-node[0-9]+-[0-9]+-py[0-9]+\.[0-9]+$ ]] || \
+            # - Ubuntu: ubuntu{version}-node{version}-py{python}, ubuntu-{previous,latest,rolling}
+            # - Fedora: fedora{version}-node{version}-py{python}, fedora-{previous,latest,rawhide}
+            # - Debian: debian{version}-node{version}-py{python}, debian-{oldstable,latest,sid}
+            if [[ "$TAG" =~ ^ubuntu[0-9]+\.[0-9]+-node[0-9]+-py[0-9]+\.[0-9]+$ ]] || \
+               [[ "$TAG" =~ ^fedora[0-9]+-node[0-9]+-py[0-9]+\.[0-9]+$ ]] || \
+               [[ "$TAG" =~ ^fedorarawhide-node[0-9]+-py[0-9]+\.[0-9]+$ ]] || \
+               [[ "$TAG" =~ ^debian[0-9]+-node[0-9]+-py[0-9]+\.[0-9]+$ ]] || \
                [[ "$TAG" =~ ^(ubuntu|fedora)-(previous|latest|rolling|rawhide)$ ]] || \
                [[ "$TAG" =~ ^debian-(oldstable|latest|sid)$ ]]; then
               TAGS_TO_MIRROR+=("$TAG")
