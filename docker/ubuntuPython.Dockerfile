@@ -11,7 +11,7 @@ ARG TARGETARCH
 
 # Install Python, venv, set up alternatives, and bootstrap pip
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-cache-${UBUNTU_VERSION}-${TARGETARCH} \
-    --mount=type=tmpfs,target=/var/lib/apt/lists \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked,id=act-ubuntu-apt-lists-${UBUNTU_VERSION}-${TARGETARCH} \
     apt-get update -qq && \
     DEBIAN_FRONTEND=noninteractive apt-get install -yqq -o Dpkg::Use-Pty=0 \
         python${PYTHON_VERSION} \
@@ -25,7 +25,7 @@ FROM python AS apt-builder
 
 # Install development packages and build python3-apt for custom Python version
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-cache-${UBUNTU_VERSION}-${TARGETARCH} \
-    --mount=type=tmpfs,target=/var/lib/apt/lists \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked,id=act-ubuntu-apt-lists-${UBUNTU_VERSION}-${TARGETARCH} \
     apt-get update -qq && \
     DEBIAN_FRONTEND=noninteractive apt-get install -yqq -o Dpkg::Use-Pty=0 \
         libapt-pkg-dev \
