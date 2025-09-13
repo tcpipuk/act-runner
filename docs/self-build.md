@@ -24,9 +24,9 @@ The images are now built in a single step with all components (Ubuntu/Fedora + N
 ```bash
 docker build -f docker/ubuntu.Dockerfile \
   --build-arg UBUNTU_VERSION=24.04 \
-  --build-arg NODE_VERSIONS="22 24" \
+  --build-arg NODE_VERSION=22 \
   --build-arg PYTHON_VERSION=3.13 \
-  -t act-runner:ubuntu24.04-node22-24-py3.13 \
+  -t act-runner:ubuntu24.04-node22-py3.13 \
   ./docker
 ```
 
@@ -35,10 +35,10 @@ For native Python instead of deadsnakes:
 ```bash
 docker build -f docker/ubuntu.Dockerfile \
   --build-arg UBUNTU_VERSION=24.04 \
-  --build-arg NODE_VERSIONS="22 24" \
+  --build-arg NODE_VERSION=22 \
   --build-arg PYTHON_VERSION=3.12 \
   --build-arg USE_NATIVE_PYTHON=true \
-  -t act-runner:ubuntu24.04-node22-24-py3.12 \
+  -t act-runner:ubuntu24.04-node22-py3.12 \
   ./docker
 ```
 
@@ -47,8 +47,8 @@ docker build -f docker/ubuntu.Dockerfile \
 ```bash
 docker build -f docker/fedora.Dockerfile \
   --build-arg FEDORA_VERSION=42 \
-  --build-arg NODE_VERSIONS="22 24" \
-  -t act-runner:fedora42-node22-24-py3.13 \
+  --build-arg NODE_VERSION=22 \
+  -t act-runner:fedora42-node22-py3.13 \
   ./docker
 ```
 
@@ -60,15 +60,15 @@ workflow files for the current matrix of supported versions.
 **Ubuntu Dockerfile (`docker/ubuntu.Dockerfile`):**
 
 - `UBUNTU_VERSION` - Ubuntu version to use (e.g. "24.04")
-- `NODE_VERSIONS` - Space-separated Node.js versions (e.g. "22 24")
+- `NODE_VERSION` - Node.js version (e.g. "22")
 - `PYTHON_VERSION` - Python version (e.g. "3.13")
-- `USE_NATIVE_PYTHON` - Set to "true" to use native Ubuntu Python instead of deadsnakes
+- `USE_NATIVE_PYTHON` - Set to "true" to use native Ubuntu Python (now default behaviour)
 - `K8S_VERSION` - Kubernetes version for repository setup (e.g. "1.31")
 
 **Fedora Dockerfile (`docker/fedora.Dockerfile`):**
 
 - `FEDORA_VERSION` - Fedora version to use (e.g. "42" or "rawhide")
-- `NODE_VERSIONS` - Space-separated Node.js versions (e.g. "22 24")
+- `NODE_VERSION` - Node.js version (e.g. "22")
 - `K8S_VERSION` - Kubernetes version for repository setup (e.g. "1.31")
 
 ## BuildKit features
@@ -91,9 +91,9 @@ Or use Docker Buildx:
 ```bash
 docker buildx build -f docker/ubuntu.Dockerfile \
   --build-arg UBUNTU_VERSION=24.04 \
-  --build-arg NODE_VERSIONS="22 24" \
+  --build-arg NODE_VERSION=22 \
   --build-arg PYTHON_VERSION=3.13 \
-  -t act-runner:ubuntu24.04-node22-24-py3.13 \
+  -t act-runner:ubuntu24.04-node22-py3.13 \
   ./docker
 ```
 
@@ -109,9 +109,9 @@ docker buildx create --use
 docker buildx build -f docker/ubuntu.Dockerfile \
   --platform linux/amd64,linux/arm64,linux/ppc64le,linux/s390x \
   --build-arg UBUNTU_VERSION=24.04 \
-  --build-arg NODE_VERSIONS="22 24" \
+  --build-arg NODE_VERSION=22 \
   --build-arg PYTHON_VERSION=3.13 \
-  -t act-runner:ubuntu24.04-node22-24-py3.13 \
+  -t act-runner:ubuntu24.04-node22-py3.13 \
   --push \
   ./docker
 ```
@@ -121,13 +121,13 @@ docker buildx build -f docker/ubuntu.Dockerfile \
 With Docker:
 
 ```bash
-docker run --rm -it act-runner:ubuntu24.04-node22-24-py3.13 bash
+docker run --rm -it act-runner:ubuntu24.04-node22-py3.13 bash
 ```
 
 With ACT:
 
 ```bash
-act -P ubuntu-latest=act-runner:ubuntu24.04-node22-24-py3.13
+act -P ubuntu-latest=act-runner:ubuntu24.04-node22-py3.13
 ```
 
 In GitHub/Forgejo Actions:
@@ -136,7 +136,7 @@ In GitHub/Forgejo Actions:
 jobs:
   test:
     runs-on: ubuntu-latest
-    container: act-runner:ubuntu24.04-node22-24-py3.13
+    container: act-runner:ubuntu24.04-node22-py3.13
     steps:
       - uses: actions/checkout@v4
       - run: python --version
@@ -154,12 +154,12 @@ command. Remember to:
 
 To change tool versions:
 
-- **Node.js**: Modify `NODE_VERSIONS` build argument
+- **Node.js**: Modify `NODE_VERSION` build argument
 - **Python**: Modify `PYTHON_VERSION` build argument
 - **Ubuntu**: Modify `UBUNTU_VERSION` build argument
 
-For tools that should be available in all images, add them to `Dockerfile.base`. For
-language-specific tools, add them to the appropriate Dockerfile.
+For tools that should be available in all images, add them to the base section of each
+Dockerfile. For language-specific tools, add them to the appropriate Dockerfile.
 
 ## Troubleshooting
 
@@ -180,9 +180,9 @@ docker builder prune
 # Force rebuild without cache
 docker build --no-cache -f docker/ubuntu.Dockerfile \
   --build-arg UBUNTU_VERSION=24.04 \
-  --build-arg NODE_VERSIONS="22 24" \
+  --build-arg NODE_VERSION=22 \
   --build-arg PYTHON_VERSION=3.13 \
-  -t act-runner:ubuntu24.04-node22-24-py3.13 \
+  -t act-runner:ubuntu24.04-node22-py3.13 \
   ./docker
 ```
 

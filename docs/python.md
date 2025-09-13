@@ -7,9 +7,10 @@ environment variables, and configuration decisions.
 
 ### Python installations
 
-Images include either the Ubuntu distribution's native Python or additional versions from the
-[deadsnakes PPA](https://launchpad.net/~deadsnakes/+archive/ubuntu/ppa). The native Python version
-varies by Ubuntu release and includes `python3-apt` for system package compatibility.
+Images include Ubuntu's native Python version, with optionally additional versions from the
+[deadsnakes PPA](https://launchpad.net/~deadsnakes/+archive/ubuntu/ppa) in separate image variants.
+The native Python version varies by Ubuntu release and includes `python3-apt` for system package
+compatibility.
 
 Each Python installation includes:
 
@@ -17,14 +18,14 @@ Each Python installation includes:
 - `python{version}-venv` - Virtual environment support
 - `python3-apt` - APT Python bindings (only with native Python versions)
 
-We deliberately exclude `python-distutils` (deprecated since Python 3.10, removed in 3.12+).
-Legacy code requiring distutils may need to install it separately.
+Modern Python versions (3.12+) don't include `python-distutils` as it was deprecated in 3.10
+and removed entirely. Legacy code requiring distutils may need to install it separately.
 
 See the [main README](../README.md#available-images) for current available versions.
 
 ### Pre-installed development tools
 
-All Python images come with these development tools pre-installed via [uv](https://github.com/astral-sh/uv):
+All Python images include these development tools pre-installed via [uv](https://github.com/astral-sh/uv):
 
 - [**prek**](https://github.com/kpumuk/prek) - Pre-commit hook runner
 - [**ruff**](https://github.com/astral-sh/ruff) - Fast Python linter and formatter
@@ -42,14 +43,14 @@ The following environment variables are pre-configured:
 | `UV_LINK_MODE` | `copy` | Reduces verbosity in CI logs |
 | `PATH` | `/root/.local/bin:$PATH` | Includes uv and installed tools |
 
-The PATH modification ensures `uv` itself is available, tools installed via `uv tool install` are
-accessible, and there are no warnings about PATH during tool installation.
+The PATH modification ensures `uv` itself is available, makes tools installed via
+`uv tool install` accessible, and prevents warnings about PATH during tool installation.
 
 ## Working with Python
 
 ### Managing tools
 
-All Python tools are managed via uv and can be updated or removed:
+You can manage all Python tools via uv:
 
 ```bash
 # Update a tool
@@ -68,7 +69,7 @@ uv tool list
 
 ### Virtual environments
 
-Python virtual environment support is built-in:
+Virtual environment support works as expected:
 
 ```bash
 # Create a virtual environment
@@ -85,29 +86,29 @@ source .venv/bin/activate
 
 ### Why uv?
 
-We use [uv](https://github.com/astral-sh/uv) as our Python package installer because:
+We use [uv](https://github.com/astral-sh/uv) as our Python package installer because it:
 
-- It's 10-100x faster than pip
+- Is 10-100x faster than pip
 - Provides consistent tool management via `uv tool`
 - Reduces CI build times significantly
-- Maintained by the Ruff team (Astral)
+- Is maintained by the Ruff team (Astral)
 
 ### Why these specific tools?
 
-The pre-installed tools cover the most common Python development needs:
+The pre-installed tools cover common Python development needs:
 
 - **Linting & Formatting**: ruff, black, isort
 - **Type Checking**: mypy
 - **Testing**: pytest
 - **Pre-commit**: prek
 
-This provides a complete Python development environment out of the box while keeping the
-image size reasonable.
+This gives you a complete Python development environment whilst keeping the image size
+reasonable.
 
 ### Why no distutils?
 
 Python's `distutils` was deprecated in Python 3.10 and removed entirely in Python 3.12. Most
-modern Python packages have migrated to `setuptools` or other build systems. We exclude it to:
+modern Python packages have migrated to `setuptools` or other build systems. We don't include it to:
 
 - Keep images smaller
 - Encourage modern packaging practices
@@ -153,4 +154,4 @@ export PATH="/root/.local/bin:$PATH"
 
 If you need a Python version not included in our images, use the
 [actions/setup-python](https://github.com/actions/setup-python) action in your workflow. It
-supports all Python versions and includes built-in caching options.
+supports all Python versions and includes built-in caching.
