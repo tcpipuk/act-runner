@@ -12,8 +12,8 @@ ARG TARGETARCH
 # Install Python, venv, set up alternatives, and bootstrap pip
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-cache-${UBUNTU_VERSION}-${TARGETARCH} \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked,id=act-ubuntu-apt-lists-${UBUNTU_VERSION}-${TARGETARCH} \
-    apt-get update -qq && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -yqq -o Dpkg::Use-Pty=0 \
+    apt-get -qq update && \
+    DEBIAN_FRONTEND=noninteractive apt-get -qq install -y \
         python${PYTHON_VERSION} \
         python${PYTHON_VERSION}-venv && \
     update-alternatives --install /usr/bin/python3 python3 /usr/bin/python${PYTHON_VERSION} 100 && \
@@ -26,8 +26,8 @@ FROM python AS apt-builder
 # Install development packages and build python3-apt for custom Python version
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-cache-${UBUNTU_VERSION}-${TARGETARCH} \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked,id=act-ubuntu-apt-lists-${UBUNTU_VERSION}-${TARGETARCH} \
-    apt-get update -qq && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -yqq -o Dpkg::Use-Pty=0 \
+    apt-get -qq update && \
+    DEBIAN_FRONTEND=noninteractive apt-get -qq install -y \
         libapt-pkg-dev \
         python${PYTHON_VERSION}-dev && \
     cd /tmp && \
