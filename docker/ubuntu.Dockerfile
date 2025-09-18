@@ -156,7 +156,14 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-ca
         # Ubuntu 22.04 - install gh and download yq binary
         apt-get -qq install -y --no-install-recommends gh && \
         YQ_VERSION=$(curl -s https://api.github.com/repos/mikefarah/yq/releases/latest | grep -o '"tag_name": "v[^"]*"' | cut -d'"' -f4) && \
-        curl -sL "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" -o /usr/local/bin/yq && \
+        case "${TARGETARCH}" in \
+            amd64) YQ_ARCH="amd64" ;; \
+            arm64) YQ_ARCH="arm64" ;; \
+            ppc64le) YQ_ARCH="ppc64le" ;; \
+            s390x) YQ_ARCH="s390x" ;; \
+            *) echo "Unsupported architecture: ${TARGETARCH}" >&2; exit 1 ;; \
+        esac && \
+        curl -sL "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_${YQ_ARCH}" -o /usr/local/bin/yq && \
         chmod +x /usr/local/bin/yq; \
     fi && \
     apt-get clean
