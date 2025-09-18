@@ -147,8 +147,18 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-ca
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
     > /etc/apt/sources.list.d/github-cli.list && \
     \
-    # Install GitHub CLI
-    apt-get -qq update && apt-get -qq install -y --no-install-recommends gh yq && \
+    # Install GitHub CLI and yq (conditional for Ubuntu version)
+    apt-get -qq update && \
+    if apt-cache show yq >/dev/null 2>&1; then \
+        # Ubuntu 24+ has yq in repositories
+        apt-get -qq install -y --no-install-recommends gh yq; \
+    else \
+        # Ubuntu 22.04 - install gh and download yq binary
+        apt-get -qq install -y --no-install-recommends gh && \
+        YQ_VERSION=$(curl -s https://api.github.com/repos/mikefarah/yq/releases/latest | grep -o '"tag_name": "v[^"]*"' | cut -d'"' -f4) && \
+        curl -sL "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" -o /usr/local/bin/yq && \
+        chmod +x /usr/local/bin/yq; \
+    fi && \
     apt-get clean
 
 # Layer 8: Configure additional APT repositories for user convenience
