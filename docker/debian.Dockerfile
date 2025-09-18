@@ -148,7 +148,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-debian-apt-ca
     > /etc/apt/sources.list.d/github-cli.list && \
     \
     # Install GitHub CLI
-    apt-get -qq update && apt-get -qq install -y --no-install-recommends gh && \
+    apt-get -qq update && apt-get -qq install -y --no-install-recommends gh yq && \
     apt-get clean
 
 # Layer 8: Configure additional APT repositories for user convenience
