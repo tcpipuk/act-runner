@@ -122,7 +122,7 @@ RUN --mount=type=cache,target=/var/cache,sharing=locked,id=act-fedora-cache-${FE
 RUN --mount=type=cache,target=/var/cache,sharing=locked,id=act-fedora-cache-${FEDORA_VERSION}-${TARGETARCH} \
     --mount=type=cache,target=/var/lib/dnf,sharing=locked,id=act-fedora-dnf-state-${FEDORA_VERSION}-${TARGETARCH} \
     dnf config-manager addrepo --from-repofile=https://cli.github.com/packages/rpm/gh-cli.repo && \
-    dnf install -yq gh && dnf clean all
+    dnf install -yq gh yq && dnf clean all
 
 # Layer 7: Optional repositories for user convenience
 # Users can install: kubectl, terraform, docker-ce, dotnet, powershell, azure-cli, etc.
