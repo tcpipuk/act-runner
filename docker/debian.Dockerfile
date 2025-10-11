@@ -123,6 +123,25 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-debian-apt-ca
     && apt-get clean \
     && update-alternatives --install /usr/bin/python python /usr/bin/python3 100
 
+# Layer 5.5: Go installation
+ARG GO_VERSION=MUST_PROVIDE_GO_VERSION
+RUN --mount=type=cache,target=/tmp/downloads,sharing=locked,id=act-debian-downloads-${DEBIAN_VERSION}-${TARGETARCH} \
+    ARCH=$(dpkg --print-architecture) && \
+    case "$ARCH" in \
+        ppc64el) ARCH=ppc64le ;; \
+    esac && \
+    TARBALL="/tmp/downloads/go${GO_VERSION}.linux-${ARCH}.tar.gz" && \
+    if [ ! -f "${TARBALL}" ] || ! gzip -t "${TARBALL}" 2>/dev/null; then \
+        echo "Downloading Go ${GO_VERSION} for ${ARCH}..." && \
+        rm -f "${TARBALL}" && \
+        curl -fSL "https://go.dev/dl/go${GO_VERSION}.linux-${ARCH}.tar.gz" -o "${TARBALL}" || \
+            (echo "Failed to download Go ${GO_VERSION} for ${ARCH}" && exit 1) && \
+        gzip -t "${TARBALL}" || (echo "Downloaded file is corrupted" && rm -f "${TARBALL}" && exit 1); \
+    fi && \
+    echo "Extracting Go ${GO_VERSION}..." && \
+    tar -xzf "${TARBALL}" -C /usr/local && \
+    ln -sf /usr/local/go/bin/* /usr/local/bin/
+
 # Layer 6: uv, Python tools, and Rust installation
 RUN --mount=type=cache,target=/root/.cache/uv,sharing=locked,id=act-debian-uv-cache-${DEBIAN_VERSION}-${TARGETARCH} \
     curl -LsSf https://astral.sh/uv/install.sh | sh \
@@ -134,7 +153,13 @@ RUN --mount=type=cache,target=/root/.cache/uv,sharing=locked,id=act-debian-uv-ca
     && uv tool install isort \
     && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
         sh -s -- -y --no-modify-path --profile minimal --default-toolchain none \
-    && echo 'source $HOME/.cargo/env' >> /etc/bash.bashrc
+    && echo 'source $HOME/.cargo/env' >> /etc/bash.bashrc \
+    && . "$HOME/.cargo/env" \
+    && if [ "${DEBIAN_TAG}" = "sid" ]; then \
+        rustup toolchain install nightly && rustup default nightly; \
+    else \
+        rustup toolchain install stable && rustup default stable; \
+    fi
 
 # Layer 7: GitHub CLI installation
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-debian-apt-cache-${DEBIAN_VERSION}-${TARGETARCH} \
@@ -209,6 +234,7 @@ RUN git --version && \
     (command -v docker >/dev/null 2>&1 && docker --version || echo "Docker not installed") && \
     gh --version && \
     python3 --version && \
+    go version && \
     (command -v rustup >/dev/null 2>&1 && rustup --version || echo "Rust not installed") && \
     uv --version && \
     (command -v node >/dev/null 2>&1 && node --version || echo "Node.js not installed") && \

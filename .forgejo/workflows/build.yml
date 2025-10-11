@@ -28,6 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       k8s-version: ${{ steps.k8s.outputs.version }}
+      go-version: ${{ steps.go.outputs.version }}
       # Node.js versions (shared across all builds)
       node-previous: ${{ steps.node.outputs.node-previous }}
       node-latest: ${{ steps.node.outputs.node-latest }}
@@ -87,6 +88,13 @@ jobs:
           K8S_VERSION=$(curl -L -s https://dl.k8s.io/release/stable.txt | cut -d. -f1-2 | sed 's/v//')
           echo "version=${K8S_VERSION}" >> $GITHUB_OUTPUT
           echo "🎯 Kubernetes stable version: ${K8S_VERSION}"
+
+      - name: Get stable Go version
+        id: go
+        run: |
+          GO_VERSION=$(curl -fsSL 'https://go.dev/dl/?mode=json' | jq -r '[.[] | select(.stable==true)][0].version' | sed 's/^go//')
+          echo "version=${GO_VERSION}" >> $GITHUB_OUTPUT
+          echo "🎯 Go stable version: ${GO_VERSION}"
 
       - name: Detect Node.js versions
         id: node
@@ -190,6 +198,7 @@ jobs:
             NODE_VERSION=${{ matrix.variant == 'previous' && needs.prepare.outputs.node-previous || matrix.variant == 'latest' && needs.prepare.outputs.node-latest || matrix.variant == 'rolling' && needs.prepare.outputs.node-unstable }}
             PYTHON_VERSION=${{ matrix.variant == 'previous' && needs.prepare.outputs.ubuntu-previous-python || matrix.variant == 'latest' && needs.prepare.outputs.ubuntu-latest-python || matrix.variant == 'rolling' && needs.prepare.outputs.ubuntu-rolling-python }}
             USE_NATIVE_PYTHON=true
+            GO_VERSION=${{ needs.prepare.outputs.go-version }}
             K8S_VERSION=${{ needs.prepare.outputs.k8s-version }}
           platforms: linux/amd64,linux/arm64/v8,linux/ppc64le,linux/s390x
 
@@ -292,6 +301,7 @@ jobs:
             FEDORA_TAG=${{ matrix.variant == 'previous' && needs.prepare.outputs.fedora-previous-tag || matrix.variant == 'latest' && needs.prepare.outputs.fedora-latest-tag || matrix.variant == 'rawhide' && needs.prepare.outputs.fedora-rawhide-tag }}
             FEDORA_VERSION=${{ matrix.variant == 'previous' && needs.prepare.outputs.fedora-previous || matrix.variant == 'latest' && needs.prepare.outputs.fedora-latest || matrix.variant == 'rawhide' && needs.prepare.outputs.fedora-rawhide }}
             NODE_VERSION=${{ matrix.variant == 'previous' && needs.prepare.outputs.node-previous || matrix.variant == 'latest' && needs.prepare.outputs.node-latest || matrix.variant == 'rawhide' && needs.prepare.outputs.node-unstable }}
+            GO_VERSION=${{ needs.prepare.outputs.go-version }}
             K8S_VERSION=${{ needs.prepare.outputs.k8s-version }}
           platforms: linux/amd64,linux/arm64/v8,linux/ppc64le,linux/s390x
 
@@ -344,6 +354,7 @@ jobs:
             DEBIAN_TAG=${{ matrix.variant == 'oldstable' && needs.prepare.outputs.debian-oldstable-tag || matrix.variant == 'stable' && needs.prepare.outputs.debian-stable-tag || matrix.variant == 'sid' && needs.prepare.outputs.debian-sid-tag }}
             DEBIAN_VERSION=${{ matrix.variant == 'oldstable' && needs.prepare.outputs.debian-oldstable || matrix.variant == 'stable' && needs.prepare.outputs.debian-stable || matrix.variant == 'sid' && needs.prepare.outputs.debian-sid }}
             NODE_VERSION=${{ matrix.variant == 'oldstable' && needs.prepare.outputs.node-previous || matrix.variant == 'stable' && needs.prepare.outputs.node-latest || matrix.variant == 'sid' && needs.prepare.outputs.node-unstable }}
+            GO_VERSION=${{ needs.prepare.outputs.go-version }}
             K8S_VERSION=${{ needs.prepare.outputs.k8s-version }}
           platforms: linux/amd64,linux/arm64/v8,linux/ppc64le,linux/s390x
 

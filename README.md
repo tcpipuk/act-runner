@@ -97,10 +97,12 @@ providing better system integration than external PPAs.
 - [Node.js](https://nodejs.org/) with npm/npx (single version per image: oldest supported
   LTS for 'previous/oldstable' releases, newest LTS for 'latest/stable' releases, newest
   stable for 'rolling/rawhide/sid' releases)
+- [Go](https://go.dev/) (latest stable release across all images)
 - Python (native OS version, plus optionally latest stable Python from deadsnakes PPA for
   non-rolling Ubuntu releases)
 - [uv](https://docs.astral.sh/uv/) package manager
-- Rust toolchain manager (rustup) with minimal profile
+- Rust toolchain manager (rustup) with minimal profile (stable toolchain for stable distros,
+  nightly toolchain for rolling/rawhide/sid releases)
 - Pre-installed Python development tools (ruff, mypy, pytest, black, isort, prek)
 - Compatible with [actions/setup-node](https://github.com/actions/setup-node)
 - See [docs/python.md](docs/python.md) for full details
