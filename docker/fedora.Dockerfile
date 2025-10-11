@@ -102,6 +102,22 @@ RUN --mount=type=cache,target=/tmp/downloads,sharing=locked,id=act-fedora-downlo
     ln -sf ${NODE_PATH}/bin/npm /usr/local/bin/npm && \
     ln -sf ${NODE_PATH}/bin/npx /usr/local/bin/npx
 
+# Layer 4.5: Go installation
+ARG GO_VERSION=MUST_PROVIDE_GO_VERSION
+RUN --mount=type=cache,target=/tmp/downloads,sharing=locked,id=act-fedora-downloads-${FEDORA_VERSION}-${TARGETARCH} \
+    ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/') && \
+    TARBALL="/tmp/downloads/go${GO_VERSION}.linux-${ARCH}.tar.gz" && \
+    if [ ! -f "${TARBALL}" ] || ! gzip -t "${TARBALL}" 2>/dev/null; then \
+        echo "Downloading Go ${GO_VERSION} for ${ARCH}..." && \
+        rm -f "${TARBALL}" && \
+        curl -fSL "https://go.dev/dl/go${GO_VERSION}.linux-${ARCH}.tar.gz" -o "${TARBALL}" || \
+            (echo "Failed to download Go ${GO_VERSION} for ${ARCH}" && exit 1) && \
+        gzip -t "${TARBALL}" || (echo "Downloaded file is corrupted" && rm -f "${TARBALL}" && exit 1); \
+    fi && \
+    echo "Extracting Go ${GO_VERSION}..." && \
+    tar -xzf "${TARBALL}" -C /usr/local && \
+    ln -sf /usr/local/go/bin/* /usr/local/bin/
+
 # Layer 5: uv, Python tools, and Rust installation
 RUN --mount=type=cache,target=/var/cache,sharing=locked,id=act-fedora-cache-${FEDORA_VERSION}-${TARGETARCH} \
     --mount=type=cache,target=/var/lib/dnf,sharing=locked,id=act-fedora-dnf-state-${FEDORA_VERSION}-${TARGETARCH} \
@@ -116,7 +132,13 @@ RUN --mount=type=cache,target=/var/cache,sharing=locked,id=act-fedora-cache-${FE
     && dnf install -yq rustup \
     && dnf clean all \
     && rustup-init -y --no-modify-path --profile minimal --default-toolchain none \
-    && echo 'source $HOME/.cargo/env' >> /etc/bashrc
+    && echo 'source $HOME/.cargo/env' >> /etc/bashrc \
+    && . "$HOME/.cargo/env" \
+    && if [ "${FEDORA_TAG}" = "rawhide" ]; then \
+        rustup toolchain install nightly && rustup default nightly; \
+    else \
+        rustup toolchain install stable && rustup default stable; \
+    fi
 
 # Layer 6: GitHub CLI installation
 RUN --mount=type=cache,target=/var/cache,sharing=locked,id=act-fedora-cache-${FEDORA_VERSION}-${TARGETARCH} \
@@ -159,6 +181,7 @@ RUN git --version && \
     docker --version && \
     gh --version && \
     python3 --version && \
+    go version && \
     rustup --version && \
     uv --version && \
     (command -v node >/dev/null 2>&1 && node --version || echo "Node.js not installed") && \
