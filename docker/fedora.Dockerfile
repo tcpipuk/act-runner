@@ -11,6 +11,9 @@ ARG TARGETARCH
 # Set shell options for better error detection
 SHELL ["/bin/bash", "-e", "-c"]
 
+# Disable Python bytecode compilation (QEMU workaround)
+ENV PYTHONDONTWRITEBYTECODE=1
+
 # Metadata
 LABEL org.opencontainers.image.title="act-runner-fedora${FEDORA_VERSION}-base" \
     org.opencontainers.image.description="Optimized ACT/Forgejo runner base image with essential CI tools for Fedora ${FEDORA_VERSION}" \
