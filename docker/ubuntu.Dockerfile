@@ -200,13 +200,15 @@ RUN --mount=type=cache,target=/tmp/downloads,sharing=locked,id=act-ubuntu-downlo
         add-apt-repository ppa:deadsnakes/ppa -y; \
     fi && \
     \
-    # LLVM/Clang - for C/C++ development
-    CODENAME=$(lsb_release -cs) && \
-    wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | \
-    gpg --dearmor -o /etc/apt/keyrings/llvm-archive-keyring.gpg && \
-    echo "deb [signed-by=/etc/apt/keyrings/llvm-archive-keyring.gpg] \
-    https://apt.llvm.org/${CODENAME}/ llvm-toolchain-${CODENAME} main" \
-    > /etc/apt/sources.list.d/llvm.list && \
+    # LLVM/Clang - for C/C++ development (skip for rolling release)
+    if [ "${UBUNTU_TAG}" != "rolling" ]; then \
+        CODENAME=$(lsb_release -cs) && \
+        wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | \
+        gpg --dearmor -o /etc/apt/keyrings/llvm-archive-keyring.gpg && \
+        echo "deb [signed-by=/etc/apt/keyrings/llvm-archive-keyring.gpg] \
+        https://apt.llvm.org/${CODENAME}/ llvm-toolchain-${CODENAME} main" \
+        > /etc/apt/sources.list.d/llvm.list; \
+    fi && \
     \
     # Kubernetes - for k8s operations
     curl -fsSL https://pkgs.k8s.io/core:/stable:/v${K8S_VERSION}/deb/Release.key | \
@@ -215,12 +217,14 @@ RUN --mount=type=cache,target=/tmp/downloads,sharing=locked,id=act-ubuntu-downlo
     https://pkgs.k8s.io/core:/stable:/v${K8S_VERSION}/deb/ /" \
     > /etc/apt/sources.list.d/kubernetes.list && \
     \
-    # HashiCorp - for Terraform, Vault, Consul, etc.
-    wget -q -O- https://apt.releases.hashicorp.com/gpg | \
-    gpg --dearmor -o /etc/apt/keyrings/hashicorp-archive-keyring.gpg && \
-    echo "deb [signed-by=/etc/apt/keyrings/hashicorp-archive-keyring.gpg] \
-    https://apt.releases.hashicorp.com $(lsb_release -cs) main" \
-    > /etc/apt/sources.list.d/hashicorp.list && \
+    # HashiCorp - for Terraform, Vault, Consul, etc. (skip for rolling release)
+    if [ "${UBUNTU_TAG}" != "rolling" ]; then \
+        wget -q -O- https://apt.releases.hashicorp.com/gpg | \
+        gpg --dearmor -o /etc/apt/keyrings/hashicorp-archive-keyring.gpg && \
+        echo "deb [signed-by=/etc/apt/keyrings/hashicorp-archive-keyring.gpg] \
+        https://apt.releases.hashicorp.com $(lsb_release -cs) main" \
+        > /etc/apt/sources.list.d/hashicorp.list; \
+    fi && \
     \
     # Microsoft ecosystem (PowerShell, .NET, Azure CLI)
     PACKAGE_PATH="/tmp/downloads/packages-microsoft-prod-$(lsb_release -rs).deb" && \
