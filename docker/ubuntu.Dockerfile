@@ -11,8 +11,9 @@ ARG TARGETARCH
 # Set shell options for better error detection
 SHELL ["/bin/bash", "-e", "-c"]
 
-# Force non-interactive apt
-ENV DEBIAN_FRONTEND=noninteractive
+# Force non-interactive apt and disable Python bytecode compilation (QEMU workaround)
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONDONTWRITEBYTECODE=1
 
 # Metadata (will be updated with actual versions during build)
 LABEL org.opencontainers.image.title="act-runner-ubuntu${UBUNTU_VERSION}" \
