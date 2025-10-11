@@ -75,6 +75,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker
         uses: docker/setup-buildx-action@v3
@@ -200,7 +202,7 @@ jobs:
             USE_NATIVE_PYTHON=true
             GO_VERSION=${{ needs.prepare.outputs.go-version }}
             K8S_VERSION=${{ needs.prepare.outputs.k8s-version }}
-          platforms: linux/amd64,linux/arm64/v8,linux/s390x
+          platforms: linux/amd64,linux/arm64/v8,linux/ppc64le,linux/s390x
 
   build-ubuntu-python:
     name: Build Ubuntu ${{ matrix.variant == 'previous' && 'Previous' || matrix.variant == 'latest' && 'Latest' }} Python 3.13
@@ -250,7 +252,7 @@ jobs:
             BASE_IMAGE=${{ matrix.variant == 'previous' && needs.prepare.outputs.ubuntu-python-previous-base || needs.prepare.outputs.ubuntu-python-latest-base }}
             PYTHON_VERSION=${{ needs.prepare.outputs.python-deadsnakes }}
             UBUNTU_VERSION=${{ matrix.variant == 'previous' && needs.prepare.outputs.ubuntu-previous || needs.prepare.outputs.ubuntu-latest }}
-          platforms: linux/amd64,linux/arm64/v8,linux/s390x
+          platforms: linux/amd64,linux/arm64/v8,linux/ppc64le,linux/s390x
 
   build-fedora:
     name: Build Fedora ${{ matrix.variant == 'previous' && 'Previous' || matrix.variant == 'latest' && 'Latest' || matrix.variant == 'rawhide' && 'Rawhide' }}
@@ -303,7 +305,7 @@ jobs:
             NODE_VERSION=${{ matrix.variant == 'previous' && needs.prepare.outputs.node-previous || matrix.variant == 'latest' && needs.prepare.outputs.node-latest || matrix.variant == 'rawhide' && needs.prepare.outputs.node-unstable }}
             GO_VERSION=${{ needs.prepare.outputs.go-version }}
             K8S_VERSION=${{ needs.prepare.outputs.k8s-version }}
-          platforms: linux/amd64,linux/arm64/v8,linux/s390x
+          platforms: linux/amd64,linux/arm64/v8,linux/ppc64le,linux/s390x
 
   build-debian:
     name: Build Debian ${{ matrix.variant == 'oldstable' && 'Oldstable' || matrix.variant == 'stable' && 'Stable' || matrix.variant == 'sid' && 'Sid/Unstable' }}
@@ -356,7 +358,7 @@ jobs:
             NODE_VERSION=${{ matrix.variant == 'oldstable' && needs.prepare.outputs.node-previous || matrix.variant == 'stable' && needs.prepare.outputs.node-latest || matrix.variant == 'sid' && needs.prepare.outputs.node-unstable }}
             GO_VERSION=${{ needs.prepare.outputs.go-version }}
             K8S_VERSION=${{ needs.prepare.outputs.k8s-version }}
-          platforms: linux/amd64,linux/arm64/v8,linux/s390x
+          platforms: linux/amd64,linux/arm64/v8,linux/ppc64le,linux/s390x
 
   mirror-to-github:
     name: Mirror Images to GHCR
