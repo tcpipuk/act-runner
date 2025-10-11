@@ -72,7 +72,6 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-debian-apt-ca
     python3 \
     python3-apt \
     python3-setuptools \
-    python3-software-properties \
     python3-venv \
     sudo \
     && apt-get clean \
