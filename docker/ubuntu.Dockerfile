@@ -119,6 +119,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-ca
     python3 \
     python3-apt \
     python3-setuptools \
+    python3-software-properties \
     python3-venv \
     && apt-get clean \
     && update-alternatives --install /usr/bin/python python /usr/bin/python3 100
