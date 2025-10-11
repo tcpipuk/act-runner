@@ -204,7 +204,9 @@ jobs:
             USE_NATIVE_PYTHON=true
             GO_VERSION=${{ needs.prepare.outputs.go-version }}
             K8S_VERSION=${{ needs.prepare.outputs.k8s-version }}
-          platforms: linux/amd64,linux/arm64/v8,linux/ppc64le,linux/s390x
+          # TODO: Re-enable ppc64le/s390x when QEMU emulation bugs are fixed
+          # Current issue: Python 3.12 segfaults during py3compile under QEMU
+          platforms: linux/amd64,linux/arm64/v8
 
   build-ubuntu-python:
     name: Build Ubuntu ${{ matrix.variant == 'previous' && 'Previous' || matrix.variant == 'latest' && 'Latest' }} Python 3.13
@@ -254,7 +256,9 @@ jobs:
             BASE_IMAGE=${{ matrix.variant == 'previous' && needs.prepare.outputs.ubuntu-python-previous-base || needs.prepare.outputs.ubuntu-python-latest-base }}
             PYTHON_VERSION=${{ needs.prepare.outputs.python-deadsnakes }}
             UBUNTU_VERSION=${{ matrix.variant == 'previous' && needs.prepare.outputs.ubuntu-previous || needs.prepare.outputs.ubuntu-latest }}
-          platforms: linux/amd64,linux/arm64/v8,linux/ppc64le,linux/s390x
+          # TODO: Re-enable ppc64le/s390x when QEMU emulation bugs are fixed
+          # Current issue: Python 3.12 segfaults during py3compile under QEMU
+          platforms: linux/amd64,linux/arm64/v8
 
   build-fedora:
     name: Build Fedora ${{ matrix.variant == 'previous' && 'Previous' || matrix.variant == 'latest' && 'Latest' || matrix.variant == 'rawhide' && 'Rawhide' }}
@@ -307,7 +311,9 @@ jobs:
             NODE_VERSION=${{ matrix.variant == 'previous' && needs.prepare.outputs.node-previous || matrix.variant == 'latest' && needs.prepare.outputs.node-latest || matrix.variant == 'rawhide' && needs.prepare.outputs.node-unstable }}
             GO_VERSION=${{ needs.prepare.outputs.go-version }}
             K8S_VERSION=${{ needs.prepare.outputs.k8s-version }}
-          platforms: linux/amd64,linux/arm64/v8,linux/ppc64le,linux/s390x
+          # TODO: Re-enable ppc64le/s390x when QEMU emulation bugs are fixed
+          # Current issue: Python 3.12 segfaults during py3compile under QEMU
+          platforms: linux/amd64,linux/arm64/v8
 
   build-debian:
     name: Build Debian ${{ matrix.variant == 'oldstable' && 'Oldstable' || matrix.variant == 'stable' && 'Stable' || matrix.variant == 'sid' && 'Sid/Unstable' }}
@@ -360,7 +366,9 @@ jobs:
             NODE_VERSION=${{ matrix.variant == 'oldstable' && needs.prepare.outputs.node-previous || matrix.variant == 'stable' && needs.prepare.outputs.node-latest || matrix.variant == 'sid' && needs.prepare.outputs.node-unstable }}
             GO_VERSION=${{ needs.prepare.outputs.go-version }}
             K8S_VERSION=${{ needs.prepare.outputs.k8s-version }}
-          platforms: linux/amd64,linux/arm64/v8,linux/ppc64le,linux/s390x
+          # TODO: Re-enable ppc64le/s390x when QEMU emulation bugs are fixed
+          # Current issue: Python 3.12 segfaults during py3compile under QEMU
+          platforms: linux/amd64,linux/arm64/v8
 
   mirror-to-github:
     name: Mirror Images to GHCR
