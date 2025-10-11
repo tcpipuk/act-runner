@@ -55,7 +55,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-ca
     zip \
     && apt-get clean
 
-# Layer 2: Monthly-update tools (git, security packages, certificates)
+# Layer 2: System essentials with Python (required for package management)
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-cache-${UBUNTU_VERSION}-${TARGETARCH} \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked,id=act-ubuntu-apt-lists-${UBUNTU_VERSION}-${TARGETARCH} \
     apt-get -qq update && apt-get -qq install -y --no-install-recommends \
@@ -68,9 +68,15 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-ca
     libssl-dev \
     lsb-release \
     openssh-client \
+    python3 \
+    python3-apt \
+    python3-setuptools \
+    python3-software-properties \
+    python3-venv \
     software-properties-common \
     sudo \
-    && apt-get clean
+    && apt-get clean \
+    && update-alternatives --install /usr/bin/python python /usr/bin/python3 100
 
 # Layer 3: Docker installation
 # Using docker.io package for consistent multi-architecture support
@@ -112,19 +118,7 @@ RUN --mount=type=cache,target=/tmp/downloads,sharing=locked,id=act-ubuntu-downlo
     ln -sf ${NODE_PATH}/bin/npm /usr/local/bin/npm && \
     ln -sf ${NODE_PATH}/bin/npx /usr/local/bin/npx
 
-# Layer 5: Python installation
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-cache-${UBUNTU_VERSION}-${TARGETARCH} \
-    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked,id=act-ubuntu-apt-lists-${UBUNTU_VERSION}-${TARGETARCH} \
-    apt-get -qq update && apt-get -qq install -y --no-install-recommends \
-    python3 \
-    python3-apt \
-    python3-setuptools \
-    python3-software-properties \
-    python3-venv \
-    && apt-get clean \
-    && update-alternatives --install /usr/bin/python python /usr/bin/python3 100
-
-# Layer 5.5: Go installation
+# Layer 5: Go installation
 ARG GO_VERSION=MUST_PROVIDE_GO_VERSION
 RUN --mount=type=cache,target=/tmp/downloads,sharing=locked,id=act-ubuntu-downloads-${UBUNTU_VERSION}-${TARGETARCH} \
     ARCH=$(dpkg --print-architecture) && \
@@ -201,7 +195,6 @@ RUN --mount=type=cache,target=/tmp/downloads,sharing=locked,id=act-ubuntu-downlo
     mkdir -p -m 755 /etc/apt/keyrings /etc/apt/sources.list.d && \
     \
     # Deadsnakes PPA - for newer Python versions (skip for rolling release)
-    apt-get -qq update && apt-get -qq install -y --no-install-recommends software-properties-common && \
     if [ "${UBUNTU_TAG}" != "rolling" ]; then \
         add-apt-repository ppa:deadsnakes/ppa -y; \
     fi && \
