@@ -68,7 +68,7 @@ providing better system integration than external PPAs.
 ## Why these images?
 
 - **Wide compatibility** - Works with Forgejo Actions, Gitea Actions, and ACT
-- **Multi-architecture support** - amd64, arm64, ppc64le, s390x
+- **Multi-architecture support** - amd64, arm64
 - **Always current** - Automatically tracks all supported Node.js and Python versions
 - **Nightly updates** with intelligent layering - only download what's changed
 - **Pre-configured tools** - Docker, build-essential, gh CLI, and development libraries ready to go
