@@ -6,9 +6,7 @@ and [ACT](https://github.com/nektos/act) with comprehensive language support and
 > [!NOTE]
 > Images are built nightly on [my Forgejo instance](https://git.tomfos.tr/tom/act-runner) and
 > automatically mirrored to [GitHub Container Registry](https://github.com/tcpipuk/act-runner/pkgs/container/act-runner)
-> for optimal CDN performance. Both `ghcr.io/tcpipuk/act-runner` and `git.tomfos.tr/tom/act-runner`
-> are currently amd64 only. (Multi-architecture support temporarily disabled due to QEMU Python 3.12
-> segfaults across all emulated architectures)
+> for optimal CDN performance.
 
 ## Usage examples
 
@@ -70,7 +68,7 @@ providing better system integration than external PPAs.
 ## Why these images?
 
 - **Wide compatibility** - Works with Forgejo Actions, Gitea Actions, and ACT
-- **amd64 support** - Multi-architecture temporarily disabled due to QEMU issues
+- **Multi-architecture support** - amd64, arm64, ppc64le, s390x
 - **Always current** - Automatically tracks all supported Node.js and Python versions
 - **Nightly updates** with intelligent layering - only download what's changed
 - **Pre-configured tools** - Docker, build-essential, gh CLI, and development libraries ready to go
