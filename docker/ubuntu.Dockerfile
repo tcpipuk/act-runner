@@ -11,9 +11,8 @@ ARG TARGETARCH
 # Set shell options for better error detection
 SHELL ["/bin/bash", "-e", "-c"]
 
-# Force non-interactive apt and disable Python bytecode compilation (QEMU workaround)
-ENV DEBIAN_FRONTEND=noninteractive \
-    PYTHONDONTWRITEBYTECODE=1
+# Force non-interactive apt
+ENV DEBIAN_FRONTEND=noninteractive
 
 # Metadata (will be updated with actual versions during build)
 LABEL org.opencontainers.image.title="act-runner-ubuntu${UBUNTU_VERSION}" \
@@ -81,10 +80,10 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-ca
 
 # Layer 3: Docker installation
 # Using docker.io package for consistent multi-architecture support
+# Note: docker.io includes Docker Compose v2 as 'docker compose' subcommand
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-cache-${UBUNTU_VERSION}-${TARGETARCH} \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked,id=act-ubuntu-apt-lists-${UBUNTU_VERSION}-${TARGETARCH} \
     apt-get -qq update && apt-get -qq install -y --no-install-recommends \
-    docker-compose \
     docker.io \
     && apt-get clean \
     && mkdir -p -m 755 /opt/hostedtoolcache
