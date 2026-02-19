@@ -171,22 +171,11 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-debian-apt-ca
     apt-get clean
 
 # Layer 8: Configure additional APT repositories for user convenience
-# Users can install: clang, kubectl, psql, terraform, etc.
+# Users can install: clang/llvm (from Debian native repos), kubectl, psql, terraform, etc.
+# Note: apt.llvm.org excluded - their signing key uses SHA1, rejected by Debian since 2026-02-01
 ARG K8S_VERSION=MUST_PROVIDE_K8S_VERSION
 RUN --mount=type=cache,target=/tmp/downloads,sharing=locked,id=act-debian-downloads-${DEBIAN_VERSION}-${TARGETARCH} \
     mkdir -p -m 755 /etc/apt/keyrings /etc/apt/sources.list.d && \
-    \
-    # LLVM/Clang - for C/C++ development
-    wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | \
-    gpg --dearmor -o /etc/apt/keyrings/llvm-archive-keyring.gpg && \
-    CODENAME=$(lsb_release -cs) && \
-    if [ "${DEBIAN_TAG}" = "sid" ] || [ "${CODENAME}" = "sid" ]; then \
-      echo "deb [signed-by=/etc/apt/keyrings/llvm-archive-keyring.gpg] \
-      http://apt.llvm.org/unstable/ llvm-toolchain main"; \
-    else \
-      echo "deb [signed-by=/etc/apt/keyrings/llvm-archive-keyring.gpg] \
-      http://apt.llvm.org/${CODENAME}/ llvm-toolchain-${CODENAME} main"; \
-    fi > /etc/apt/sources.list.d/llvm.list && \
     \
     # Kubernetes - for k8s operations
     curl -fsSL https://pkgs.k8s.io/core:/stable:/v${K8S_VERSION}/deb/Release.key | \
