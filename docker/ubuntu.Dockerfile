@@ -137,7 +137,18 @@ RUN --mount=type=cache,target=/tmp/downloads,sharing=locked,id=act-ubuntu-downlo
     tar -xzf "${TARBALL}" -C /usr/local && \
     ln -sf /usr/local/go/bin/* /usr/local/bin/
 
-# Layer 6: uv, Python tools, and Rust installation
+# Layer 6: JVM toolchain (Java + Gradle)
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-cache-${UBUNTU_VERSION}-${TARGETARCH} \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked,id=act-ubuntu-apt-lists-${UBUNTU_VERSION}-${TARGETARCH} \
+    apt-get -qq update && apt-get -qq install -y --no-install-recommends \
+    default-jdk \
+    gradle \
+    && apt-get clean \
+    && JAVA_HOME=$(dirname $(dirname $(readlink -f $(which javac)))) \
+    && echo "export JAVA_HOME=${JAVA_HOME}" > /etc/profile.d/java.sh \
+    && echo "JAVA_HOME=${JAVA_HOME}" >> /etc/environment
+
+# Layer 7: uv, Python tools, and Rust installation
 RUN --mount=type=cache,target=/root/.cache/uv,sharing=locked,id=act-ubuntu-uv-cache-${UBUNTU_VERSION}-${TARGETARCH} \
     curl -LsSf https://astral.sh/uv/install.sh | sh \
     && uv tool install prek \
@@ -156,7 +167,7 @@ RUN --mount=type=cache,target=/root/.cache/uv,sharing=locked,id=act-ubuntu-uv-ca
         rustup toolchain install stable && rustup default stable; \
     fi
 
-# Layer 7: GitHub CLI installation
+# Layer 8: GitHub CLI installation
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-cache-${UBUNTU_VERSION}-${TARGETARCH} \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked,id=act-ubuntu-apt-lists-${UBUNTU_VERSION}-${TARGETARCH} \
     mkdir -p -m 755 /etc/apt/keyrings /etc/apt/sources.list.d && \
@@ -188,7 +199,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-ca
     fi && \
     apt-get clean
 
-# Layer 8: Configure additional APT repositories for user convenience
+# Layer 9: Configure additional APT repositories for user convenience
 # Users can install: clang, kubectl, psql, terraform, etc.
 ARG K8S_VERSION=MUST_PROVIDE_K8S_VERSION
 RUN --mount=type=cache,target=/tmp/downloads,sharing=locked,id=act-ubuntu-downloads-${UBUNTU_VERSION}-${TARGETARCH} \
@@ -250,6 +261,8 @@ RUN git --version && \
     gh --version && \
     python3 --version && \
     go version && \
+    java -version && \
+    gradle --version && \
     (command -v rustup >/dev/null 2>&1 && rustup --version || echo "Rust not installed") && \
     uv --version && \
     (command -v node >/dev/null 2>&1 && node --version || echo "Node.js not installed") && \
