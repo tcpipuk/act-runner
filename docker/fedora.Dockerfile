@@ -121,7 +121,18 @@ RUN --mount=type=cache,target=/tmp/downloads,sharing=locked,id=act-fedora-downlo
     tar -xzf "${TARBALL}" -C /usr/local && \
     ln -sf /usr/local/go/bin/* /usr/local/bin/
 
-# Layer 5: uv, Python tools, and Rust installation
+# Layer 5: JVM toolchain (Java + Gradle)
+RUN --mount=type=cache,target=/var/cache,sharing=locked,id=act-fedora-cache-${FEDORA_VERSION}-${TARGETARCH} \
+    --mount=type=cache,target=/var/lib/dnf,sharing=locked,id=act-fedora-dnf-state-${FEDORA_VERSION}-${TARGETARCH} \
+    dnf install -yq \
+    gradle \
+    java-latest-openjdk-devel \
+    && dnf clean all \
+    && JAVA_HOME=$(dirname $(dirname $(readlink -f $(which javac)))) \
+    && echo "export JAVA_HOME=${JAVA_HOME}" > /etc/profile.d/java.sh \
+    && echo "JAVA_HOME=${JAVA_HOME}" >> /etc/environment
+
+# Layer 6: uv, Python tools, and Rust installation
 RUN --mount=type=cache,target=/var/cache,sharing=locked,id=act-fedora-cache-${FEDORA_VERSION}-${TARGETARCH} \
     --mount=type=cache,target=/var/lib/dnf,sharing=locked,id=act-fedora-dnf-state-${FEDORA_VERSION}-${TARGETARCH} \
     --mount=type=cache,target=/root/.cache/uv,sharing=locked,id=act-fedora-uv-cache-${FEDORA_VERSION}-${TARGETARCH} \
@@ -143,13 +154,13 @@ RUN --mount=type=cache,target=/var/cache,sharing=locked,id=act-fedora-cache-${FE
         rustup toolchain install stable && rustup default stable; \
     fi
 
-# Layer 6: GitHub CLI installation
+# Layer 7: GitHub CLI installation
 RUN --mount=type=cache,target=/var/cache,sharing=locked,id=act-fedora-cache-${FEDORA_VERSION}-${TARGETARCH} \
     --mount=type=cache,target=/var/lib/dnf,sharing=locked,id=act-fedora-dnf-state-${FEDORA_VERSION}-${TARGETARCH} \
     dnf config-manager addrepo --from-repofile=https://cli.github.com/packages/rpm/gh-cli.repo && \
     dnf install -yq gh yq && dnf clean all
 
-# Layer 7: Optional repositories for user convenience
+# Layer 8: Optional repositories for user convenience
 # Users can install: kubectl, terraform, docker-ce, dotnet, powershell, azure-cli, etc.
 ARG K8S_VERSION=MUST_PROVIDE_K8S_VERSION
 RUN mkdir -p /etc/yum.repos.d && \
@@ -185,6 +196,8 @@ RUN git --version && \
     gh --version && \
     python3 --version && \
     go version && \
+    java -version && \
+    gradle --version && \
     rustup --version && \
     uv --version && \
     (command -v node >/dev/null 2>&1 && node --version || echo "Node.js not installed") && \

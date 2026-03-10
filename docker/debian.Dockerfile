@@ -136,7 +136,18 @@ RUN --mount=type=cache,target=/tmp/downloads,sharing=locked,id=act-debian-downlo
     tar -xzf "${TARBALL}" -C /usr/local && \
     ln -sf /usr/local/go/bin/* /usr/local/bin/
 
-# Layer 6: uv, Python tools, and Rust installation
+# Layer 6: JVM toolchain (Java only - Gradle removed from Debian repos since Debian 11)
+# Projects using Gradle should use the Gradle wrapper (./gradlew) which manages its own version
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-debian-apt-cache-${DEBIAN_VERSION}-${TARGETARCH} \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked,id=act-debian-apt-lists-${DEBIAN_VERSION}-${TARGETARCH} \
+    apt-get -qq update && apt-get -qq install -y --no-install-recommends \
+    default-jdk \
+    && apt-get clean \
+    && JAVA_HOME=$(dirname $(dirname $(readlink -f $(which javac)))) \
+    && echo "export JAVA_HOME=${JAVA_HOME}" > /etc/profile.d/java.sh \
+    && echo "JAVA_HOME=${JAVA_HOME}" >> /etc/environment
+
+# Layer 7: uv, Python tools, and Rust installation
 RUN --mount=type=cache,target=/root/.cache/uv,sharing=locked,id=act-debian-uv-cache-${DEBIAN_VERSION}-${TARGETARCH} \
     curl -LsSf https://astral.sh/uv/install.sh | sh \
     && uv tool install prek \
@@ -155,7 +166,7 @@ RUN --mount=type=cache,target=/root/.cache/uv,sharing=locked,id=act-debian-uv-ca
         rustup toolchain install stable && rustup default stable; \
     fi
 
-# Layer 7: GitHub CLI installation
+# Layer 8: GitHub CLI installation
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-debian-apt-cache-${DEBIAN_VERSION}-${TARGETARCH} \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked,id=act-debian-apt-lists-${DEBIAN_VERSION}-${TARGETARCH} \
     mkdir -p -m 755 /etc/apt/keyrings /etc/apt/sources.list.d && \
@@ -170,7 +181,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-debian-apt-ca
     apt-get -qq update && apt-get -qq install -y --no-install-recommends gh yq && \
     apt-get clean
 
-# Layer 8: Configure additional APT repositories for user convenience
+# Layer 9: Configure additional APT repositories for user convenience
 # Users can install: clang/llvm (from Debian native repos), kubectl, psql, terraform, etc.
 # Note: apt.llvm.org excluded - their signing key uses SHA1, rejected by Debian since 2026-02-01
 ARG K8S_VERSION=MUST_PROVIDE_K8S_VERSION
@@ -218,6 +229,7 @@ RUN git --version && \
     gh --version && \
     python3 --version && \
     go version && \
+    java -version && \
     (command -v rustup >/dev/null 2>&1 && rustup --version || echo "Rust not installed") && \
     uv --version && \
     (command -v node >/dev/null 2>&1 && node --version || echo "Node.js not installed") && \

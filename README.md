@@ -97,6 +97,8 @@ providing better system integration than external PPAs.
   LTS for 'previous/oldstable' releases, newest LTS for 'latest/stable' releases, newest
   stable for 'rolling/rawhide/sid' releases)
 - [Go](https://go.dev/) (latest stable release across all images)
+- Java (default JDK for each distro release) with [Gradle](https://gradle.org/) (Ubuntu and
+  Fedora only - not available in Debian's package repositories)
 - Python (native OS version, plus optionally latest stable Python from deadsnakes PPA for
   non-rolling Ubuntu releases)
 - [uv](https://docs.astral.sh/uv/) package manager
