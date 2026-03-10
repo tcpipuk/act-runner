@@ -121,11 +121,11 @@ RUN --mount=type=cache,target=/tmp/downloads,sharing=locked,id=act-fedora-downlo
     tar -xzf "${TARBALL}" -C /usr/local && \
     ln -sf /usr/local/go/bin/* /usr/local/bin/
 
-# Layer 5: JVM toolchain (Java + Gradle)
+# Layer 5: JVM toolchain (Java only - Gradle not available in Fedora repos)
+# Projects using Gradle should use the Gradle wrapper (./gradlew) which manages its own version
 RUN --mount=type=cache,target=/var/cache,sharing=locked,id=act-fedora-cache-${FEDORA_VERSION}-${TARGETARCH} \
     --mount=type=cache,target=/var/lib/dnf,sharing=locked,id=act-fedora-dnf-state-${FEDORA_VERSION}-${TARGETARCH} \
     dnf install -yq \
-    gradle \
     java-latest-openjdk-devel \
     && dnf clean all \
     && JAVA_HOME=$(dirname $(dirname $(readlink -f $(which javac)))) \
@@ -197,7 +197,6 @@ RUN git --version && \
     python3 --version && \
     go version && \
     java -version && \
-    gradle --version && \
     rustup --version && \
     uv --version && \
     (command -v node >/dev/null 2>&1 && node --version || echo "Node.js not installed") && \

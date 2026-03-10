@@ -4,9 +4,9 @@ This guide explains how to build your own ACT runner images locally for testing 
 
 ## Prerequisites
 
-You'll need Docker installed and running on your system. Follow the official [Docker Engine
-Installation Guide](https://docs.docker.com/engine/install/) for your platform. Docker BuildKit
-should be enabled (it's the default in modern Docker versions).
+You'll need Docker installed and running on your system. Follow the official
+[Docker Engine Installation Guide](https://docs.docker.com/engine/install/) for your platform.
+Docker BuildKit should be enabled (it's the default in modern Docker versions).
 
 Clone the repository:
 
@@ -17,7 +17,8 @@ cd act-runner
 
 ## Building images
 
-The images are now built in a single step with all components (Ubuntu/Fedora + Node.js + Python) included:
+The images are now built in a single step with all components (Ubuntu/Fedora + Node.js + Python)
+included:
 
 ### Build Ubuntu images
 
@@ -52,8 +53,8 @@ docker build -f docker/fedora.Dockerfile \
   ./docker
 ```
 
-Available versions typically include current LTS releases and the rolling/rawhide release. Check the
-workflow files for the current matrix of supported versions.
+Available versions typically include current LTS releases and the rolling/rawhide release. Check
+the workflow files for the current matrix of supported versions.
 
 ## Build arguments
 

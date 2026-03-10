@@ -8,9 +8,9 @@ environment variables, and configuration decisions.
 ### Python installations
 
 Images include Ubuntu's native Python version, with optionally additional versions from the
-[deadsnakes PPA](https://launchpad.net/~deadsnakes/+archive/ubuntu/ppa) in separate image variants.
-The native Python version varies by Ubuntu release and includes `python3-apt` for system package
-compatibility.
+[deadsnakes PPA](https://launchpad.net/~deadsnakes/+archive/ubuntu/ppa) in separate image
+variants. The native Python version varies by Ubuntu release and includes `python3-apt` for
+system package compatibility.
 
 Each Python installation includes:
 
@@ -18,14 +18,15 @@ Each Python installation includes:
 - `python{version}-venv` - Virtual environment support
 - `python3-apt` - APT Python bindings (only with native Python versions)
 
-Modern Python versions (3.12+) don't include `python-distutils` as it was deprecated in 3.10
-and removed entirely. Legacy code requiring distutils may need to install it separately.
+Modern Python versions (3.12+) don't include `python-distutils` as it was deprecated in 3.10 and
+removed entirely. Legacy code requiring distutils may need to install it separately.
 
 See the [main README](../README.md#available-images) for current available versions.
 
 ### Pre-installed development tools
 
-All Python images include these development tools pre-installed via [uv](https://github.com/astral-sh/uv):
+All Python images include these development tools pre-installed via
+[uv](https://github.com/astral-sh/uv):
 
 - [**prek**](https://github.com/kpumuk/prek) - Pre-commit hook runner
 - [**ruff**](https://github.com/astral-sh/ruff) - Fast Python linter and formatter
@@ -38,10 +39,10 @@ All Python images include these development tools pre-installed via [uv](https:/
 
 The following environment variables are pre-configured:
 
-| Variable | Value | Purpose |
-|----------|-------|---------|
-| `UV_LINK_MODE` | `copy` | Reduces verbosity in CI logs |
-| `PATH` | `/root/.local/bin:$PATH` | Includes uv and installed tools |
+| Variable       | Value                    | Purpose                         |
+| -------------- | ------------------------ | ------------------------------- |
+| `UV_LINK_MODE` | `copy`                   | Reduces verbosity in CI logs    |
+| `PATH`         | `/root/.local/bin:$PATH` | Includes uv and installed tools |
 
 The PATH modification ensures `uv` itself is available, makes tools installed via
 `uv tool install` accessible, and prevents warnings about PATH during tool installation.
@@ -108,7 +109,8 @@ reasonable.
 ### Why no distutils?
 
 Python's `distutils` was deprecated in Python 3.10 and removed entirely in Python 3.12. Most
-modern Python packages have migrated to `setuptools` or other build systems. We don't include it to:
+modern Python packages have migrated to `setuptools` or other build systems. We don't include it
+to:
 
 - Keep images smaller
 - Encourage modern packaging practices
