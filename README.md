@@ -50,7 +50,7 @@ versions use the latest stable Python (3.13) from deadsnakes PPA.
 | Fedora Version | Alias Tag | Node.js | Python Versions Available |
 |----------------|-----------|---------|---------------------------|
 | Rawhide (Development) | **[`fedora-rawhide`](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora-rawhide)** | 24 | [**3.14**](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedorarawhide-node24-py3.14) |
-| 43 (Current) | **[`fedora-latest`](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora-latest)** | 24 | [**3.14**](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora43-node24-py3.14) |
+| 44 (Current) | **[`fedora-latest`](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora-latest)** | 24 | [**3.14**](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora44-node24-py3.14) |
 | 41 (Previous) | **[`fedora-previous`](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora-previous)** | 22 | [**3.13**](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora41-node22-py3.13) |
 
 ## Debian images
