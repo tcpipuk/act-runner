@@ -200,7 +200,9 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-ca
     apt-get clean
 
 # Layer 9: Configure additional APT repositories for user convenience
-# Users can install: clang, kubectl, psql, terraform, etc.
+# Users can install: clang, kubectl, psql, etc.
+# Note: HashiCorp apt repo excluded - consistently slow to publish for new Ubuntu releases.
+# Install terraform/vault/consul via direct download, tfenv, or asdf if needed.
 ARG K8S_VERSION=MUST_PROVIDE_K8S_VERSION
 RUN --mount=type=cache,target=/tmp/downloads,sharing=locked,id=act-ubuntu-downloads-${UBUNTU_VERSION}-${TARGETARCH} \
     mkdir -p -m 755 /etc/apt/keyrings /etc/apt/sources.list.d && \
@@ -226,15 +228,6 @@ RUN --mount=type=cache,target=/tmp/downloads,sharing=locked,id=act-ubuntu-downlo
     echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] \
     https://pkgs.k8s.io/core:/stable:/v${K8S_VERSION}/deb/ /" \
     > /etc/apt/sources.list.d/kubernetes.list && \
-    \
-    # HashiCorp - for Terraform, Vault, Consul, etc. (skip for rolling release)
-    if [ "${UBUNTU_TAG}" != "rolling" ]; then \
-        wget -q -O- https://apt.releases.hashicorp.com/gpg | \
-        gpg --dearmor -o /etc/apt/keyrings/hashicorp-archive-keyring.gpg && \
-        echo "deb [signed-by=/etc/apt/keyrings/hashicorp-archive-keyring.gpg] \
-        https://apt.releases.hashicorp.com $(lsb_release -cs) main" \
-        > /etc/apt/sources.list.d/hashicorp.list; \
-    fi && \
     \
     # Microsoft ecosystem (PowerShell, .NET, Azure CLI)
     PACKAGE_PATH="/tmp/downloads/packages-microsoft-prod-$(lsb_release -rs).deb" && \

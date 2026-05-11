@@ -89,7 +89,9 @@ system integration than external PPAs.
 - Pre-configured package repositories (LLVM, Kubernetes, HashiCorp\*, Microsoft)
 - Deadsnakes PPA repository (non-rolling Ubuntu releases only)
 
-> [!NOTE] \* HashiCorp repository is not available for Debian sid/unstable
+> [!NOTE] \* HashiCorp repository is available on Fedora and Debian (excluding sid/unstable).
+> Excluded from Ubuntu images because HashiCorp is consistently slow to publish apt repos for new
+> Ubuntu releases; install terraform/vault/consul via direct download, tfenv, or asdf.
 
 **Runtime languages:**
 
