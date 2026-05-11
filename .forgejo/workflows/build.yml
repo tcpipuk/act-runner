@@ -172,7 +172,7 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
-          password: ${{ secrets.FORGEJO_TOKEN }}
+          password: ${{ secrets.PACKAGE_TOKEN }}
 
       - name: Generate Ubuntu tags
         id: ubuntu-tags
@@ -231,7 +231,7 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
-          password: ${{ secrets.FORGEJO_TOKEN }}
+          password: ${{ secrets.PACKAGE_TOKEN }}
 
       - name: Generate Ubuntu Python tags
         id: ubuntu-python-tags
@@ -285,7 +285,7 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
-          password: ${{ secrets.FORGEJO_TOKEN }}
+          password: ${{ secrets.PACKAGE_TOKEN }}
 
       - name: Generate Fedora tags
         id: fedora-tags
@@ -342,7 +342,7 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
-          password: ${{ secrets.FORGEJO_TOKEN }}
+          password: ${{ secrets.PACKAGE_TOKEN }}
 
       - name: Generate Debian tags
         id: debian-tags
@@ -499,7 +499,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.FORGEJO_TOKEN }}
+          token: ${{ secrets.PACKAGE_TOKEN }}
           fetch-depth: 0
 
       - name: Generate images tables
@@ -643,7 +643,7 @@ jobs:
         if: steps.update.outputs.changed == 'true'
         uses: ./.forgejo/actions/create-pull-request
         with:
-          token: ${{ secrets.FORGEJO_TOKEN }}
+          token: ${{ secrets.PACKAGE_TOKEN }}
           branch-name: update-image-versions
           commit-message: |
             chore: update Ubuntu and Fedora images in README
