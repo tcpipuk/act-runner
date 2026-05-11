@@ -86,12 +86,18 @@ system integration than external PPAs.
 - [GitHub CLI](https://cli.github.com/manual/) (`gh`)
 - Git and Git LFS
 - Common utilities (curl, wget, jq, tar, zip)
-- Pre-configured package repositories (LLVM, Kubernetes, HashiCorp\*, Microsoft)
+- Pre-configured package repositories (LLVM\*, Kubernetes, HashiCorp\*\*, Microsoft)
 - Deadsnakes PPA repository (non-rolling Ubuntu releases only)
 
-> [!NOTE] \* HashiCorp repository is available on Fedora and Debian (excluding sid/unstable).
-> Excluded from Ubuntu images because HashiCorp is consistently slow to publish apt repos for new
-> Ubuntu releases; install terraform/vault/consul via direct download, tfenv, or asdf.
+> [!NOTE]
+>
+> \* LLVM apt repo is available on Fedora only. Excluded from Ubuntu (lags new releases) and Debian
+> (SHA1 signing key, rejected since 2026-02-01). Use the distro `clang` package or LLVM's install
+> script.
+>
+> \*\* HashiCorp repository is available on Fedora and Debian (excluding sid/unstable). Excluded
+> from Ubuntu images because HashiCorp is consistently slow to publish apt repos for new Ubuntu
+> releases; install terraform/vault/consul via direct download, tfenv, or asdf.
 
 **Runtime languages:**
 

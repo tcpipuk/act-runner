@@ -200,9 +200,10 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-ca
     apt-get clean
 
 # Layer 9: Configure additional APT repositories for user convenience
-# Users can install: clang, kubectl, psql, etc.
-# Note: HashiCorp apt repo excluded - consistently slow to publish for new Ubuntu releases.
-# Install terraform/vault/consul via direct download, tfenv, or asdf if needed.
+# Users can install: kubectl, psql, etc.
+# Note: LLVM and HashiCorp apt repos excluded - both consistently lag new Ubuntu releases.
+# Install clang via apt (distro version) or LLVM's install script; install terraform/vault/consul
+# via direct download, tfenv, or asdf if needed.
 ARG K8S_VERSION=MUST_PROVIDE_K8S_VERSION
 RUN --mount=type=cache,target=/tmp/downloads,sharing=locked,id=act-ubuntu-downloads-${UBUNTU_VERSION}-${TARGETARCH} \
     mkdir -p -m 755 /etc/apt/keyrings /etc/apt/sources.list.d && \
@@ -210,16 +211,6 @@ RUN --mount=type=cache,target=/tmp/downloads,sharing=locked,id=act-ubuntu-downlo
     # Deadsnakes PPA - for newer Python versions (skip for rolling release)
     if [ "${UBUNTU_TAG}" != "rolling" ]; then \
         add-apt-repository ppa:deadsnakes/ppa -y; \
-    fi && \
-    \
-    # LLVM/Clang - for C/C++ development (skip for rolling release)
-    if [ "${UBUNTU_TAG}" != "rolling" ]; then \
-        CODENAME=$(lsb_release -cs) && \
-        wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | \
-        gpg --dearmor -o /etc/apt/keyrings/llvm-archive-keyring.gpg && \
-        echo "deb [signed-by=/etc/apt/keyrings/llvm-archive-keyring.gpg] \
-        https://apt.llvm.org/${CODENAME}/ llvm-toolchain-${CODENAME} main" \
-        > /etc/apt/sources.list.d/llvm.list; \
     fi && \
     \
     # Kubernetes - for k8s operations
