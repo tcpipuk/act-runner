@@ -1,5 +1,6 @@
 name: Check Deadsnakes Versions
-description: Find Python versions available across specified Ubuntu releases in the deadsnakes PPA
+description:
+  Find Python versions available across specified Ubuntu releases in the deadsnakes PPA
 author: Tom Foster
 
 inputs:
@@ -13,7 +14,8 @@ inputs:
 
 outputs:
   python-versions:
-    description: Space-separated list of Python versions available across all specified Ubuntu releases
+    description:
+      Space-separated list of Python versions available across all specified Ubuntu releases
     value: ${{ steps.check.outputs.versions }}
 
 runs:
