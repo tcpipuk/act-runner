@@ -19,15 +19,15 @@ available across specified Ubuntu releases.
 
 ## Inputs
 
-| Input | Description | Default | Required | Example |
-|-------|-------------|---------|----------|---------|
-| `ubuntu-versions` | Space-separated list of Ubuntu versions | - | Yes | `22.04 24.04 25.04` |
-| `limit` | Maximum number of Python versions to return (newest are selected) | `3` | No | `2` |
+| Input             | Description                                                       | Default | Required | Example             |
+| ----------------- | ----------------------------------------------------------------- | ------- | -------- | ------------------- |
+| `ubuntu-versions` | Space-separated list of Ubuntu versions                           | -       | Yes      | `22.04 24.04 25.04` |
+| `limit`           | Maximum number of Python versions to return (newest are selected) | `3`     | No       | `2`                 |
 
 ## Outputs
 
-| Output | Description | Example |
-|--------|-------------|---------|
+| Output            | Description                                                                            | Example                        |
+| ----------------- | -------------------------------------------------------------------------------------- | ------------------------------ |
 | `python-versions` | Space-separated list of Python versions available across ALL specified Ubuntu releases | `3.9 3.11 3.13` (with limit=3) |
 
 ## How it works
@@ -62,7 +62,9 @@ jobs:
     strategy:
       matrix:
         # Convert space-separated string to array
-        python: ${{ fromJSON(format('[{0}]', replace(needs.check-python.outputs.python-versions, ' ', ','))) }}
+        python:
+          ${{ fromJSON(format('[{0}]', replace(needs.check-python.outputs.python-versions, ' ',
+          ','))) }}
     steps:
       - name: Build with Python ${{ matrix.python }}
         run: echo "Building with Python ${{ matrix.python }}"
@@ -70,6 +72,7 @@ jobs:
 
 ## Notes
 
-- Ubuntu versions not supported by deadsnakes (e.g., 25.04) will be noted in the exclusions output
+- Ubuntu versions not supported by deadsnakes (e.g., 25.04) will be noted in the exclusions
+  output
 - The action only returns Python versions available via deadsnakes, not native Ubuntu packages
 - Python versions are returned in sorted order (e.g., 3.7 before 3.11)

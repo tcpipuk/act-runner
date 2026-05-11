@@ -3,7 +3,7 @@ name: Build Runner Images
 on:
   push:
     branches-ignore:
-      - 'update-image-versions'  # Exclude automated README update branch
+      - "update-image-versions" # Exclude automated README update branch
     paths:
       - "docker/ubuntu.Dockerfile"
       - "docker/fedora.Dockerfile"
@@ -11,7 +11,7 @@ on:
       - "docker/ubuntuPython.Dockerfile"
       - ".forgejo/workflows/build.yml"
   schedule:
-    - cron: '0 4 * * *'  # Run daily at 4am UTC
+    - cron: "0 4 * * *" # Run daily at 4am UTC
   workflow_dispatch:
 
 concurrency:
@@ -133,7 +133,9 @@ jobs:
         id: python
         uses: ./.forgejo/actions/check-deadsnakes-versions
         with:
-          ubuntu-versions: "${{ steps.ubuntu.outputs.previous-version }} ${{ steps.ubuntu.outputs.latest-version }}"
+          ubuntu-versions:
+            "${{ steps.ubuntu.outputs.previous-version }} ${{ steps.ubuntu.outputs.latest-version
+            }}"
           limit: "1"
 
       - name: Generate Ubuntu Python base image names
@@ -147,7 +149,9 @@ jobs:
           echo "latest-base=git.tomfos.tr/tom/act-runner:ubuntu${{ steps.ubuntu.outputs.latest-version }}-node${UBUNTU_LATEST_NODE_TAG}-py${{ steps.ubuntu.outputs.latest-python }}" >> $GITHUB_OUTPUT
 
   build-ubuntu:
-    name: Build Ubuntu ${{ matrix.variant == 'previous' && 'Previous' || matrix.variant == 'latest' && 'Latest' || matrix.variant == 'rolling' && 'Rolling' }}
+    name:
+      Build Ubuntu ${{ matrix.variant == 'previous' && 'Previous' || matrix.variant == 'latest'
+      && 'Latest' || matrix.variant == 'rolling' && 'Rolling' }}
     runs-on: ubuntu-latest
     needs: prepare
     strategy:
@@ -181,9 +185,18 @@ jobs:
           registry: ${{ env.REGISTRY }}
           image-name: ${{ env.IMAGE_NAME }}
           os-name: ubuntu
-          os-version: ${{ matrix.variant == 'previous' && needs.prepare.outputs.ubuntu-previous || matrix.variant == 'latest' && needs.prepare.outputs.ubuntu-latest || matrix.variant == 'rolling' && needs.prepare.outputs.ubuntu-rolling }}
-          node-version: ${{ matrix.variant == 'previous' && needs.prepare.outputs.node-previous || matrix.variant == 'latest' && needs.prepare.outputs.node-latest || matrix.variant == 'rolling' && needs.prepare.outputs.node-unstable }}
-          python-version: ${{ matrix.variant == 'previous' && needs.prepare.outputs.ubuntu-previous-python || matrix.variant == 'latest' && needs.prepare.outputs.ubuntu-latest-python || matrix.variant == 'rolling' && needs.prepare.outputs.ubuntu-rolling-python }}
+          os-version:
+            ${{ matrix.variant == 'previous' && needs.prepare.outputs.ubuntu-previous ||
+            matrix.variant == 'latest' && needs.prepare.outputs.ubuntu-latest || matrix.variant
+            == 'rolling' && needs.prepare.outputs.ubuntu-rolling }}
+          node-version:
+            ${{ matrix.variant == 'previous' && needs.prepare.outputs.node-previous ||
+            matrix.variant == 'latest' && needs.prepare.outputs.node-latest || matrix.variant ==
+            'rolling' && needs.prepare.outputs.node-unstable }}
+          python-version:
+            ${{ matrix.variant == 'previous' && needs.prepare.outputs.ubuntu-previous-python ||
+            matrix.variant == 'latest' && needs.prepare.outputs.ubuntu-latest-python ||
+            matrix.variant == 'rolling' && needs.prepare.outputs.ubuntu-rolling-python }}
           variant: ${{ matrix.variant }}
           branch-name: ${{ github.ref_name }}
 
@@ -209,7 +222,9 @@ jobs:
           platforms: linux/amd64
 
   build-ubuntu-python:
-    name: Build Ubuntu ${{ matrix.variant == 'previous' && 'Previous' || matrix.variant == 'latest' && 'Latest' }} Python 3.13
+    name:
+      Build Ubuntu ${{ matrix.variant == 'previous' && 'Previous' || matrix.variant == 'latest'
+      && 'Latest' }} Python 3.13
     runs-on: ubuntu-latest
     needs: [prepare, build-ubuntu]
     strategy:
@@ -240,8 +255,12 @@ jobs:
           registry: ${{ env.REGISTRY }}
           image-name: ${{ env.IMAGE_NAME }}
           os-name: ubuntu
-          os-version: ${{ matrix.variant == 'previous' && needs.prepare.outputs.ubuntu-previous || needs.prepare.outputs.ubuntu-latest }}
-          node-version: ${{ matrix.variant == 'previous' && needs.prepare.outputs.node-previous || needs.prepare.outputs.node-latest }}
+          os-version:
+            ${{ matrix.variant == 'previous' && needs.prepare.outputs.ubuntu-previous ||
+            needs.prepare.outputs.ubuntu-latest }}
+          node-version:
+            ${{ matrix.variant == 'previous' && needs.prepare.outputs.node-previous ||
+            needs.prepare.outputs.node-latest }}
           python-version: ${{ needs.prepare.outputs.python-deadsnakes }}
           branch-name: ${{ github.ref_name }}
 
@@ -263,7 +282,9 @@ jobs:
           platforms: linux/amd64
 
   build-fedora:
-    name: Build Fedora ${{ matrix.variant == 'previous' && 'Previous' || matrix.variant == 'latest' && 'Latest' || matrix.variant == 'rawhide' && 'Rawhide' }}
+    name:
+      Build Fedora ${{ matrix.variant == 'previous' && 'Previous' || matrix.variant == 'latest'
+      && 'Latest' || matrix.variant == 'rawhide' && 'Rawhide' }}
     runs-on: ubuntu-latest
     needs: prepare
     strategy:
@@ -294,9 +315,18 @@ jobs:
           registry: ${{ env.REGISTRY }}
           image-name: ${{ env.IMAGE_NAME }}
           os-name: fedora
-          os-version: ${{ matrix.variant == 'previous' && needs.prepare.outputs.fedora-previous || matrix.variant == 'latest' && needs.prepare.outputs.fedora-latest || matrix.variant == 'rawhide' && needs.prepare.outputs.fedora-rawhide }}
-          node-version: ${{ matrix.variant == 'previous' && needs.prepare.outputs.node-previous || matrix.variant == 'latest' && needs.prepare.outputs.node-latest || matrix.variant == 'rawhide' && needs.prepare.outputs.node-unstable }}
-          python-version: ${{ matrix.variant == 'previous' && needs.prepare.outputs.fedora-previous-python || matrix.variant == 'latest' && needs.prepare.outputs.fedora-latest-python || matrix.variant == 'rawhide' && needs.prepare.outputs.fedora-rawhide-python }}
+          os-version:
+            ${{ matrix.variant == 'previous' && needs.prepare.outputs.fedora-previous ||
+            matrix.variant == 'latest' && needs.prepare.outputs.fedora-latest || matrix.variant
+            == 'rawhide' && needs.prepare.outputs.fedora-rawhide }}
+          node-version:
+            ${{ matrix.variant == 'previous' && needs.prepare.outputs.node-previous ||
+            matrix.variant == 'latest' && needs.prepare.outputs.node-latest || matrix.variant ==
+            'rawhide' && needs.prepare.outputs.node-unstable }}
+          python-version:
+            ${{ matrix.variant == 'previous' && needs.prepare.outputs.fedora-previous-python ||
+            matrix.variant == 'latest' && needs.prepare.outputs.fedora-latest-python ||
+            matrix.variant == 'rawhide' && needs.prepare.outputs.fedora-rawhide-python }}
           variant: ${{ matrix.variant }}
           branch-name: ${{ github.ref_name }}
 
@@ -320,7 +350,9 @@ jobs:
           platforms: linux/amd64
 
   build-debian:
-    name: Build Debian ${{ matrix.variant == 'oldstable' && 'Oldstable' || matrix.variant == 'stable' && 'Stable' || matrix.variant == 'sid' && 'Sid/Unstable' }}
+    name:
+      Build Debian ${{ matrix.variant == 'oldstable' && 'Oldstable' || matrix.variant == 'stable'
+      && 'Stable' || matrix.variant == 'sid' && 'Sid/Unstable' }}
     runs-on: ubuntu-latest
     needs: prepare
     strategy:
@@ -351,9 +383,18 @@ jobs:
           registry: ${{ env.REGISTRY }}
           image-name: ${{ env.IMAGE_NAME }}
           os-name: debian
-          os-version: ${{ matrix.variant == 'oldstable' && needs.prepare.outputs.debian-oldstable || matrix.variant == 'stable' && needs.prepare.outputs.debian-stable || matrix.variant == 'sid' && needs.prepare.outputs.debian-sid }}
-          node-version: ${{ matrix.variant == 'oldstable' && needs.prepare.outputs.node-previous || matrix.variant == 'stable' && needs.prepare.outputs.node-latest || matrix.variant == 'sid' && needs.prepare.outputs.node-unstable }}
-          python-version: ${{ matrix.variant == 'oldstable' && needs.prepare.outputs.debian-oldstable-python || matrix.variant == 'stable' && needs.prepare.outputs.debian-stable-python || matrix.variant == 'sid' && needs.prepare.outputs.debian-sid-python }}
+          os-version:
+            ${{ matrix.variant == 'oldstable' && needs.prepare.outputs.debian-oldstable ||
+            matrix.variant == 'stable' && needs.prepare.outputs.debian-stable || matrix.variant
+            == 'sid' && needs.prepare.outputs.debian-sid }}
+          node-version:
+            ${{ matrix.variant == 'oldstable' && needs.prepare.outputs.node-previous ||
+            matrix.variant == 'stable' && needs.prepare.outputs.node-latest || matrix.variant ==
+            'sid' && needs.prepare.outputs.node-unstable }}
+          python-version:
+            ${{ matrix.variant == 'oldstable' && needs.prepare.outputs.debian-oldstable-python ||
+            matrix.variant == 'stable' && needs.prepare.outputs.debian-stable-python ||
+            matrix.variant == 'sid' && needs.prepare.outputs.debian-sid-python }}
           variant: ${{ matrix.variant == 'stable' && 'latest' || matrix.variant }}
           branch-name: ${{ github.ref_name }}
 

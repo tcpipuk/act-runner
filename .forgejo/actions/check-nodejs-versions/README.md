@@ -1,7 +1,7 @@
 # Check Node.js Versions Action
 
-A Forgejo/GitHub Actions composite action that queries the official Node.js release schedule to find
-currently supported versions.
+A Forgejo/GitHub Actions composite action that queries the official Node.js release schedule to
+find currently supported versions.
 
 ## Usage
 
@@ -18,9 +18,9 @@ currently supported versions.
 
 ## Outputs
 
-| Output | Description | Example |
-|--------|-------------|---------|
-| `lts-versions` | Space-separated list of Node.js LTS versions | `18 20 22` |
+| Output          | Description                                            | Example       |
+| --------------- | ------------------------------------------------------ | ------------- |
+| `lts-versions`  | Space-separated list of Node.js LTS versions           | `18 20 22`    |
 | `live-versions` | Space-separated list of all supported Node.js versions | `18 20 22 24` |
 
 ## How it works
@@ -53,7 +53,9 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: ${{ fromJSON(format('[{0}]', replace(needs.check-node.outputs.lts-versions, ' ', ','))) }}
+        node:
+          ${{ fromJSON(format('[{0}]', replace(needs.check-node.outputs.lts-versions, ' ', ',')))
+          }}
     steps:
       - name: Build with Node.js ${{ matrix.node }}
         run: echo "Building with Node.js ${{ matrix.node }}"
