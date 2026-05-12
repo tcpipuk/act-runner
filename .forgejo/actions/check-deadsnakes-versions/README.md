@@ -8,9 +8,9 @@ available across specified Ubuntu releases.
 ```yaml
 - name: Check available Python versions
   id: python-check
-  uses: ./.forgejo/actions/check-deadsnakes-python
+  uses: ./.forgejo/actions/check-deadsnakes-versions
   with:
-    ubuntu-versions: "22.04 24.04 25.04"
+    ubuntu-codenames: "jammy noble resolute"
 
 - name: Display results
   run: |
@@ -19,10 +19,10 @@ available across specified Ubuntu releases.
 
 ## Inputs
 
-| Input             | Description                                                       | Default | Required | Example             |
-| ----------------- | ----------------------------------------------------------------- | ------- | -------- | ------------------- |
-| `ubuntu-versions` | Space-separated list of Ubuntu versions                           | -       | Yes      | `22.04 24.04 25.04` |
-| `limit`           | Maximum number of Python versions to return (newest are selected) | `3`     | No       | `2`                 |
+| Input              | Description                                                       | Default | Required | Example                 |
+| ------------------ | ----------------------------------------------------------------- | ------- | -------- | ----------------------- |
+| `ubuntu-codenames` | Space-separated list of Ubuntu codenames                          | -       | Yes      | `jammy noble resolute`  |
+| `limit`            | Maximum number of Python versions to return (newest are selected) | `3`     | No       | `2`                     |
 
 ## Outputs
 
@@ -32,11 +32,14 @@ available across specified Ubuntu releases.
 
 ## How it works
 
-1. Queries the Launchpad API for the deadsnakes PPA description
-2. Parses the "Supported Ubuntu and Python Versions" section
-3. Finds the intersection of Python versions across all specified Ubuntu releases
+1. For each Ubuntu codename, queries Launchpad's `getPublishedSources` for source packages whose
+   name starts with `python3.` in the deadsnakes PPA
+2. Keeps only entries matching `pythonX.Y` exactly (filtering out variants like `pythonX.Y-dbg`)
+3. Computes the intersection of Python versions across all specified releases
 4. Applies the limit (if set) to return only the newest versions
-5. Returns only versions available in ALL specified releases
+
+This reads the published package list directly rather than scraping the PPA description, so it
+survives future description-format changes by deadsnakes.
 
 ## Example workflow usage
 
@@ -52,9 +55,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - id: check
-        uses: ./.forgejo/actions/check-deadsnakes-python
+        uses: ./.forgejo/actions/check-deadsnakes-versions
         with:
-          ubuntu-versions: "22.04 24.04"
+          ubuntu-codenames: "jammy noble"
 
   build:
     needs: check-python
@@ -72,7 +75,7 @@ jobs:
 
 ## Notes
 
-- Ubuntu versions not supported by deadsnakes (e.g., 25.04) will be noted in the exclusions
-  output
+- Codenames that don't exist in Launchpad will produce a warning and contribute no versions to the
+  intersection
 - The action only returns Python versions available via deadsnakes, not native Ubuntu packages
 - Python versions are returned in sorted order (e.g., 3.7 before 3.11)
