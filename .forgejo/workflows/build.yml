@@ -133,9 +133,9 @@ jobs:
         id: python
         uses: ./.forgejo/actions/check-deadsnakes-versions
         with:
-          ubuntu-versions:
-            "${{ steps.ubuntu.outputs.previous-version }} ${{ steps.ubuntu.outputs.latest-version
-            }}"
+          ubuntu-codenames:
+            "${{ steps.ubuntu.outputs.previous-codename }} ${{
+            steps.ubuntu.outputs.latest-codename }}"
           limit: "1"
 
       - name: Generate Ubuntu Python base image names
