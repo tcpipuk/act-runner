@@ -35,14 +35,19 @@ runs:
         PPA_URL = "https://api.launchpad.net/devel/~deadsnakes/+archive/ubuntu/ppa"
         SERIES_URL_TEMPLATE = "https://api.launchpad.net/devel/ubuntu/{codename}"
         PYTHON_NAME_RE = re.compile(r"^python(\d+\.\d+)$")
+        # deadsnakes pre-releases carry a Debian '~' tilde in their version
+        # (e.g. 3.15.0~b3-1); stable releases never do. Skip alpha/beta/rc so we
+        # only ever ship a stable Python, as the README promises.
+        PRERELEASE_RE = re.compile(r"~(?:a|b|c|rc)\d")
 
         def fetch_published_pythons(codename):
-            """Return the set of Python minor versions deadsnakes publishes for this series.
+            """Return the set of stable Python minor versions deadsnakes publishes for this series.
 
             Queries Launchpad's getPublishedSources for source packages whose name starts
-            with 'python3.', then keeps only those matching 'pythonX.Y' exactly. This
-            survives future description-format changes because it reads the published
-            package list directly rather than parsing free-text.
+            with 'python3.', keeps only those matching 'pythonX.Y' exactly, and drops any
+            whose published version is an alpha/beta/rc pre-release. This survives future
+            description-format changes because it reads the published package list directly
+            rather than parsing free-text.
             """
             params = {
                 "ws.op": "getPublishedSources",
@@ -59,8 +64,11 @@ runs:
                     data = json.loads(response.read().decode())
                 for entry in data.get("entries", []):
                     match = PYTHON_NAME_RE.match(entry.get("source_package_name", ""))
-                    if match:
-                        versions.add(match.group(1))
+                    if not match:
+                        continue
+                    if PRERELEASE_RE.search(entry.get("source_package_version", "")):
+                        continue
+                    versions.add(match.group(1))
                 url = data.get("next_collection_link")
             return versions
 

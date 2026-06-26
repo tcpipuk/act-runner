@@ -35,6 +35,9 @@ jobs:
       node-unstable: ${{ steps.node.outputs.node-unstable }}
       # Python deadsnakes versions
       python-deadsnakes: ${{ steps.python.outputs.python-versions }}
+      # Effective deadsnakes Python per Ubuntu variant (the version to build, or empty to skip)
+      ubuntu-previous-deadsnakes: ${{ steps.ubuntu-deadsnakes.outputs.previous }}
+      ubuntu-latest-deadsnakes: ${{ steps.ubuntu-deadsnakes.outputs.latest }}
       # Ubuntu Python base images
       ubuntu-python-previous-base: ${{ steps.ubuntu-python-base.outputs.previous-base }}
       ubuntu-python-latest-base: ${{ steps.ubuntu-python-base.outputs.latest-base }}
@@ -138,6 +141,32 @@ jobs:
             steps.ubuntu.outputs.latest-codename }}"
           limit: "1"
 
+      - name: Resolve deadsnakes overlay per Ubuntu variant
+        id: ubuntu-deadsnakes
+        shell: bash
+        run: |
+          # The deadsnakes overlay is only worth building where it provides a Python
+          # strictly newer than that variant's native one. Resolve it once here so the
+          # build gate and the README generator share a single source of truth: each
+          # output is the version to build (and advertise), or empty to skip entirely.
+          DS="${{ steps.python.outputs.python-versions }}"
+          resolve() {
+            # $1 = variant label, $2 = that variant's native Python
+            local effective=""
+            if [ -n "${DS}" ] && [ "${DS}" != "$2" ] && \
+               [ "$(printf '%s\n%s\n' "${DS}" "$2" | sort -V | tail -1)" = "${DS}" ]; then
+              effective="${DS}"
+            fi
+            echo "$1=${effective}" >> "$GITHUB_OUTPUT"
+            if [ -n "${effective}" ]; then
+              echo "🔨 ubuntu-$1: deadsnakes ${DS} is newer than native $2 — overlay will build"
+            else
+              echo "⏭️  ubuntu-$1: deadsnakes ${DS:-none} not newer than native $2 — no overlay"
+            fi
+          }
+          resolve previous "${{ steps.ubuntu.outputs.previous-python }}"
+          resolve latest "${{ steps.ubuntu.outputs.latest-python }}"
+
       - name: Generate Ubuntu Python base image names
         id: ubuntu-python-base
         run: |
@@ -235,23 +264,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # The deadsnakes overlay only earns its keep when the requested Python is newer
-      # than the base image's native Python (e.g. 22.04's 3.10 + deadsnakes 3.13). When
-      # they match — as on a release that already ships the requested Python natively —
-      # the base image's own python3-apt already targets it and the base build has
-      # already pushed the identical -py{version} tag, so there is nothing to build.
+      # The overlay build/skip decision is resolved once in prepare
+      # (ubuntu-<variant>-deadsnakes): the Python version to build, or empty to skip.
       - name: Check whether a deadsnakes overlay build is needed
         id: check
         shell: bash
         run: |
-          DEADSNAKES="${{ needs.prepare.outputs.python-deadsnakes }}"
-          NATIVE="${{ matrix.variant == 'previous' && needs.prepare.outputs.ubuntu-previous-python || needs.prepare.outputs.ubuntu-latest-python }}"
-          if [ "${DEADSNAKES}" = "${NATIVE}" ]; then
-            echo "needed=false" >> "$GITHUB_OUTPUT"
-            echo "⏭️  Python ${DEADSNAKES} is already native on ubuntu-${{ matrix.variant }} — nothing to build, skipping overlay"
-          else
+          DEADSNAKES="${{ matrix.variant == 'previous' && needs.prepare.outputs.ubuntu-previous-deadsnakes || needs.prepare.outputs.ubuntu-latest-deadsnakes }}"
+          if [ -n "${DEADSNAKES}" ]; then
             echo "needed=true" >> "$GITHUB_OUTPUT"
-            echo "🔨 Python ${DEADSNAKES} differs from native ${NATIVE} on ubuntu-${{ matrix.variant }} — building overlay"
+            echo "🔨 Building Python ${DEADSNAKES} overlay for ubuntu-${{ matrix.variant }}"
+          else
+            echo "needed=false" >> "$GITHUB_OUTPUT"
+            echo "⏭️  No newer-than-native deadsnakes Python for ubuntu-${{ matrix.variant }} — skipping overlay"
           fi
 
       - name: Set up Docker
@@ -283,7 +308,7 @@ jobs:
           node-version:
             ${{ matrix.variant == 'previous' && needs.prepare.outputs.node-previous ||
             needs.prepare.outputs.node-latest }}
-          python-version: ${{ needs.prepare.outputs.python-deadsnakes }}
+          python-version: ${{ matrix.variant == 'previous' && needs.prepare.outputs.ubuntu-previous-deadsnakes || needs.prepare.outputs.ubuntu-latest-deadsnakes }}
           branch-name: ${{ github.ref_name }}
 
       - name: Build and push Ubuntu Python image
@@ -296,7 +321,7 @@ jobs:
           tags: ${{ steps.ubuntu-python-tags.outputs.tags }}
           build-args: |
             BASE_IMAGE=${{ matrix.variant == 'previous' && needs.prepare.outputs.ubuntu-python-previous-base || needs.prepare.outputs.ubuntu-python-latest-base }}
-            PYTHON_VERSION=${{ needs.prepare.outputs.python-deadsnakes }}
+            PYTHON_VERSION=${{ matrix.variant == 'previous' && needs.prepare.outputs.ubuntu-previous-deadsnakes || needs.prepare.outputs.ubuntu-latest-deadsnakes }}
             UBUNTU_VERSION=${{ matrix.variant == 'previous' && needs.prepare.outputs.ubuntu-previous || needs.prepare.outputs.ubuntu-latest }}
           # TODO: Re-enable multi-arch when build environment supports it
           # Current issue (2025): Python 3.12+ segfaults under QEMU user-mode emulation
@@ -571,8 +596,18 @@ jobs:
         run: |
           echo "📝 Generating Ubuntu and Fedora images tables..."
 
-          # Define all Python versions we support (matches the matrix in build-ubuntu)
-          PYTHON_VERSIONS="3.13"
+          # Deadsnakes Python: the detected stable version, plus the per-variant effective
+          # values (empty when that variant's overlay is skipped). Resolved centrally in
+          # prepare so the table can never advertise an image the build didn't produce.
+          DEADSNAKES_DETECTED="${{ needs.prepare.outputs.python-deadsnakes }}"
+          UBUNTU_PREV_DEADSNAKES="${{ needs.prepare.outputs.ubuntu-previous-deadsnakes }}"
+          UBUNTU_LATEST_DEADSNAKES="${{ needs.prepare.outputs.ubuntu-latest-deadsnakes }}"
+
+          # Render the extra ", [ver](tag-url)" deadsnakes column entry, or nothing when
+          # that variant has no overlay, so a row never links an image that wasn't built.
+          ds_suffix() {  # $1 = ubuntu version, $2 = node tag, $3 = deadsnakes version (may be empty)
+            [ -n "$3" ] && printf ', [%s](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu%s-node%s-py%s)' "$3" "$1" "$2" "$3" || true
+          }
 
           # Get versions from prepare outputs
           UBUNTU_PREV_VERSION="${{ needs.prepare.outputs.ubuntu-previous }}"
@@ -616,11 +651,11 @@ jobs:
             echo "| Ubuntu Version | Alias Tag | Node.js | Python Versions Available |"
             echo "| --- | --- | --- | --- |"
             echo "| ${UBUNTU_ROLLING_VERSION} (Development) | **[\`ubuntu-rolling\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu-rolling)** | ${NODE_UNSTABLE_DISPLAY} | [***${UBUNTU_ROLLING_PYTHON}***](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${UBUNTU_ROLLING_VERSION}-node${NODE_UNSTABLE_TAG}-py${UBUNTU_ROLLING_PYTHON}) |"
-            echo "| ${UBUNTU_LATEST_VERSION} LTS (Current) | **[\`ubuntu-latest\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu-latest)** | ${NODE_LATEST_DISPLAY} | [***${UBUNTU_LATEST_PYTHON}***](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${UBUNTU_LATEST_VERSION}-node${NODE_LATEST_TAG}-py${UBUNTU_LATEST_PYTHON}), [${PYTHON_VERSIONS}](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${UBUNTU_LATEST_VERSION}-node${NODE_LATEST_TAG}-py${PYTHON_VERSIONS}) |"
-            echo "| ${UBUNTU_PREV_VERSION} LTS (Previous) | **[\`ubuntu-previous\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu-previous)** | ${NODE_PREVIOUS_DISPLAY} | [***${UBUNTU_PREV_PYTHON}***](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${UBUNTU_PREV_VERSION}-node${NODE_PREVIOUS_TAG}-py${UBUNTU_PREV_PYTHON}), [${PYTHON_VERSIONS}](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${UBUNTU_PREV_VERSION}-node${NODE_PREVIOUS_TAG}-py${PYTHON_VERSIONS}) |"
+            echo "| ${UBUNTU_LATEST_VERSION} LTS (Current) | **[\`ubuntu-latest\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu-latest)** | ${NODE_LATEST_DISPLAY} | [***${UBUNTU_LATEST_PYTHON}***](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${UBUNTU_LATEST_VERSION}-node${NODE_LATEST_TAG}-py${UBUNTU_LATEST_PYTHON})$(ds_suffix "${UBUNTU_LATEST_VERSION}" "${NODE_LATEST_TAG}" "${UBUNTU_LATEST_DEADSNAKES}") |"
+            echo "| ${UBUNTU_PREV_VERSION} LTS (Previous) | **[\`ubuntu-previous\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu-previous)** | ${NODE_PREVIOUS_DISPLAY} | [***${UBUNTU_PREV_PYTHON}***](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${UBUNTU_PREV_VERSION}-node${NODE_PREVIOUS_TAG}-py${UBUNTU_PREV_PYTHON})$(ds_suffix "${UBUNTU_PREV_VERSION}" "${NODE_PREVIOUS_TAG}" "${UBUNTU_PREV_DEADSNAKES}") |"
             echo ""
             echo "**Note**: ***Italicised*** versions are the native Python for each Ubuntu release. Non-native"
-            echo "versions use the latest stable Python (${PYTHON_VERSIONS}) from deadsnakes PPA."
+            echo "versions use the latest stable Python (${DEADSNAKES_DETECTED}) from deadsnakes PPA."
             echo ""
           } > /tmp/ubuntu-images.md
 
