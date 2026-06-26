@@ -614,7 +614,7 @@ jobs:
           # Generate Ubuntu images table
           {
             echo "| Ubuntu Version | Alias Tag | Node.js | Python Versions Available |"
-            echo "|----------------|-----------|---------|---------------------------|"
+            echo "| --- | --- | --- | --- |"
             echo "| ${UBUNTU_ROLLING_VERSION} (Development) | **[\`ubuntu-rolling\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu-rolling)** | ${NODE_UNSTABLE_DISPLAY} | [***${UBUNTU_ROLLING_PYTHON}***](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${UBUNTU_ROLLING_VERSION}-node${NODE_UNSTABLE_TAG}-py${UBUNTU_ROLLING_PYTHON}) |"
             echo "| ${UBUNTU_LATEST_VERSION} LTS (Current) | **[\`ubuntu-latest\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu-latest)** | ${NODE_LATEST_DISPLAY} | [***${UBUNTU_LATEST_PYTHON}***](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${UBUNTU_LATEST_VERSION}-node${NODE_LATEST_TAG}-py${UBUNTU_LATEST_PYTHON}), [${PYTHON_VERSIONS}](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${UBUNTU_LATEST_VERSION}-node${NODE_LATEST_TAG}-py${PYTHON_VERSIONS}) |"
             echo "| ${UBUNTU_PREV_VERSION} LTS (Previous) | **[\`ubuntu-previous\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu-previous)** | ${NODE_PREVIOUS_DISPLAY} | [***${UBUNTU_PREV_PYTHON}***](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${UBUNTU_PREV_VERSION}-node${NODE_PREVIOUS_TAG}-py${UBUNTU_PREV_PYTHON}), [${PYTHON_VERSIONS}](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${UBUNTU_PREV_VERSION}-node${NODE_PREVIOUS_TAG}-py${PYTHON_VERSIONS}) |"
@@ -627,7 +627,7 @@ jobs:
           # Generate Fedora images table
           {
             echo "| Fedora Version | Alias Tag | Node.js | Python Versions Available |"
-            echo "|----------------|-----------|---------|---------------------------|"
+            echo "| --- | --- | --- | --- |"
             echo "| Rawhide (Development) | **[\`fedora-rawhide\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora-rawhide)** | ${NODE_UNSTABLE_DISPLAY} | [**${FEDORA_RAWHIDE_PYTHON}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedorarawhide-node${NODE_UNSTABLE_TAG}-py${FEDORA_RAWHIDE_PYTHON}) |"
             echo "| ${FEDORA_LATEST_VERSION} (Current) | **[\`fedora-latest\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora-latest)** | ${NODE_LATEST_DISPLAY} | [**${FEDORA_LATEST_PYTHON}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora${FEDORA_LATEST_VERSION}-node${NODE_LATEST_TAG}-py${FEDORA_LATEST_PYTHON}) |"
             echo "| ${FEDORA_PREV_VERSION} (Previous) | **[\`fedora-previous\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora-previous)** | ${NODE_PREVIOUS_DISPLAY} | [**${FEDORA_PREV_PYTHON}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora${FEDORA_PREV_VERSION}-node${NODE_PREVIOUS_TAG}-py${FEDORA_PREV_PYTHON}) |"
@@ -636,7 +636,7 @@ jobs:
           # Generate Debian images table
           {
             echo "| Debian Version | Alias Tag | Node.js | Python Versions Available |"
-            echo "|----------------|-----------|---------|---------------------------|"
+            echo "| --- | --- | --- | --- |"
             echo "| ${DEBIAN_SID_VERSION} (${DEBIAN_SID_CODENAME^} - Sid/Unstable) | **[\`debian-sid\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/debian-sid)** | ${NODE_UNSTABLE_DISPLAY} | [**${DEBIAN_SID_PYTHON}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/debian${DEBIAN_SID_VERSION}-node${NODE_UNSTABLE_TAG}-py${DEBIAN_SID_PYTHON}) |"
             echo "| ${DEBIAN_STABLE_VERSION} (${DEBIAN_STABLE_CODENAME^} - Stable) | **[\`debian-latest\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/debian-latest)** | ${NODE_LATEST_DISPLAY} | [**${DEBIAN_STABLE_PYTHON}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/debian${DEBIAN_STABLE_VERSION}-node${NODE_LATEST_TAG}-py${DEBIAN_STABLE_PYTHON}) |"
             echo "| ${DEBIAN_OLDSTABLE_VERSION} (${DEBIAN_OLDSTABLE_CODENAME^} - Oldstable) | **[\`debian-oldstable\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/debian-oldstable)** | ${NODE_PREVIOUS_DISPLAY} | [**${DEBIAN_OLDSTABLE_PYTHON}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/debian${DEBIAN_OLDSTABLE_VERSION}-node${NODE_PREVIOUS_TAG}-py${DEBIAN_OLDSTABLE_PYTHON}) |"
