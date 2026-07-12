@@ -7,7 +7,11 @@ inputs:
     description: Operating system name (ubuntu, fedora, debian)
     required: true
   previous-tag:
-    description: Docker tag for previous/oldstable version (e.g., jammy, 41, oldstable)
+    description: >-
+      Docker tag for the previous version, or `auto` to derive it from the detected
+      latest release. Ubuntu/Fedora have no rolling "previous" tag upstream (unlike
+      Debian's `oldstable`), so `auto` computes it: Ubuntu LTS = latest major − 2 (.04),
+      Fedora = latest − 1. Pass an explicit tag (e.g. oldstable) for anything else.
     required: true
   latest-tag:
     description: Docker tag for latest/stable version (e.g., latest, latest, stable)
@@ -19,8 +23,8 @@ inputs:
 outputs:
   # Previous version outputs
   previous-tag:
-    description: Previous Docker tag (passed through)
-    value: ${{ inputs.previous-tag }}
+    description: Previous Docker tag (resolved — the derived tag when `auto` was requested)
+    value: ${{ steps.resolve-previous.outputs.tag }}
   previous-version:
     description: Previous OS version (e.g., 22.04, 41, 12)
     value: ${{ steps.previous.outputs.version }}
@@ -62,19 +66,46 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: Detect previous version info
-      id: previous
-      uses: ./.forgejo/actions/detect-os-version
-      with:
-        os-type: ${{ inputs.os-name }}
-        os-tag: ${{ inputs.previous-tag }}
-
+    # Latest is detected first because `auto` previous is derived from it.
     - name: Detect latest version info
       id: latest
       uses: ./.forgejo/actions/detect-os-version
       with:
         os-type: ${{ inputs.os-name }}
         os-tag: ${{ inputs.latest-tag }}
+
+    - name: Resolve previous tag
+      id: resolve-previous
+      shell: bash
+      run: |
+        # Ubuntu/Fedora publish no rolling "previous" tag (unlike Debian's `oldstable`),
+        # so `auto` derives it from the just-detected latest release. Both cadences are
+        # regular: Ubuntu LTS is X.04 every two years (previous = X-2), Fedora is
+        # sequential integers (previous = N-1). Any other value passes straight through.
+        REQUESTED="${{ inputs.previous-tag }}"
+        if [ "${REQUESTED}" != "auto" ]; then
+          echo "tag=${REQUESTED}" >> "$GITHUB_OUTPUT"
+          echo "📌 ${{ inputs.os-name }} previous pinned to '${REQUESTED}'"
+          exit 0
+        fi
+        LATEST="${{ steps.latest.outputs.version }}"
+        case "${{ inputs.os-name }}" in
+          ubuntu) TAG="$(( ${LATEST%%.*} - 2 )).04" ;;
+          fedora) TAG="$(( LATEST - 1 ))" ;;
+          *)
+            echo "::error::Cannot auto-derive previous tag for '${{ inputs.os-name }}' — pass an explicit tag"
+            exit 1
+            ;;
+        esac
+        echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+        echo "🧮 ${{ inputs.os-name }} previous auto-derived from latest ${LATEST} → '${TAG}'"
+
+    - name: Detect previous version info
+      id: previous
+      uses: ./.forgejo/actions/detect-os-version
+      with:
+        os-type: ${{ inputs.os-name }}
+        os-tag: ${{ steps.resolve-previous.outputs.tag }}
 
     - name: Detect unstable version info
       id: unstable
@@ -87,6 +118,6 @@ runs:
       shell: bash
       run: |
         echo "🔍 Detected versions for ${{ inputs.os-name }}:"
-        echo "  Previous (${{ inputs.previous-tag }}): ${{ steps.previous.outputs.version }} (Python ${{ steps.previous.outputs.python-version }})"
+        echo "  Previous (${{ steps.resolve-previous.outputs.tag }}): ${{ steps.previous.outputs.version }} (Python ${{ steps.previous.outputs.python-version }})"
         echo "  Latest (${{ inputs.latest-tag }}): ${{ steps.latest.outputs.version }} (Python ${{ steps.latest.outputs.python-version }})"
         echo "  Unstable (${{ inputs.unstable-tag }}): ${{ steps.unstable.outputs.version }} (Python ${{ steps.unstable.outputs.python-version }})"
