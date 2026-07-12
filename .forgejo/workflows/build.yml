@@ -174,8 +174,15 @@ jobs:
           UBUNTU_PREV_NODE_TAG="${{ steps.node.outputs.node-previous }}"
           UBUNTU_LATEST_NODE_TAG="${{ steps.node.outputs.node-latest }}"
 
-          echo "previous-base=git.tomfos.tr/tom/act-runner:ubuntu${{ steps.ubuntu.outputs.previous-version }}-node${UBUNTU_PREV_NODE_TAG}-py${{ steps.ubuntu.outputs.previous-python }}" >> $GITHUB_OUTPUT
-          echo "latest-base=git.tomfos.tr/tom/act-runner:ubuntu${{ steps.ubuntu.outputs.latest-version }}-node${UBUNTU_LATEST_NODE_TAG}-py${{ steps.ubuntu.outputs.latest-python }}" >> $GITHUB_OUTPUT
+          # generate-image-tags suffixes base images with the branch on non-main builds,
+          # so the overlay must reference the suffixed tag this run actually pushed —
+          # otherwise it silently resolves a stale image from a past main build, or (for a
+          # newly-introduced version) nothing at all.
+          SUFFIX=""
+          [ "${{ github.ref_name }}" != "main" ] && SUFFIX="-${{ github.ref_name }}"
+
+          echo "previous-base=git.tomfos.tr/tom/act-runner:ubuntu${{ steps.ubuntu.outputs.previous-version }}-node${UBUNTU_PREV_NODE_TAG}-py${{ steps.ubuntu.outputs.previous-python }}${SUFFIX}" >> $GITHUB_OUTPUT
+          echo "latest-base=git.tomfos.tr/tom/act-runner:ubuntu${{ steps.ubuntu.outputs.latest-version }}-node${UBUNTU_LATEST_NODE_TAG}-py${{ steps.ubuntu.outputs.latest-python }}${SUFFIX}" >> $GITHUB_OUTPUT
 
   build-ubuntu:
     name:
