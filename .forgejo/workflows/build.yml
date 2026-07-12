@@ -110,7 +110,7 @@ jobs:
         uses: ./.forgejo/actions/prepare-build-inputs
         with:
           os-name: ubuntu
-          previous-tag: jammy
+          previous-tag: auto
           latest-tag: latest
           unstable-tag: rolling
 
@@ -119,7 +119,7 @@ jobs:
         uses: ./.forgejo/actions/prepare-build-inputs
         with:
           os-name: fedora
-          previous-tag: "41"
+          previous-tag: auto
           latest-tag: latest
           unstable-tag: rawhide
 
