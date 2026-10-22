@@ -36,7 +36,7 @@ act -P ubuntu-latest=ghcr.io/tcpipuk/act-runner:ubuntu-latest
 
 | Ubuntu Version | Alias Tag | Node.js | Python Versions Available |
 | --- | --- | --- | --- |
-| 26.04 (Development) | **[`ubuntu-rolling`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu-rolling)** | 26 | [***3.14***](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu26.04-node26-py3.14) |
+| 26.10 (Development) | **[`ubuntu-rolling`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu-rolling)** | 26 | [***3.14***](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu26.10-node26-py3.14) |
 | 26.04 LTS (Current) | **[`ubuntu-latest`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu-latest)** | 24 | [***3.14***](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu26.04-node24-py3.14), [3.15](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu26.04-node24-py3.15) |
 | 24.04 LTS (Previous) | **[`ubuntu-previous`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu-previous)** | 22 | [***3.12***](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu24.04-node22-py3.12), [3.15](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu24.04-node22-py3.15) |
 
