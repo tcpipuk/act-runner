@@ -36,12 +36,12 @@ act -P ubuntu-latest=ghcr.io/liminalpurple/act-runner:ubuntu-latest
 
 | Ubuntu Version | Alias Tag | Node.js | Python Versions Available |
 | --- | --- | --- | --- |
-| 26.04 (Development) | **[`ubuntu-rolling`](https://git.cisnt.uk/morgan/-/packages/container/act-runner/ubuntu-rolling)** | 26 | [***3.14***](https://git.cisnt.uk/morgan/-/packages/container/act-runner/ubuntu26.04-node26-py3.14) |
-| 26.04 LTS (Current) | **[`ubuntu-latest`](https://git.cisnt.uk/morgan/-/packages/container/act-runner/ubuntu-latest)** | 24 | [***3.14***](https://git.cisnt.uk/morgan/-/packages/container/act-runner/ubuntu26.04-node24-py3.14) |
-| 22.04 LTS (Previous) | **[`ubuntu-previous`](https://git.cisnt.uk/morgan/-/packages/container/act-runner/ubuntu-previous)** | 22 | [***3.10***](https://git.cisnt.uk/morgan/-/packages/container/act-runner/ubuntu22.04-node22-py3.10), [3.13](https://git.cisnt.uk/morgan/-/packages/container/act-runner/ubuntu22.04-node22-py3.13) |
+| 26.10 (Development) | **[`ubuntu-rolling`](https://git.cisnt.uk/morgan/-/packages/container/act-runner/ubuntu-rolling)** | 26 | [***3.14***](https://git.cisnt.uk/morgan/-/packages/container/act-runner/ubuntu26.10-node26-py3.14) |
+| 26.04 LTS (Current) | **[`ubuntu-latest`](https://git.cisnt.uk/morgan/-/packages/container/act-runner/ubuntu-latest)** | 26 | [***3.14***](https://git.cisnt.uk/morgan/-/packages/container/act-runner/ubuntu26.04-node26-py3.14), [3.15](https://git.cisnt.uk/morgan/-/packages/container/act-runner/ubuntu26.04-node26-py3.15) |
+| 24.04 LTS (Previous) | **[`ubuntu-previous`](https://git.cisnt.uk/morgan/-/packages/container/act-runner/ubuntu-previous)** | 24 | [***3.12***](https://git.cisnt.uk/morgan/-/packages/container/act-runner/ubuntu24.04-node24-py3.12), [3.15](https://git.cisnt.uk/morgan/-/packages/container/act-runner/ubuntu24.04-node24-py3.15) |
 
 **Note**: ***Italicised*** versions are the native Python for each Ubuntu release. Non-native
-versions use the latest stable Python (3.13) from deadsnakes PPA.
+versions use the latest stable Python (3.15) from deadsnakes PPA.
 
 ## Fedora images
 
@@ -50,8 +50,8 @@ versions use the latest stable Python (3.13) from deadsnakes PPA.
 | Fedora Version | Alias Tag | Node.js | Python Versions Available |
 | --- | --- | --- | --- |
 | Rawhide (Development) | **[`fedora-rawhide`](https://git.cisnt.uk/morgan/-/packages/container/act-runner/fedora-rawhide)** | 26 | [**3.15**](https://git.cisnt.uk/morgan/-/packages/container/act-runner/fedorarawhide-node26-py3.15) |
-| 44 (Current) | **[`fedora-latest`](https://git.cisnt.uk/morgan/-/packages/container/act-runner/fedora-latest)** | 24 | [**3.14**](https://git.cisnt.uk/morgan/-/packages/container/act-runner/fedora44-node24-py3.14) |
-| 41 (Previous) | **[`fedora-previous`](https://git.cisnt.uk/morgan/-/packages/container/act-runner/fedora-previous)** | 22 | [**3.13**](https://git.cisnt.uk/morgan/-/packages/container/act-runner/fedora41-node22-py3.13) |
+| 44 (Current) | **[`fedora-latest`](https://git.cisnt.uk/morgan/-/packages/container/act-runner/fedora-latest)** | 26 | [**3.14**](https://git.cisnt.uk/morgan/-/packages/container/act-runner/fedora44-node26-py3.14) |
+| 43 (Previous) | **[`fedora-previous`](https://git.cisnt.uk/morgan/-/packages/container/act-runner/fedora-previous)** | 24 | [**3.14**](https://git.cisnt.uk/morgan/-/packages/container/act-runner/fedora43-node24-py3.14) |
 
 ## Debian images
 
@@ -60,8 +60,8 @@ versions use the latest stable Python (3.13) from deadsnakes PPA.
 | Debian Version | Alias Tag | Node.js | Python Versions Available |
 | --- | --- | --- | --- |
 | sid (Forky - Sid/Unstable) | **[`debian-sid`](https://git.cisnt.uk/morgan/-/packages/container/act-runner/debian-sid)** | 26 | [**3.14**](https://git.cisnt.uk/morgan/-/packages/container/act-runner/debiansid-node26-py3.14) |
-| 13 (Trixie - Stable) | **[`debian-latest`](https://git.cisnt.uk/morgan/-/packages/container/act-runner/debian-latest)** | 24 | [**3.13**](https://git.cisnt.uk/morgan/-/packages/container/act-runner/debian13-node24-py3.13) |
-| 12 (Bookworm - Oldstable) | **[`debian-oldstable`](https://git.cisnt.uk/morgan/-/packages/container/act-runner/debian-oldstable)** | 22 | [**3.11**](https://git.cisnt.uk/morgan/-/packages/container/act-runner/debian12-node22-py3.11) |
+| 13 (Trixie - Stable) | **[`debian-latest`](https://git.cisnt.uk/morgan/-/packages/container/act-runner/debian-latest)** | 26 | [**3.13**](https://git.cisnt.uk/morgan/-/packages/container/act-runner/debian13-node26-py3.13) |
+| 12 (Bookworm - Oldstable) | **[`debian-oldstable`](https://git.cisnt.uk/morgan/-/packages/container/act-runner/debian-oldstable)** | 24 | [**3.11**](https://git.cisnt.uk/morgan/-/packages/container/act-runner/debian12-node24-py3.11) |
 
 **Note**: Debian images use only the native Python version for each release,
 providing better system integration than external PPAs.
