@@ -19,8 +19,8 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  REGISTRY: git.tomfos.tr
-  IMAGE_NAME: tom/act-runner
+  REGISTRY: git.cisnt.uk
+  IMAGE_NAME: morgan/act-runner
 
 jobs:
   prepare:
@@ -181,8 +181,8 @@ jobs:
           SUFFIX=""
           [ "${{ github.ref_name }}" != "main" ] && SUFFIX="-${{ github.ref_name }}"
 
-          echo "previous-base=git.tomfos.tr/tom/act-runner:ubuntu${{ steps.ubuntu.outputs.previous-version }}-node${UBUNTU_PREV_NODE_TAG}-py${{ steps.ubuntu.outputs.previous-python }}${SUFFIX}" >> $GITHUB_OUTPUT
-          echo "latest-base=git.tomfos.tr/tom/act-runner:ubuntu${{ steps.ubuntu.outputs.latest-version }}-node${UBUNTU_LATEST_NODE_TAG}-py${{ steps.ubuntu.outputs.latest-python }}${SUFFIX}" >> $GITHUB_OUTPUT
+          echo "previous-base=git.cisnt.uk/morgan/act-runner:ubuntu${{ steps.ubuntu.outputs.previous-version }}-node${UBUNTU_PREV_NODE_TAG}-py${{ steps.ubuntu.outputs.previous-python }}${SUFFIX}" >> $GITHUB_OUTPUT
+          echo "latest-base=git.cisnt.uk/morgan/act-runner:ubuntu${{ steps.ubuntu.outputs.latest-version }}-node${UBUNTU_LATEST_NODE_TAG}-py${{ steps.ubuntu.outputs.latest-python }}${SUFFIX}" >> $GITHUB_OUTPUT
 
   build-ubuntu:
     name:
@@ -485,10 +485,10 @@ jobs:
 
       - name: Discover and mirror image tags
         env:
-          SOURCE_REGISTRY: git.tomfos.tr
-          SOURCE_IMAGE: tom/act-runner
+          SOURCE_REGISTRY: git.cisnt.uk
+          SOURCE_IMAGE: morgan/act-runner
           DEST_REGISTRY: ghcr.io
-          DEST_IMAGE: tcpipuk/act-runner
+          DEST_IMAGE: liminalpurple/act-runner
         run: |
           echo "🔍 Discovering tags from source registry..."
 
@@ -534,7 +534,7 @@ jobs:
               --retry-times 3 \
               --dest-precompute-digests \
               --src-no-creds \
-              --dest-creds "tcpipuk:${{ secrets.GHCR_SYNC }}" \
+              --dest-creds "liminalpurple:${{ secrets.GHCR_SYNC }}" \
               "docker://${SOURCE_REGISTRY}/${SOURCE_IMAGE}:${TAG}" \
               "docker://${DEST_REGISTRY}/${DEST_IMAGE}:${TAG}"; then
               echo "✅ Successfully mirrored: ${TAG}"
@@ -571,7 +571,7 @@ jobs:
           MISSING=0
 
           for TAG in $CRITICAL_TAGS; do
-            if skopeo inspect --no-creds "docker://ghcr.io/tcpipuk/act-runner:${TAG}" > /dev/null 2>&1; then
+            if skopeo inspect --no-creds "docker://ghcr.io/liminalpurple/act-runner:${TAG}" > /dev/null 2>&1; then
               echo "✅ Verified: ${TAG}"
             else
               echo "❌ Missing critical tag: ${TAG}"
@@ -613,7 +613,7 @@ jobs:
           # Render the extra ", [ver](tag-url)" deadsnakes column entry, or nothing when
           # that variant has no overlay, so a row never links an image that wasn't built.
           ds_suffix() {  # $1 = ubuntu version, $2 = node tag, $3 = deadsnakes version (may be empty)
-            [ -n "$3" ] && printf ', [%s](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu%s-node%s-py%s)' "$3" "$1" "$2" "$3" || true
+            [ -n "$3" ] && printf ', [%s](https://git.cisnt.uk/morgan/-/packages/container/act-runner/ubuntu%s-node%s-py%s)' "$3" "$1" "$2" "$3" || true
           }
 
           # Get versions from prepare outputs
@@ -657,9 +657,9 @@ jobs:
           {
             echo "| Ubuntu Version | Alias Tag | Node.js | Python Versions Available |"
             echo "| --- | --- | --- | --- |"
-            echo "| ${UBUNTU_ROLLING_VERSION} (Development) | **[\`ubuntu-rolling\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu-rolling)** | ${NODE_UNSTABLE_DISPLAY} | [***${UBUNTU_ROLLING_PYTHON}***](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${UBUNTU_ROLLING_VERSION}-node${NODE_UNSTABLE_TAG}-py${UBUNTU_ROLLING_PYTHON}) |"
-            echo "| ${UBUNTU_LATEST_VERSION} LTS (Current) | **[\`ubuntu-latest\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu-latest)** | ${NODE_LATEST_DISPLAY} | [***${UBUNTU_LATEST_PYTHON}***](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${UBUNTU_LATEST_VERSION}-node${NODE_LATEST_TAG}-py${UBUNTU_LATEST_PYTHON})$(ds_suffix "${UBUNTU_LATEST_VERSION}" "${NODE_LATEST_TAG}" "${UBUNTU_LATEST_DEADSNAKES}") |"
-            echo "| ${UBUNTU_PREV_VERSION} LTS (Previous) | **[\`ubuntu-previous\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu-previous)** | ${NODE_PREVIOUS_DISPLAY} | [***${UBUNTU_PREV_PYTHON}***](https://git.tomfos.tr/tom/-/packages/container/act-runner/ubuntu${UBUNTU_PREV_VERSION}-node${NODE_PREVIOUS_TAG}-py${UBUNTU_PREV_PYTHON})$(ds_suffix "${UBUNTU_PREV_VERSION}" "${NODE_PREVIOUS_TAG}" "${UBUNTU_PREV_DEADSNAKES}") |"
+            echo "| ${UBUNTU_ROLLING_VERSION} (Development) | **[\`ubuntu-rolling\`](https://git.cisnt.uk/morgan/-/packages/container/act-runner/ubuntu-rolling)** | ${NODE_UNSTABLE_DISPLAY} | [***${UBUNTU_ROLLING_PYTHON}***](https://git.cisnt.uk/morgan/-/packages/container/act-runner/ubuntu${UBUNTU_ROLLING_VERSION}-node${NODE_UNSTABLE_TAG}-py${UBUNTU_ROLLING_PYTHON}) |"
+            echo "| ${UBUNTU_LATEST_VERSION} LTS (Current) | **[\`ubuntu-latest\`](https://git.cisnt.uk/morgan/-/packages/container/act-runner/ubuntu-latest)** | ${NODE_LATEST_DISPLAY} | [***${UBUNTU_LATEST_PYTHON}***](https://git.cisnt.uk/morgan/-/packages/container/act-runner/ubuntu${UBUNTU_LATEST_VERSION}-node${NODE_LATEST_TAG}-py${UBUNTU_LATEST_PYTHON})$(ds_suffix "${UBUNTU_LATEST_VERSION}" "${NODE_LATEST_TAG}" "${UBUNTU_LATEST_DEADSNAKES}") |"
+            echo "| ${UBUNTU_PREV_VERSION} LTS (Previous) | **[\`ubuntu-previous\`](https://git.cisnt.uk/morgan/-/packages/container/act-runner/ubuntu-previous)** | ${NODE_PREVIOUS_DISPLAY} | [***${UBUNTU_PREV_PYTHON}***](https://git.cisnt.uk/morgan/-/packages/container/act-runner/ubuntu${UBUNTU_PREV_VERSION}-node${NODE_PREVIOUS_TAG}-py${UBUNTU_PREV_PYTHON})$(ds_suffix "${UBUNTU_PREV_VERSION}" "${NODE_PREVIOUS_TAG}" "${UBUNTU_PREV_DEADSNAKES}") |"
             echo ""
             echo "**Note**: ***Italicised*** versions are the native Python for each Ubuntu release. Non-native"
             echo "versions use the latest stable Python (${DEADSNAKES_DETECTED}) from deadsnakes PPA."
@@ -670,18 +670,18 @@ jobs:
           {
             echo "| Fedora Version | Alias Tag | Node.js | Python Versions Available |"
             echo "| --- | --- | --- | --- |"
-            echo "| Rawhide (Development) | **[\`fedora-rawhide\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora-rawhide)** | ${NODE_UNSTABLE_DISPLAY} | [**${FEDORA_RAWHIDE_PYTHON}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedorarawhide-node${NODE_UNSTABLE_TAG}-py${FEDORA_RAWHIDE_PYTHON}) |"
-            echo "| ${FEDORA_LATEST_VERSION} (Current) | **[\`fedora-latest\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora-latest)** | ${NODE_LATEST_DISPLAY} | [**${FEDORA_LATEST_PYTHON}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora${FEDORA_LATEST_VERSION}-node${NODE_LATEST_TAG}-py${FEDORA_LATEST_PYTHON}) |"
-            echo "| ${FEDORA_PREV_VERSION} (Previous) | **[\`fedora-previous\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora-previous)** | ${NODE_PREVIOUS_DISPLAY} | [**${FEDORA_PREV_PYTHON}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/fedora${FEDORA_PREV_VERSION}-node${NODE_PREVIOUS_TAG}-py${FEDORA_PREV_PYTHON}) |"
+            echo "| Rawhide (Development) | **[\`fedora-rawhide\`](https://git.cisnt.uk/morgan/-/packages/container/act-runner/fedora-rawhide)** | ${NODE_UNSTABLE_DISPLAY} | [**${FEDORA_RAWHIDE_PYTHON}**](https://git.cisnt.uk/morgan/-/packages/container/act-runner/fedorarawhide-node${NODE_UNSTABLE_TAG}-py${FEDORA_RAWHIDE_PYTHON}) |"
+            echo "| ${FEDORA_LATEST_VERSION} (Current) | **[\`fedora-latest\`](https://git.cisnt.uk/morgan/-/packages/container/act-runner/fedora-latest)** | ${NODE_LATEST_DISPLAY} | [**${FEDORA_LATEST_PYTHON}**](https://git.cisnt.uk/morgan/-/packages/container/act-runner/fedora${FEDORA_LATEST_VERSION}-node${NODE_LATEST_TAG}-py${FEDORA_LATEST_PYTHON}) |"
+            echo "| ${FEDORA_PREV_VERSION} (Previous) | **[\`fedora-previous\`](https://git.cisnt.uk/morgan/-/packages/container/act-runner/fedora-previous)** | ${NODE_PREVIOUS_DISPLAY} | [**${FEDORA_PREV_PYTHON}**](https://git.cisnt.uk/morgan/-/packages/container/act-runner/fedora${FEDORA_PREV_VERSION}-node${NODE_PREVIOUS_TAG}-py${FEDORA_PREV_PYTHON}) |"
           } > /tmp/fedora-images.md
 
           # Generate Debian images table
           {
             echo "| Debian Version | Alias Tag | Node.js | Python Versions Available |"
             echo "| --- | --- | --- | --- |"
-            echo "| ${DEBIAN_SID_VERSION} (${DEBIAN_SID_CODENAME^} - Sid/Unstable) | **[\`debian-sid\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/debian-sid)** | ${NODE_UNSTABLE_DISPLAY} | [**${DEBIAN_SID_PYTHON}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/debian${DEBIAN_SID_VERSION}-node${NODE_UNSTABLE_TAG}-py${DEBIAN_SID_PYTHON}) |"
-            echo "| ${DEBIAN_STABLE_VERSION} (${DEBIAN_STABLE_CODENAME^} - Stable) | **[\`debian-latest\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/debian-latest)** | ${NODE_LATEST_DISPLAY} | [**${DEBIAN_STABLE_PYTHON}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/debian${DEBIAN_STABLE_VERSION}-node${NODE_LATEST_TAG}-py${DEBIAN_STABLE_PYTHON}) |"
-            echo "| ${DEBIAN_OLDSTABLE_VERSION} (${DEBIAN_OLDSTABLE_CODENAME^} - Oldstable) | **[\`debian-oldstable\`](https://git.tomfos.tr/tom/-/packages/container/act-runner/debian-oldstable)** | ${NODE_PREVIOUS_DISPLAY} | [**${DEBIAN_OLDSTABLE_PYTHON}**](https://git.tomfos.tr/tom/-/packages/container/act-runner/debian${DEBIAN_OLDSTABLE_VERSION}-node${NODE_PREVIOUS_TAG}-py${DEBIAN_OLDSTABLE_PYTHON}) |"
+            echo "| ${DEBIAN_SID_VERSION} (${DEBIAN_SID_CODENAME^} - Sid/Unstable) | **[\`debian-sid\`](https://git.cisnt.uk/morgan/-/packages/container/act-runner/debian-sid)** | ${NODE_UNSTABLE_DISPLAY} | [**${DEBIAN_SID_PYTHON}**](https://git.cisnt.uk/morgan/-/packages/container/act-runner/debian${DEBIAN_SID_VERSION}-node${NODE_UNSTABLE_TAG}-py${DEBIAN_SID_PYTHON}) |"
+            echo "| ${DEBIAN_STABLE_VERSION} (${DEBIAN_STABLE_CODENAME^} - Stable) | **[\`debian-latest\`](https://git.cisnt.uk/morgan/-/packages/container/act-runner/debian-latest)** | ${NODE_LATEST_DISPLAY} | [**${DEBIAN_STABLE_PYTHON}**](https://git.cisnt.uk/morgan/-/packages/container/act-runner/debian${DEBIAN_STABLE_VERSION}-node${NODE_LATEST_TAG}-py${DEBIAN_STABLE_PYTHON}) |"
+            echo "| ${DEBIAN_OLDSTABLE_VERSION} (${DEBIAN_OLDSTABLE_CODENAME^} - Oldstable) | **[\`debian-oldstable\`](https://git.cisnt.uk/morgan/-/packages/container/act-runner/debian-oldstable)** | ${NODE_PREVIOUS_DISPLAY} | [**${DEBIAN_OLDSTABLE_PYTHON}**](https://git.cisnt.uk/morgan/-/packages/container/act-runner/debian${DEBIAN_OLDSTABLE_VERSION}-node${NODE_PREVIOUS_TAG}-py${DEBIAN_OLDSTABLE_PYTHON}) |"
             echo ""
             echo "**Note**: Debian images use only the native Python version for each release,"
             echo "providing better system integration than external PPAs."

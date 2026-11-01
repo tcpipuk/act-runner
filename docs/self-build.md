@@ -11,7 +11,7 @@ Docker BuildKit should be enabled (it's the default in modern Docker versions).
 Clone the repository:
 
 ```bash
-git clone https://git.tomfos.tr/tom/act-runner.git
+git clone https://git.cisnt.uk/morgan/act-runner.git
 cd act-runner
 ```
 

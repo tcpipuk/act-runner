@@ -1,6 +1,6 @@
 name: Detect OS Version
 description: Detect OS version information using Docker containers
-author: Tom Foster
+author: Morgan
 
 inputs:
   os-type:

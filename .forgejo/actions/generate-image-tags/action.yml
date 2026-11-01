@@ -1,13 +1,13 @@
 name: Generate Image Tags
 description: Generate Docker image tags with consistent naming and aliases
-author: Tom Foster
+author: Morgan
 
 inputs:
   registry:
-    description: Container registry (e.g. git.tomfos.tr)
+    description: Container registry (e.g. git.cisnt.uk)
     required: true
   image-name:
-    description: Base image name (e.g. tom/act-runner)
+    description: Base image name (e.g. morgan/act-runner)
     required: true
   os-name:
     description: Operating system name (ubuntu, fedora, debian)

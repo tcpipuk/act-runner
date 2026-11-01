@@ -1,6 +1,6 @@
 name: Check Node.js Versions
 description: Find currently supported Node.js versions including LTS releases
-author: Tom Foster
+author: Morgan
 
 outputs:
   node-previous:

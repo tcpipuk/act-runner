@@ -17,12 +17,12 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Metadata (will be updated with actual versions during build)
 LABEL org.opencontainers.image.title="act-runner-ubuntu${UBUNTU_VERSION}" \
     org.opencontainers.image.description="Optimized ACT/Forgejo runner with essential CI tools for Ubuntu ${UBUNTU_VERSION}" \
-    org.opencontainers.image.url="https://git.tomfos.tr/tom/act-runner" \
-    org.opencontainers.image.source="https://git.tomfos.tr/tom/act-runner" \
-    org.opencontainers.image.documentation="https://git.tomfos.tr/tom/act-runner/src/branch/main/README.md" \
-    org.opencontainers.image.vendor="git.tomfos.tr" \
+    org.opencontainers.image.url="https://git.cisnt.uk/morgan/act-runner" \
+    org.opencontainers.image.source="https://git.cisnt.uk/morgan/act-runner" \
+    org.opencontainers.image.documentation="https://git.cisnt.uk/morgan/act-runner/src/branch/main/README.md" \
+    org.opencontainers.image.vendor="git.cisnt.uk" \
     org.opencontainers.image.licenses="MIT" \
-    org.opencontainers.image.authors="Tom Foster"
+    org.opencontainers.image.authors="Morgan"
 
 # Layer 1: Core build tools (rarely change - every few months)
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=act-ubuntu-apt-cache-${UBUNTU_VERSION}-${TARGETARCH} \

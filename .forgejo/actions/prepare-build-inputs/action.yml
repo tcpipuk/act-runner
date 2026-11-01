@@ -1,6 +1,6 @@
 name: Prepare Build Inputs
 description: Detect OS version information for build inputs across multiple OS variants
-author: Tom Foster
+author: Morgan
 
 inputs:
   os-name:

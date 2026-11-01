@@ -1,6 +1,6 @@
 name: Create Pull Request
 description: Create or update a pull request with Forgejo API
-author: Tom Foster
+author: Morgan
 
 inputs:
   token:
@@ -32,7 +32,7 @@ inputs:
   git-user-email:
     description: Git user email for commits
     required: false
-    default: "actions@noreply.git.tomfos.tr"
+    default: "actions@noreply.git.cisnt.uk"
 
 outputs:
   pr-created:
